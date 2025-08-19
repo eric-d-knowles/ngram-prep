@@ -1,17 +1,35 @@
-import os
+# tests/test_cleanup.py
 from pathlib import Path
+import os
+import shutil
+import logging
+
+import pytest
 
 # Adjust this import if your module path differs
 from ngram_prep.utils.cleanup import safe_db_cleanup
 
 
-def test_returns_true_when_path_does_not_exist(tmp_path: Path):
+@pytest.fixture(autouse=True)
+def no_sleep(monkeypatch):
+    """Disable real sleeping to keep tests fast."""
+    import time as _time
+    monkeypatch.setattr(_time, "sleep", lambda *_: None)
+
+
+def test_returns_true_when_path_missing(tmp_path: Path):
     missing = tmp_path / "nope"
-    assert not missing.exists()
     assert safe_db_cleanup(missing) is True
 
 
-def test_removes_directory_and_returns_true(tmp_path: Path, monkeypatch):
+def test_raises_if_target_is_not_directory(tmp_path: Path):
+    file_path = tmp_path / "file"
+    file_path.write_text("x")
+    with pytest.raises(ValueError):
+        safe_db_cleanup(file_path)
+
+
+def test_removes_directory_once_and_returns_true(tmp_path: Path, monkeypatch):
     target = tmp_path / "dbdir"
     (target / "sub").mkdir(parents=True)
     (target / "sub" / "file.txt").write_text("x")
@@ -21,7 +39,7 @@ def test_removes_directory_and_returns_true(tmp_path: Path, monkeypatch):
     def fake_rmtree(p):
         assert Path(p) == target
         calls["rmtree"] += 1
-        # simulate successful removal by actually removing
+        # simulate successful removal
         for root, dirs, files in os.walk(target, topdown=False):
             for name in files:
                 (Path(root) / name).unlink()
@@ -29,66 +47,64 @@ def test_removes_directory_and_returns_true(tmp_path: Path, monkeypatch):
                 (Path(root) / name).rmdir()
         target.rmdir()
 
-    import shutil
-
     monkeypatch.setattr(shutil, "rmtree", fake_rmtree)
 
-    assert safe_db_cleanup(str(target)) is True
+    assert safe_db_cleanup(target) is True
     assert calls["rmtree"] == 1
     assert not target.exists()
 
 
-def test_removes_nfs_temp_files(tmp_path: Path, monkeypatch):
+def test_removes_nfs_temp_files_when_unlink_succeeds(tmp_path: Path, monkeypatch):
     target = tmp_path / "dbdir"
     target.mkdir()
-    nfs1 = target / ".nfs123"
-    nfs2 = target / ".nfs999"
-    nfs1.write_text("a")
-    nfs2.write_text("b")
+    (target / ".nfs123").write_text("a")
+    (target / ".nfs999").write_text("b")
 
     removed = []
+    orig_unlink = Path.unlink
 
-    def fake_unlink(self):
+    def tracking_unlink(self, *args, **kwargs):
         removed.append(self.name)
-        Path(self).unlink(missing_ok=False)
+        return orig_unlink(self, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "unlink", fake_unlink, raising=True)
-
-    # also avoid actually deleting the dir; pretend success
-    import shutil
-
+    monkeypatch.setattr(Path, "unlink", tracking_unlink, raising=True)
     monkeypatch.setattr(shutil, "rmtree", lambda p: target.rmdir())
 
     assert safe_db_cleanup(target) is True
-    assert set(removed) >= {".nfs123", ".nfs999"}
+    assert {".nfs123", ".nfs999"} <= set(removed)
     assert not target.exists()
 
 
-def test_unlink_errors_are_suppressed(tmp_path: Path, monkeypatch):
+def test_busy_nfs_files_are_renamed_then_cleanup_succeeds(
+    tmp_path: Path, monkeypatch, caplog
+):
+    """
+    Simulate NFS: unlink of .nfs* fails -> function should rename into parent,
+    allowing directory removal to succeed.
+    """
+    caplog.set_level(logging.DEBUG)
+
     target = tmp_path / "dbdir"
     target.mkdir()
     (target / ".nfs_keep").write_text("x")
 
-    # Make Path.unlink raise for .nfs files
-    def failing_unlink(self):
-        raise OSError("busy file")
+    def failing_unlink(self, *args, **kwargs):
+        if self.name.startswith(".nfs"):
+            raise OSError("busy file")
+        return Path.unlink(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "unlink", failing_unlink, raising=True)
-
-    import shutil
-
     monkeypatch.setattr(shutil, "rmtree", lambda p: target.rmdir())
 
-    # Should still succeed despite unlink errors (suppressed)
     assert safe_db_cleanup(target) is True
     assert not target.exists()
+    # Verify we observed a rename path (if implementation logs it)
+    assert any("moved to" in rec.getMessage().lower() for rec in caplog.records)
 
 
 def test_retries_then_succeeds(tmp_path: Path, monkeypatch, caplog):
     target = tmp_path / "dbdir"
     target.mkdir()
-
-    import shutil
 
     calls = {"rmtree": 0}
 
@@ -100,33 +116,30 @@ def test_retries_then_succeeds(tmp_path: Path, monkeypatch, caplog):
 
     monkeypatch.setattr(shutil, "rmtree", flaky_rmtree)
 
-    # no real sleeping
-    import time as _time
-
-    monkeypatch.setattr(_time, "sleep", lambda *_: None)
-
     with caplog.at_level("WARNING"):
         assert safe_db_cleanup(target, max_retries=3) is True
 
     assert calls["rmtree"] == 2
-    assert any("cleanup attempt 1/3 failed" in msg.lower() for _, _, msg in caplog.record_tuples)
+    assert any(
+        "cleanup attempt 1/3 failed" in rec.getMessage().lower()
+        for rec in caplog.records
+    )
 
 
 def test_exhausts_retries_and_returns_false(tmp_path: Path, monkeypatch):
     target = tmp_path / "dbdir"
     target.mkdir()
 
-    import shutil
+    def always_fail(_):
+        raise OSError("nope")
 
-    monkeypatch.setattr(shutil, "rmtree", lambda p: (_ for _ in ()).throw(OSError("nope")))
-
-    # stub sleep so tests are fast
-    import time as _time
+    monkeypatch.setattr(shutil, "rmtree", always_fail)
 
     sleeps = []
+    import time as _time
     monkeypatch.setattr(_time, "sleep", lambda s: sleeps.append(s))
 
     assert safe_db_cleanup(target, max_retries=3) is False
-    # should have slept between first and second, second and third attempt
+    # slept between 1→2 and 2→3
     assert len(sleeps) == 2
-    assert target.exists()  # still there since we always failed
+    assert target.exists()
