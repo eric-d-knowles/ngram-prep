@@ -147,12 +147,8 @@ def snapshot_counters(counters: Counters) -> ProgressSnapshot:
 
 def print_phase_banner() -> None:
     """Print the pipeline phase 1 banner and headers."""
-    print("RUNNING N-GRAM FILTER PIPELINE\n")
-    print("Phase 1: Input DB → Filtered RocksDB Shards")
-    print("=" * 87)
-    print("readers done | recs scanned | recs written | items kept   | throughput   | elapsed")
-    print("                           ( statistics are cumulative )                          ")
-    print("=" * 87)
+    print("\n    recs scanned   recs written   items kept     throughput     elapsed")
+    print("  ", "─" * 75)
 
 
 class ProgressFormatter:
@@ -212,11 +208,10 @@ class ProgressFormatter:
 
         # Fixed-width formatting to align with headers
         return (
-            f"{readers_status:<12} | "
-            f"{snapshot.items_scanned:<12,} | "
-            f"{snapshot.items_written:<12,} | "
-            f"{snapshot.items_kept_ratio:<12.0%} | "
-            f"{throughput:<12} | "
+            f"  {snapshot.items_scanned:<12,}   "
+            f"{snapshot.items_written:<12,}   "
+            f"{snapshot.items_kept_ratio:<12.0%}   "
+            f"{throughput:<12}   "
             f"{elapsed_str:<12}"
         )
 

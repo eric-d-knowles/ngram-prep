@@ -70,8 +70,8 @@ def print_db_stats(db, prefix: str = "[ingest] dst") -> None:
 
 def print_phase_banner() -> None:
     """Print the phase 2 banner."""
-    print("\nPhase 2: Filtered RocksDB Shards → Final DB")
-    print("=" * 89)
+    #print("\nPhase 2: Filtered RocksDB Shards → Final DB")
+    #print("=" * 89)
 
 
 def ingest_shards_streaming(
@@ -108,7 +108,7 @@ def ingest_shards_streaming(
         if path.is_dir() and path.name.startswith("unit_")
     )
 
-    print(f"Folding {len(shard_dirs)} shard(s)...", flush=True)
+    print(f"  Folding {len(shard_dirs)} shard(s)...", flush=True)
 
     # Initialize counters
     total_items = 0
@@ -158,7 +158,7 @@ def ingest_shards_streaming(
             total_items += shard_items
             total_bytes += shard_bytes
             print(
-                f"{shard_dir.name}: merged {shard_items:,} items "
+                f"  {shard_dir.name}: merged {shard_items:,} items "
                 f"({shard_bytes / 1_000_000:.1f} MB)",
                 flush=True
             )
@@ -167,6 +167,7 @@ def ingest_shards_streaming(
         _finalize_database(dst)
 
     # Print final summary
+    print("=" * 89)
     print(
         f"PROCESSING COMPLETE: Final DB contains {total_items:,} items, "
         f"{total_bytes / 1_000_000:,.1f} MB",
@@ -176,16 +177,17 @@ def ingest_shards_streaming(
 
 def _finalize_database(db) -> None:
     """Finalize the database by flushing and compacting."""
+    print(f"\nPhase 3: Finalizing...")
+    print("═" * 100)
+
     try:
-        print("Finalizing (flush)...", flush=True)
+        print("  Performing final flush...", flush=True)
         db.finalize_bulk()
     except Exception as e:
         print(f"[ingest] finalize_bulk not available or failed: {e}", flush=True)
 
     try:
-        print("Compacting...", flush=True)
+        print("  Compacting...", flush=True)
         db.compact_all()
     except Exception:
         pass  # Compaction is optional
-
-    print("=" * 89)

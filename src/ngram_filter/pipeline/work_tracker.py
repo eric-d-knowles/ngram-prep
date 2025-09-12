@@ -319,7 +319,7 @@ def create_work_units(src_db_path: Path, num_units: int = 128) -> list[WorkUnit]
     Returns:
         List of WorkUnit objects covering the key space
     """
-    print(f"Creating {num_units} work units using ASCII range...")
+    print(f"  Creating {num_units} work units using ASCII range...")
 
     # Define the printable ASCII range that contains actual data
     first_byte = 0x21  # "!" character
@@ -349,7 +349,7 @@ def create_work_units(src_db_path: Path, num_units: int = 128) -> list[WorkUnit]
             end_key=end_key
         ))
 
-    print(f"Created {len(work_units)} work units covering range 0x{first_byte:02x}-0x{last_byte:02x}")
+    print(f"  Created {len(work_units)} work units covering range 0x{first_byte:02x}-0x{last_byte:02x}")
     return work_units
 
 
@@ -364,7 +364,7 @@ def validate_work_units(src_db_path: Path, work_units: list[WorkUnit]) -> bool:
     Returns:
         True if validation passes, False otherwise
     """
-    print(f"Validating {len(work_units)} work units...")
+    print(f"  Validating {len(work_units)} work units...")
 
     try:
         with open_db(src_db_path, mode="ro") as db:
@@ -375,16 +375,16 @@ def validate_work_units(src_db_path: Path, work_units: list[WorkUnit]) -> bool:
                 unit = work_units[i]
                 start_repr = _format_key_for_display(unit.start_key)
 
-                print(f"  Validating work unit {i}: {start_repr}...")
+                #print(f"  Validating work unit {i}: {start_repr}...")
 
                 keys_in_range = _count_keys_in_range(db, unit)
                 if keys_in_range < 0:  # Error occurred
                     return False
 
-                print(f"    Found {keys_in_range} keys in range")
+                #print(f"    Found {keys_in_range} keys in range")
                 total_keys_found += keys_in_range
 
-            print(f"Validation completed: {total_keys_found} keys found across {validation_sample_size} sample units")
+            print(f"  Validated {len(work_units)} work units: {total_keys_found} keys over {validation_sample_size} sample units")
             return total_keys_found > 0
 
     except Exception as e:

@@ -55,20 +55,21 @@ class PipelineOrchestrator:
         self._merge_results()
         self._validate_final_result()
 
-        print("=" * 60)
+        print("━" * 100)
         print("Pipeline completed successfully!")
 
     def _print_pipeline_header(self) -> None:
         """Print pipeline configuration summary."""
         print("N-GRAM FILTER PIPELINE")
-        print("=" * 60)
+        print("━" * 100)
 
         num_workers = getattr(self.pipeline_config, 'readers', 16)
         num_work_units = num_workers * 8
 
         worker_config = self._create_worker_config()
 
-        print("Configuration:")
+        print("\nConfiguration:")
+        print("═" * 100)
         print(f"  Workers: {num_workers}")
         print(f"  Work units: {num_work_units}")
         print(f"  Source: {self.temp_paths['src_db']}")
@@ -124,6 +125,7 @@ class PipelineOrchestrator:
     def _create_work_units(self) -> None:
         """Create or resume work units for processing."""
         print("\nPhase 1: Creating work units...")
+        print("═" * 100)
 
         work_tracker = WorkTracker(self.temp_paths['work_tracker'])
         num_workers = getattr(self.pipeline_config, 'readers', 16)
@@ -143,15 +145,15 @@ class PipelineOrchestrator:
             print(f"  Force restart requested - clearing existing work units")
             work_tracker.clear_all_work_units()
 
-        print("  Creating new work units...")
+        #print("  Creating new work units...")
         work_units = create_work_units(self.temp_paths['src_db'], num_work_units)
 
-        print("  Validating work units...")
+        #print("  Validating work units...")
         if not validate_work_units(self.temp_paths['src_db'], work_units):
             print("  WARNING: Work unit validation failed - proceeding anyway")
             print("  This may indicate work unit ranges don't align with your data")
-        else:
-            print("  Work units validated successfully")
+        #else:
+        #    print("  Work units validated successfully")
 
         work_tracker.add_work_units(work_units)
         progress = work_tracker.get_progress()
@@ -175,7 +177,7 @@ class PipelineOrchestrator:
         num_workers = getattr(self.pipeline_config, 'readers', 16)
 
         print(f"\nPhase 2: Processing {progress.pending} work units with {num_workers} workers...")
-        print("=" * 60)
+        print("═" * 100)
 
         # Set up progress monitoring
         progress_reporter = self._setup_progress_monitoring()
@@ -192,11 +194,10 @@ class PipelineOrchestrator:
                 counters=progress_reporter['counters'] if progress_reporter else None,
             )
 
-            print("\n" + "=" * 60)
-            print("Phase 2 completed successfully!")
+            print("─" * 34, " final ", "─" * 34)
 
             # Debug output file information
-            self._debug_worker_outputs()
+            #self._debug_worker_outputs()
 
         finally:
             self._cleanup_progress_monitoring(progress_reporter)
@@ -263,6 +264,7 @@ class PipelineOrchestrator:
     def _merge_results(self) -> None:
         """Merge worker outputs into final database."""
         print(f"\nPhase 3: Merging worker outputs into final database...")
+        print("═" * 100)
 
         output_files = sorted(self.temp_paths['output_dir'].glob("*.db"))
         print(f"  Found {len(output_files)} worker output files")
@@ -297,7 +299,6 @@ class PipelineOrchestrator:
         try:
             with open_db(self.temp_paths['dst_db'], mode="ro") as result_db:
                 key_count = result_db.get_property("rocksdb.estimate-num-keys")
-                print(f"Final database: ~{key_count or 'unknown'} keys")
         except Exception as e:
             print(f"Could not validate final database: {e}")
 
