@@ -85,7 +85,7 @@ def ingest_shards_streaming(
         disable_wal: bool = False,
         diag_every_batches: int = 50,
         diag_every_seconds: float = 5.0
-) -> None:
+) -> tuple[int, int]:
     """
     Merge per-shard RocksDBs into a single destination database.
 
@@ -158,7 +158,7 @@ def ingest_shards_streaming(
             total_items += shard_items
             total_bytes += shard_bytes
             print(
-                f"  {shard_dir.name}: merged {shard_items:,} items "
+                f"  {shard_dir.name}: {shard_items:,} items "
                 f"({shard_bytes / 1_000_000:.1f} MB)",
                 flush=True
             )
@@ -166,13 +166,7 @@ def ingest_shards_streaming(
         # Finalize the database
         _finalize_database(dst)
 
-    # Print final summary
-    print("=" * 89)
-    print(
-        f"PROCESSING COMPLETE: Final DB contains {total_items:,} items, "
-        f"{total_bytes / 1_000_000:,.1f} MB",
-        flush=True,
-    )
+    return total_items, total_bytes
 
 
 def _finalize_database(db) -> None:

@@ -302,6 +302,29 @@ class WorkTracker:
 
             return cursor.rowcount
 
+    def reset_all_processing_units(self) -> int:
+        """
+        Reset all processing work units back to pending status.
+
+        This is useful for resuming after an interrupted pipeline run,
+        where all 'processing' units should be considered available again.
+
+        Returns:
+            Number of work units that were reset
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE work_units
+                SET status     = 'pending',
+                    worker_id  = NULL,
+                    start_time = NULL
+                WHERE status = 'processing'
+                """
+            )
+
+            return cursor.rowcount
+
     def clear_all_work_units(self) -> None:
         """Remove all work units from the tracker."""
         with sqlite3.connect(self.db_path) as conn:

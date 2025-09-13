@@ -148,7 +148,7 @@ def snapshot_counters(counters: Counters) -> ProgressSnapshot:
 def print_phase_banner() -> None:
     """Print the pipeline phase 1 banner and headers."""
     print("\n    recs scanned   recs written   items kept     throughput     elapsed")
-    print("  ", "─" * 75)
+    print("  ", "─" * 69)
 
 
 class ProgressFormatter:
@@ -208,7 +208,7 @@ class ProgressFormatter:
 
         # Fixed-width formatting to align with headers
         return (
-            f"  {snapshot.items_scanned:<12,}   "
+            f"    {snapshot.items_scanned:<12,}   "
             f"{snapshot.items_written:<12,}   "
             f"{snapshot.items_kept_ratio:<12.0%}   "
             f"{throughput:<12}   "

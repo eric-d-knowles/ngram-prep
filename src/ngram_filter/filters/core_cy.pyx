@@ -15,7 +15,6 @@ cdef set TAGS_VALID_G = {
     b"NOUN", b"PROPN", b"VERB", b"ADJ", b"ADV",
     b"PRON", b"DET", b"ADP", b"NUM", b"CONJ", b"X", b"."
 }
-
 # Mapping subset for lemmatizer (WordNet codes)
 cdef dict MAP_G_TO_WN = {
     b"NOUN": "n",
@@ -74,16 +73,16 @@ cpdef bytes process_tokens(
     bint opt_alpha = False,
     bint opt_shorts = False,
     bint opt_stops = False,
-    bint opt_lemmas = False,     # lemmatize using WordNet codes when possible
+    bint opt_lemmas = False,
     int  min_len = 3,
-    object stop_set = None,      # set of bytes or None
-    object lemma_gen = None,     # has .lemmatize(str, pos=str)
-    object vocab_set = None,     # set of bytes or None
-    bytearray outbuf = None      # optional reusable output buffer (cleared each call)
+    object stop_set = None,
+    object lemma_gen = None,
+    object whitelist = None,
+    bytearray outbuf = None
 ):
     """
     Bytes-only token pipeline:
-      tokenize -> split POS (Google) -> lower -> vocab -> alpha -> shorts -> stops -> lemmas
+      tokenize -> split POS (Google) -> lower -> whitelist -> alpha -> shorts -> stops -> lemmas
     Returns b"" if all tokens become <UNK>.
     """
     cdef Py_ssize_t N = ngram.__len__()
@@ -91,7 +90,7 @@ cpdef bytes process_tokens(
         return b""
 
     # flags
-    cdef bint do_vocab  = (vocab_set is not None)
+    cdef bint do_whitelist = (whitelist is not None)
     cdef bint do_lower  = opt_lower
     cdef bint do_alpha  = opt_alpha
     cdef bint do_shorts = opt_shorts
@@ -156,7 +155,7 @@ cpdef bytes process_tokens(
 
         # decide whether this token becomes <UNK>
         is_unk = 0
-        if do_vocab and base_b not in vocab_set:
+        if do_whitelist and base_b not in whitelist:
             is_unk = 1
         elif do_alpha and not _is_ascii_alpha_bytes(base_b):
             is_unk = 1

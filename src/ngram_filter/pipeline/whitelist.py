@@ -1,4 +1,4 @@
-# ngram_acquire/vocab.py
+# ngram_filter/pipeline/whitelist.py
 from __future__ import annotations
 
 import heapq
@@ -21,8 +21,8 @@ METADATA_PREFIX = b"__"      # skip metadata keys like "__..."
 DECODING = "utf-8"           # decoding for keys when decode=True
 
 __all__ = [
-    "write_vocab",
-    # (the helpers below remain module-private; exported symbol is write_vocab)
+    "write_whitelist",
+    "load_whitelist",
 ]
 
 
@@ -126,7 +126,7 @@ def _top_k(
     return out
 
 
-def write_vocab(
+def write_whitelist(
     db_or_path: Union[str, Path, "rs.DB"],
     dest: Union[str, Path],
     *,
@@ -156,3 +156,62 @@ def write_vocab(
 
     tmp.replace(dest)
     return dest.resolve()
+
+
+def load_whitelist(
+        whitelist_path: Union[str, Path],
+        *,
+        top_n: int | None = None,
+        min_count: int = 1,
+        encoding: str = "utf-8",
+        sep: str = "\t",
+) -> set[bytes]:
+    """
+    Load whitelist from TSV file created by write_whitelist().
+
+    Args:
+        whitelist_path: Path to whitelist file (token<sep>count format)
+        top_n: Optional limit to top N most frequent tokens
+        min_count: Minimum frequency threshold (tokens below this are excluded)
+        encoding: File encoding (default: utf-8)
+        sep: Separator between token and count (default: tab)
+
+    Returns:
+        Set of bytes tokens for use in process_tokens(whitelist=...)
+    """
+    whitelist_path = Path(whitelist_path)
+    if not whitelist_path.exists():
+        raise FileNotFoundError(f"Whitelist file not found: {whitelist_path}")
+
+    tokens: set[bytes] = set()
+    count = 0
+
+    with whitelist_path.open("r", encoding=encoding) as f:
+        for line in f:
+            line = line.rstrip("\r\n")
+            if not line:
+                continue
+
+            parts = line.split(sep, 1)
+            if len(parts) != 2:
+                continue
+
+            token_str, count_str = parts
+            try:
+                frequency = int(count_str)
+            except ValueError:
+                continue
+
+            # Apply frequency threshold
+            if frequency < min_count:
+                continue
+
+            # Convert to bytes (matching your pipeline's data type)
+            token_bytes = token_str.encode(encoding, "surrogatepass")
+            tokens.add(token_bytes)
+
+            count += 1
+            if top_n is not None and count >= top_n:
+                break
+
+    return tokens

@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import struct
-from pathlib import Path
-from typing import Dict, Iterator, Tuple, Optional, List
+from typing import Dict, Tuple, List
 
 import pytest
 
 # Module under test
-import ngram_acquire.utils.vocab as vocab
+import ngram_filter.pipeline.whitelist as vocab
 
 
 # -----------------------------

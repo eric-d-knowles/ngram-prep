@@ -14,7 +14,7 @@ def _to_bytes_set(s: Optional[Iterable[Any]]):
     try:
         it = iter(s)
     except TypeError:
-        raise TypeError("stop_set/vocab_set must be an iterable of str/bytes/bytearray")
+        raise TypeError("stop_set must be an iterable of str/bytes/bytearray")
 
     out: set[bytes] = set()
     for w in it:
@@ -33,15 +33,6 @@ def build_processor(cfg: FilterConfig) -> Callable[[bytes], Optional[bytes]]:
     Returns None to drop the ngram.
     """
     stop_set_b = _to_bytes_set(cfg.stop_set)
-
-    # vocab can be:
-    #  - an MMapVocab (preferred; must implement __contains__(bytes))
-    #  - a small in-memory set of tokens (iterable -> set[bytes])
-    vocab_obj = cfg.vocab_view
-    if vocab_obj is None:
-        # Optionally support tiny vocab passed as iterable on cfg (not present now, but harmless)
-        # vocab_obj = _to_bytes_set(getattr(cfg, "vocab_set", None))
-        pass
 
     outbuf = bytearray()  # reused per-processor
 
@@ -62,7 +53,7 @@ def build_processor(cfg: FilterConfig) -> Callable[[bytes], Optional[bytes]]:
             min_len=cfg.min_len,
             stop_set=stop_set_b,
             lemma_gen=cfg.lemma_gen,
-            vocab_set=vocab_obj,     # <-- previously undefined variable; now the mmap view or None
+            whitelist=cfg.whitelist,
             outbuf=outbuf,
         )
         return out or None

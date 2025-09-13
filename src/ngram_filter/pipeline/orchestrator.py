@@ -1,4 +1,3 @@
-# ngram_filter/pipeline/orchestrator.py
 """Main orchestrator for the ngram filter pipeline."""
 
 from __future__ import annotations
@@ -18,6 +17,7 @@ from .worker import WorkerConfig, run_worker_pool
 from .ingest import ingest_shards_streaming
 from .progress import create_counters, print_phase_banner, run_progress_reporter
 from common_db.api import open_db
+from .whitelist import load_whitelist, write_whitelist
 
 
 class PipelineOrchestrator:
@@ -27,6 +27,10 @@ class PipelineOrchestrator:
         self.pipeline_config = pipeline_config
         self.filter_config = filter_config
         self.temp_paths = self._initialize_paths()
+
+        self.total_items = 0
+        self.total_bytes = 0
+        self.output_whitelist_path = None
 
     def _initialize_paths(self) -> dict[str, Path]:
         """Initialize and prepare all required paths."""
@@ -48,15 +52,15 @@ class PipelineOrchestrator:
         self._print_pipeline_header()
         self._prepare_directories()
         self._prepare_vocabulary_index()
+        self._prepare_whitelist()
 
         # Execute pipeline phases
         self._create_work_units()
         self._process_work_units()
         self._merge_results()
         self._validate_final_result()
-
-        print("━" * 100)
-        print("Pipeline completed successfully!")
+        self._generate_output_whitelist()
+        self._print_done_banner()
 
     def _print_pipeline_header(self) -> None:
         """Print pipeline configuration summary."""
@@ -68,25 +72,65 @@ class PipelineOrchestrator:
 
         worker_config = self._create_worker_config()
 
+        if len(str(self.temp_paths['src_db'])) > 75:
+            src_db_str = str(self.temp_paths['src_db'])[-72:]
+        else:
+            src_db_str = str(self.temp_paths['src_db'])
+
+        if len(str(self.temp_paths['dst_db'])) > 75:
+            dst_db_str = str(self.temp_paths['dst_db'])[-72:]
+        else:
+            dst_db_str = str(self.temp_paths['dst_db'])
+
         print("\nConfiguration:")
         print("═" * 100)
         print(f"  Workers: {num_workers}")
         print(f"  Work units: {num_work_units}")
-        print(f"  Source: {self.temp_paths['src_db']}")
-        print(f"  Destination: {self.temp_paths['dst_db']}")
+        print(f"  Source: {src_db_str}")
+        print(f"  Destination: {dst_db_str}")
         print(f"  Buffer: {worker_config.buffer_size:,} items, "
               f"{worker_config.buffer_bytes // (1024 * 1024)}MB")
         print(f"  Profile: {worker_config.profile}")
 
+        # Add input whitelist info
+        whitelist_path = getattr(self.filter_config, "whitelist_path", None)
+        if whitelist_path:
+            if len(str(whitelist_path)) > 75:
+                whitelist_path_str = "..." + str(whitelist_path)[-72:]
+            print(f"  Input whitelist: {whitelist_path_str}")
+            min_count = getattr(self.filter_config, "whitelist_min_count", 1)
+            top_n = getattr(self.filter_config, "whitelist_top_n", None)
+            if top_n:
+                print(f"    Top {top_n:,} tokens (min count: {min_count})")
+            else:
+                print(f"    All tokens (min count: {min_count})")
+        else:
+            print(f"  Input whitelist: None")
+
+        # Add output whitelist info and store in instance variable
+        self.output_whitelist_path = getattr(self.pipeline_config, "output_whitelist_path", None)
+        if self.output_whitelist_path:
+            output_top_n = getattr(self.pipeline_config, "output_whitelist_top_n", None)
+            if len(str(self.output_whitelist_path)) > 75:
+                output_whitelist_path_str = "..." + str(self.output_whitelist_path)[-59:]
+            print(f"  Output whitelist: {output_whitelist_path_str} (top {output_top_n:,} keys)")
+        else:
+            print(f"  Output whitelist: None")
+
     def _prepare_directories(self) -> None:
         """Clean and create necessary directories."""
-        # Clean up previous runs
+        # Clean up destination (always safe to recreate)
         if self.temp_paths['dst_db'].exists():
             shutil.rmtree(self.temp_paths['dst_db'])
         self.temp_paths['dst_db'].parent.mkdir(parents=True, exist_ok=True)
 
-        if self.temp_paths['tmp_dir'].exists():
+        # For temp directory: only clean if force_restart is enabled
+        force_restart = getattr(self.pipeline_config, 'force_restart', False)
+
+        if force_restart and self.temp_paths['tmp_dir'].exists():
             shutil.rmtree(self.temp_paths['tmp_dir'])
+
+        # Create temp directories if they don't exist
         self.temp_paths['tmp_dir'].mkdir(parents=True, exist_ok=True)
         self.temp_paths['output_dir'].mkdir(exist_ok=True)
 
@@ -122,6 +166,33 @@ class PipelineOrchestrator:
         idx_mtime = max(idx_file.stat().st_mtime, lex_file.stat().st_mtime)
         return vocab_mtime > idx_mtime
 
+    def _prepare_whitelist(self) -> None:
+        """Load whitelist if specified in filter config."""
+        whitelist_path = getattr(self.filter_config, "whitelist_path", None)
+        if not whitelist_path:
+            return
+
+        whitelist_path = Path(whitelist_path)
+        if not whitelist_path.exists():
+            raise FileNotFoundError(f"Whitelist file not found: {whitelist_path}")
+
+        print(f"Loading whitelist from {whitelist_path}...")
+
+        # Load whitelist with optional parameters from config
+        min_count = getattr(self.filter_config, "whitelist_min_count", 1)
+        top_n = getattr(self.filter_config, "whitelist_top_n", None)
+
+        whitelist = load_whitelist(
+            whitelist_path=whitelist_path,
+            min_count=min_count,
+            top_n=top_n,
+        )
+
+        print(f"  Loaded {len(whitelist):,} tokens")
+
+        # Store the loaded whitelist in filter_config for workers to use
+        self.filter_config = replace(self.filter_config, whitelist=whitelist)
+
     def _create_work_units(self) -> None:
         """Create or resume work units for processing."""
         print("\nPhase 1: Creating work units...")
@@ -131,12 +202,19 @@ class PipelineOrchestrator:
         num_workers = getattr(self.pipeline_config, 'readers', 16)
         num_work_units = num_workers * 8
 
-        progress = work_tracker.get_progress()
+        force_restart = getattr(self.pipeline_config, 'force_restart', False)
 
-        if progress.total == 0 or getattr(self.pipeline_config, 'force_restart', False):
+        if force_restart:
+            work_tracker.clear_all_work_units()
             self._create_new_work_units(work_tracker, num_work_units)
         else:
-            self._resume_existing_work_units(work_tracker, progress)
+            progress = work_tracker.get_progress()
+            if progress.total == 0:
+                # No existing work units found - create new ones
+                self._create_new_work_units(work_tracker, num_work_units)
+            else:
+                # Resume existing work units
+                self._resume_existing_work_units(work_tracker, progress)
 
     def _create_new_work_units(self, work_tracker: WorkTracker, num_work_units: int) -> None:
         """Create new work units from scratch."""
@@ -145,14 +223,14 @@ class PipelineOrchestrator:
             print(f"  Force restart requested - clearing existing work units")
             work_tracker.clear_all_work_units()
 
-        #print("  Creating new work units...")
+        # print("  Creating new work units...")
         work_units = create_work_units(self.temp_paths['src_db'], num_work_units)
 
-        #print("  Validating work units...")
+        # print("  Validating work units...")
         if not validate_work_units(self.temp_paths['src_db'], work_units):
             print("  WARNING: Work unit validation failed - proceeding anyway")
             print("  This may indicate work unit ranges don't align with your data")
-        #else:
+        # else:
         #    print("  Work units validated successfully")
 
         work_tracker.add_work_units(work_units)
@@ -164,11 +242,12 @@ class PipelineOrchestrator:
         print(f"  Resuming: {progress.completed} completed, "
               f"{progress.processing} processing, {progress.pending} pending")
 
-        # Reset stuck work units
+        # Reset all processing units on resume (they're from an interrupted run)
         if progress.processing > 0:
-            reset_count = work_tracker.reset_stuck_work_units(timeout_hours=1.0)
-            if reset_count > 0:
-                print(f"  Reset {reset_count} stuck units to pending")
+            reset_count = work_tracker.reset_all_processing_units()
+
+            # Show updated progress
+            updated_progress = work_tracker.get_progress()
 
     def _process_work_units(self) -> None:
         """Process work units using worker pool."""
@@ -194,10 +273,10 @@ class PipelineOrchestrator:
                 counters=progress_reporter['counters'] if progress_reporter else None,
             )
 
-            print("─" * 34, " final ", "─" * 34)
+            print("  ", "─" * 30, " final ", "─" * 30)
 
             # Debug output file information
-            #self._debug_worker_outputs()
+            # self._debug_worker_outputs()
 
         finally:
             self._cleanup_progress_monitoring(progress_reporter)
@@ -279,7 +358,7 @@ class PipelineOrchestrator:
         print(f"  Batch size: {ingest_batch_bytes // (1024 * 1024)}MB, {ingest_batch_items:,} items")
 
         # Perform the merge
-        ingest_shards_streaming(
+        self.total_items, self.total_bytes = ingest_shards_streaming(
             dst_db_path=self.temp_paths['dst_db'],
             shards_root=self.temp_paths['output_dir'],
             read_profile=getattr(self.pipeline_config, 'ingest_read_profile', 'read'),
@@ -288,7 +367,7 @@ class PipelineOrchestrator:
             batch_items=ingest_batch_items,
             disable_wal=getattr(self.pipeline_config, 'ingest_disable_wal', True),
             diag_every_batches=25,
-            diag_every_seconds=3.0,
+            diag_every_seconds=3.0
         )
 
     def _validate_final_result(self) -> None:
@@ -301,6 +380,62 @@ class PipelineOrchestrator:
                 key_count = result_db.get_property("rocksdb.estimate-num-keys")
         except Exception as e:
             print(f"Could not validate final database: {e}")
+
+    def _generate_output_whitelist(self) -> None:
+        """Generate whitelist from final merged database if requested."""
+        output_whitelist_path = getattr(self.pipeline_config, "output_whitelist_path", None)
+        if not output_whitelist_path:
+            return
+
+        output_whitelist_path = Path(output_whitelist_path)
+        output_top_n = getattr(self.pipeline_config, "output_whitelist_top_n", None)
+
+        print(f"\nPhase 4: Generating output whitelist...")
+        print("═" * 100)
+        print(f"  Output path: {output_whitelist_path}")
+
+        if output_top_n:
+            print(f"  Extracting top {output_top_n:,} tokens")
+        else:
+            print(f"  Extracting all tokens")
+
+        start_time = time.perf_counter()
+        final_path = write_whitelist(
+            db_or_path=self.temp_paths['dst_db'],
+            dest=output_whitelist_path,
+            top=output_top_n,
+            decode=True,
+            sep="\t"
+        )
+        elapsed = time.perf_counter() - start_time
+
+        # Count lines to report how many tokens were written
+        try:
+            with final_path.open('r', encoding='utf-8') as f:
+                token_count = sum(1 for _ in f)
+            print(f"  Generated whitelist with {token_count:,} tokens in {elapsed:.1f}s")
+        except Exception:
+            print(f"  Whitelist generated in {elapsed:.1f}s")
+
+    def _print_done_banner(self) -> None:
+        """ Print a banner at the end of the pipeline. """
+        db_path_str = str(self.temp_paths['dst_db'])
+        if len(db_path_str) > 75:
+            db_path_str = "..." + db_path_str[-60:]
+        if self.output_whitelist_path:
+            whitelist_str = str(self.output_whitelist_path)
+        if len(whitelist_str) > 75:
+            whitelist_str = "..." + whitelist_str[-60:]
+
+        print("\n╭" + "─" * 85 + "╮")
+        message1 = f"PROCESSING COMPLETE: Final DB contains {self.total_items:,} items, {self.total_bytes / 1_000_000:,.1f} MB"
+        message2 = "DB Loc: "
+        message3 = "Whitelist Loc: "
+        print(f"│ {message1:<83} │", flush=True)
+        print(f"│ {message2:<83}: {db_path_str} │", flush=True)
+        if self.output_whitelist_path:
+            print(f"│ {message3:<83}: {whitelist_str} │")
+        print("╰" + "─" * 85 + "╯/n")
 
     def _create_worker_config(self) -> WorkerConfig:
         """Create worker configuration from pipeline config."""
