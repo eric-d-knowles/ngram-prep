@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -110,18 +111,20 @@ class WorkTracker:
                 ]
             )
 
-    def claim_work_unit(self, worker_id: str) -> Optional[WorkUnit]:
+    def claim_work_unit(self, worker_id: str, output_dir: Path = None, clear_partial_shards: bool = True) -> Optional[
+        WorkUnit]:
         """
         Atomically claim the next available work unit.
 
         Args:
             worker_id: Identifier for the worker claiming the unit
+            output_dir: Directory where shard databases are stored
+            clear_partial_shards: Whether to clear existing shard data on restart
 
         Returns:
             The claimed WorkUnit or None if no work is available
         """
         with sqlite3.connect(self.db_path) as conn:
-            # Use RETURNING clause for atomic claim operation
             cursor = conn.execute(
                 """
                 UPDATE work_units
@@ -143,13 +146,26 @@ class WorkTracker:
 
             row = cursor.fetchone()
             if row:
+                unit_id = row[0]
+
+                # Clear partial shard if it exists
+                if clear_partial_shards and output_dir:
+                    self._clear_partial_shard(unit_id, output_dir)
+
                 return WorkUnit(
-                    unit_id=row[0],
+                    unit_id=unit_id,
                     start_key=row[1],
                     end_key=row[2],
                     status="processing"
                 )
             return None
+
+    def _clear_partial_shard(self, unit_id: str, output_dir: Path) -> None:
+        """Clear any existing shard data for the given unit_id."""
+        shard_path = output_dir / f"{unit_id}.db"
+        if shard_path.exists():
+            #print(f"  Clearing partial shard for work unit {unit_id}")
+            shutil.rmtree(shard_path)
 
     def complete_work_unit(self, unit_id: str) -> None:
         """

@@ -67,7 +67,7 @@ def worker_process(
 
         # Main work loop
         while True:
-            work_unit = _claim_next_work_unit(worker_id, work_tracker)
+            work_unit = _claim_next_work_unit(worker_id, work_tracker, output_dir)
             if work_unit is None:
                 break
 
@@ -122,10 +122,10 @@ def _attach_vocabulary_if_needed(worker_id: int, filter_config: FilterConfig) ->
         return filter_config
 
 
-def _claim_next_work_unit(worker_id: int, work_tracker: WorkTracker) -> Optional[WorkUnit]:
+def _claim_next_work_unit(worker_id: int, work_tracker: WorkTracker, output_dir: Path) -> Optional[WorkUnit]:
     """Attempt to claim the next available work unit."""
     try:
-        return work_tracker.claim_work_unit(f"worker-{worker_id}")
+        return work_tracker.claim_work_unit(f"worker-{worker_id}", output_dir=output_dir)
     except Exception as e:
         print(f"Worker {worker_id} failed to claim work unit: {e}")
         return None
