@@ -90,12 +90,12 @@ cpdef bytes process_tokens(
         return b""
 
     # flags
-    cdef bint do_whitelist = (whitelist is not None)
     cdef bint do_lower  = opt_lower
+    cdef bint do_lemmas = (opt_lemmas and lemma_gen is not None)
+    cdef bint do_whitelist = (whitelist is not None)
     cdef bint do_alpha  = opt_alpha
     cdef bint do_shorts = opt_shorts
     cdef bint do_stops  = (opt_stops and stop_set is not None)
-    cdef bint do_lemmas = (opt_lemmas and lemma_gen is not None)
 
     # prep output buffer (one-pass writer)
     if outbuf is None:
@@ -136,49 +136,53 @@ cpdef bytes process_tokens(
         # materialize token bytes (needed for set lookups / .lower() / rfind)
         tok_b = PyBytes_FromStringAndSize(<char*>base + tok_start, tok_end - tok_start)
 
-        # split POS by last underscore (NO normalization)
-        last_uscore = tok_b.rfind(b'_')
-        wn_pos = None
-        if last_uscore > 0:
-            tag_b = tok_b[last_uscore + 1:]
-            if tag_b in TAGS_VALID_G:
-                base_b = tok_b[:last_uscore]                 # strip tag
-                wn_pos = MAP_G_TO_WN.get(tag_b, None)        # None for PROPN/DET/...
-            else:
-                base_b = tok_b
-        else:
-            base_b = tok_b
+        # split POS by last underscore
+        last_uscore = tok_b.rfind(b'_')  # find the last underscore
+        wn_pos = None  # default to no POS
+        if last_uscore > 0:  # check if there was a last underscore
+            tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag
+            if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag
+                base_b = tok_b[:last_uscore]  # if it's a real POS tag, separate out the base token
+                wn_pos = MAP_G_TO_WN.get(tag_b, None)  # and convert the tag to a WordNet code
+            else:  # if what's after the last underscore *isn't* a POS tag...
+                base_b = tok_b  # the base token is just the original token
+        else:  # if there wasn't a last underscore...
+            base_b = tok_b  # the base token is just the original token
 
-        # lower (bytes.lower() keeps non-ASCII unchanged)
+        # Normalize token first (always needed)
         if do_lower:
             base_b = base_b.lower()
-
-        # decide whether this token becomes <UNK>
-        is_unk = 0
-        if do_whitelist and base_b not in whitelist:
-            is_unk = 1
-        elif do_alpha and not _is_ascii_alpha_bytes(base_b):
-            is_unk = 1
-        elif do_shorts and base_b.__len__() < min_len:
-            is_unk = 1
-        elif do_stops and base_b in stop_set:
-            is_unk = 1
-
-        if is_unk:
-            out_token = SENTINEL_B
-            unk_count += 1
+        if do_lemmas:
+            tok_s = _decode_token(base_b)
+            pos_s = wn_pos if wn_pos is not None else "n"
+            res = lemma_gen.lemmatize(tok_s, pos=pos_s)
+            normalized_token = _encode_token(<str> res, do_alpha)
         else:
-            if do_lemmas:
-                tok_s = _decode_token(base_b)
-                pos_s = wn_pos if wn_pos is not None else "n"
-                try:
-                    res = lemma_gen.lemmatize(tok_s, pos=pos_s)
-                except Exception:
-                    out_token = base_b
-                else:
-                    out_token = _encode_token(<str> res, do_alpha)
+            normalized_token = base_b
+
+        # BRANCH: whitelist vs. normal filtering
+        if do_whitelist:
+            # Whitelist path: simple check, no other filters
+            if normalized_token in whitelist:
+                out_token = normalized_token
             else:
-                out_token = base_b
+                out_token = SENTINEL_B
+                unk_count += 1
+        else:
+            # Normal filtering path: apply all checks
+            is_unk = 0
+            if do_alpha and not _is_ascii_alpha_bytes(normalized_token):
+                is_unk = 1
+            elif do_shorts and normalized_token.__len__() < min_len:
+                is_unk = 1
+            elif do_stops and normalized_token in stop_set:
+                is_unk = 1
+
+            if is_unk:
+                out_token = SENTINEL_B
+                unk_count += 1
+            else:
+                out_token = normalized_token
 
         # write token (single exit path)
         if token_count > 0:

@@ -176,7 +176,7 @@ class PipelineOrchestrator:
         if not whitelist_path.exists():
             raise FileNotFoundError(f"Whitelist file not found: {whitelist_path}")
 
-        print(f"Loading whitelist from {whitelist_path}...")
+        print(f"  Loading whitelist...")
 
         # Load whitelist with optional parameters from config
         min_count = getattr(self.filter_config, "whitelist_min_count", 1)
@@ -227,9 +227,9 @@ class PipelineOrchestrator:
         work_units = create_work_units(self.temp_paths['src_db'], num_work_units)
 
         # print("  Validating work units...")
-        if not validate_work_units(self.temp_paths['src_db'], work_units):
-            print("  WARNING: Work unit validation failed - proceeding anyway")
-            print("  This may indicate work unit ranges don't align with your data")
+        #if not validate_work_units(self.temp_paths['src_db'], work_units):
+        #    print("  WARNING: Work unit validation failed - proceeding anyway")
+        #    print("  This may indicate work unit ranges don't align with your data")
         # else:
         #    print("  Work units validated successfully")
 
@@ -392,7 +392,12 @@ class PipelineOrchestrator:
 
         print(f"\nPhase 4: Generating output whitelist...")
         print("═" * 100)
-        print(f"  Output path: {output_whitelist_path}")
+        if len(str(output_whitelist_path)) > 75:
+            # 100 - 15 ("  Output path: ") = 75"
+            output_whitelist_path_str = "..." + str(output_whitelist_path)[-72:]
+        else:
+            output_whitelist_path_str = str(output_whitelist_path)
+        print(f"  Output path: {output_whitelist_path_str}")
 
         if output_top_n:
             print(f"  Extracting top {output_top_n:,} tokens")
@@ -421,21 +426,21 @@ class PipelineOrchestrator:
         """ Print a banner at the end of the pipeline. """
         db_path_str = str(self.temp_paths['dst_db'])
         if len(db_path_str) > 75:
-            db_path_str = "..." + db_path_str[-60:]
+            db_path_str = "..." + db_path_str[-72:]
+
+        whitelist_str = ""
         if self.output_whitelist_path:
             whitelist_str = str(self.output_whitelist_path)
-        if len(whitelist_str) > 75:
-            whitelist_str = "..." + whitelist_str[-60:]
+            if len(whitelist_str) > 67:
+                whitelist_str = "..." + whitelist_str[-64:]
 
         print("\n╭" + "─" * 85 + "╮")
         message1 = f"PROCESSING COMPLETE: Final DB contains {self.total_items:,} items, {self.total_bytes / 1_000_000:,.1f} MB"
-        message2 = "DB Loc: "
-        message3 = "Whitelist Loc: "
-        print(f"│ {message1:<83} │", flush=True)
-        print(f"│ {message2:<83}: {db_path_str} │", flush=True)
-        if self.output_whitelist_path:
-            print(f"│ {message3:<83}: {whitelist_str} │")
-        print("╰" + "─" * 85 + "╯/n")
+        print(f"│ {message1:<83} │")
+        print(f"│ DB: {db_path_str:<79} │")                 # 87 - 2 - 4 - 2 = 79
+        if whitelist_str:
+            print(f"│ Whitelist: {whitelist_str:<72} │")    # 87 - 2 - 11 - 2 = 72
+        print("╰" + "─" * 85 + "╯\n")
 
     def _create_worker_config(self) -> WorkerConfig:
         """Create worker configuration from pipeline config."""
