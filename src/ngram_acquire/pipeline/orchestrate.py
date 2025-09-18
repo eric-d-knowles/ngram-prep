@@ -185,7 +185,7 @@ def download_and_ingest_to_rocksdb(
 
         if post_compact:
             logger.info("Bulk ingestion complete. Starting manual compaction...")
-            print("\n\033[33mStarting post-ingestion compaction...\033[0m")
+            print("\n\033[33mStarting post-ingest compaction...\033[0m")
 
             compact_start = datetime.now()
             # Perform full manual compaction
