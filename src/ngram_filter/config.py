@@ -37,7 +37,8 @@ class PipelineConfig:
     tmp_dir: Path
 
     # Parallelism
-    readers: int = 16
+    readers: int = 8
+    work_units_per_reader: int = 8
 
     # Progress reporting
     progress_every_s: float = 5.0

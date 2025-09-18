@@ -183,28 +183,18 @@ def download_and_ingest_to_rocksdb(
             write_batch_size=write_batch_size,
         )
 
-        if ot == "bulk_write" and post_compact:
+        if post_compact:
             logger.info("Bulk ingestion complete. Starting manual compaction...")
-            print("\n\033[33mStarting post-ingestion compaction (this may take a while)...\033[0m")
+            print("\n\033[33mStarting post-ingestion compaction...\033[0m")
 
             compact_start = datetime.now()
-            try:
-                # Re-enable auto compactions for normal operation
-                db.set_profile("normal")
-                logger.info("Re-enabled auto compactions")
+            # Perform full manual compaction
+            db.compact_all()
+            logger.info("Manual compaction completed successfully")
 
-                # Perform full manual compaction
-                db.compact_all()
-                logger.info("Manual compaction completed successfully")
-
-                compact_end = datetime.now()
-                compact_time = compact_end - compact_start
-                print(f"\033[32mCompaction completed in {compact_time}\033[0m")
-
-            except Exception as e:
-                logger.error(f"Error during post-ingestion compaction: {e}")
-                print(f"\033[31mWarning: Compaction failed: {e}\033[0m")
-                print("Database is functional but may have suboptimal read performance.")
+            compact_end = datetime.now()
+            compact_time = compact_end - compact_start
+            print(f"\033[32mCompaction completed in {compact_time}\033[0m")
 
     # 5) Report stats
     end_time = datetime.now()

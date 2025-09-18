@@ -67,8 +67,9 @@ class PipelineOrchestrator:
         print("N-GRAM FILTER PIPELINE")
         print("━" * 100)
 
-        num_workers = getattr(self.pipeline_config, 'readers', 16)
-        num_work_units = num_workers * 8
+        num_workers = getattr(self.pipeline_config, 'readers', 8)
+        units_multiplier = getattr(self.pipeline_config, 'work_units_per_reader', 64)
+        num_work_units = num_workers * units_multiplier
 
         worker_config = self._create_worker_config()
 
@@ -199,8 +200,9 @@ class PipelineOrchestrator:
         print("═" * 100)
 
         work_tracker = WorkTracker(self.temp_paths['work_tracker'])
-        num_workers = getattr(self.pipeline_config, 'readers', 16)
-        num_work_units = num_workers * 8
+        num_workers = getattr(self.pipeline_config, 'readers', 8)
+        units_multiplier = getattr(self.pipeline_config, 'work_units_per_reader', 64)
+        num_work_units = num_workers * units_multiplier
 
         force_restart = getattr(self.pipeline_config, 'force_restart', False)
 
@@ -235,7 +237,6 @@ class PipelineOrchestrator:
 
         work_tracker.add_work_units(work_units)
         progress = work_tracker.get_progress()
-        print(f"  Created {len(work_units)} work units")
 
     def _resume_existing_work_units(self, work_tracker: WorkTracker, progress) -> None:
         """Resume processing existing work units."""

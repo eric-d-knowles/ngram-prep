@@ -84,8 +84,9 @@ def ingest_shards_streaming(
         batch_items: int = 100_000,
         disable_wal: bool = False,
         diag_every_batches: int = 50,
-        diag_every_seconds: float = 5.0
-) -> tuple[int, int]:
+        diag_every_seconds: float = 5.0,
+        delete_after_ingest: bool = False,
+    ) -> tuple[int, int]:
     """
     Merge per-shard RocksDBs into a single destination database.
 
@@ -162,6 +163,14 @@ def ingest_shards_streaming(
                 f"({shard_bytes / 1_000_000:.1f} MB)",
                 flush=True
             )
+
+            # Delete after successful ingestion
+            if delete_after_ingest:
+                try:
+                    shutil.rmtree(shard_dir)
+                    print(f"  Deleted processed shard: {shard_dir.name}")
+                except Exception as e:
+                    print(f"  Warning: Failed to delete {shard_dir.name}: {e}")
 
         # Finalize the database
         _finalize_database(dst)
