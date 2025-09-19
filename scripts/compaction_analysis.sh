@@ -390,13 +390,37 @@ else
             bin_space=$(echo "$bin_data" | awk '{print $4}')
             max_value=$(echo "$bin_data" | awk '{print $5}')
 
+            # Debug: check the values we're getting
+            # echo "DEBUG: bin_space=$bin_space, max_value=$max_value" >&2
+
             # Determine what to show and calculate bar width
             if [ "$SHOW_SPACE" = true ]; then
                 display_value="$bin_space"
-                bar_width=$(awk -v space="$bin_space" -v max="$max_value" -v width="$MAX_BAR_WIDTH" 'BEGIN{printf "%.0f", space * width / max}')
+                # Fix: make sure we're using the right max value for space mode
+                if [ "$max_value" != "0" ]; then
+                    bar_width=$(awk -v space="$bin_space" -v max="$max_value" -v width="$MAX_BAR_WIDTH" 'BEGIN{
+                        if(max > 0) {
+                            result = space * width / max
+                            if(result < 1 && space > 0) result = 1
+                            printf "%.0f", result
+                        } else {
+                            printf "0"
+                        }
+                    }')
+                else
+                    bar_width=0
+                fi
             else
                 display_value="$bin_count"
-                bar_width=$(awk -v count="$bin_count" -v max="$max_value" -v width="$MAX_BAR_WIDTH" 'BEGIN{printf "%.0f", count * width / max}')
+                bar_width=$(awk -v count="$bin_count" -v max="$max_value" -v width="$MAX_BAR_WIDTH" 'BEGIN{
+                    if(max > 0) {
+                        result = count * width / max
+                        if(result < 1 && count > 0) result = 1
+                        printf "%.0f", result
+                    } else {
+                        printf "0"
+                    }
+                }')
             fi
 
             # Format bin range using standard mixed units
@@ -447,16 +471,19 @@ else
     done <<< "$histogram_output"
 
     # Calculate legend using awk
-    max_count=$(echo "$histogram_output" | grep "BIN" | head -1 | awk '{print $5}')
-    if [ -n "$max_count" ]; then
-        if [ "$SHOW_SPACE" = true ]; then
-            # Show space per character for space mode
-            space_per_char=$(awk -v max="$max_count" -v width="$MAX_BAR_WIDTH" 'BEGIN{print max / width}')
+    if [ "$SHOW_SPACE" = true ]; then
+        # For space mode, get the max space value from the first line
+        max_space=$(echo "$histogram_output" | grep "BIN" | head -1 | awk '{print $6}')
+        if [ -n "$max_space" ] && [ "$max_space" != "0" ]; then
+            space_per_char=$(awk -v max="$max_space" -v width="$MAX_BAR_WIDTH" 'BEGIN{print max / width}')
             space_per_char_hr=$(human_readable "$space_per_char")
             echo ""
             echo "Legend: Each █ represents ~$space_per_char_hr of disk space"
-        else
-            # Show files per character for count mode
+        fi
+    else
+        # For count mode, get the max count value
+        max_count=$(echo "$histogram_output" | grep "BIN" | head -1 | awk '{print $5}')
+        if [ -n "$max_count" ] && [ "$max_count" != "0" ]; then
             files_per_char=$(awk -v max="$max_count" -v width="$MAX_BAR_WIDTH" 'BEGIN{printf "%.1f", max / width}' | sed 's/\.0$//')
             echo ""
             echo "Legend: Each █ represents ~$files_per_char files"
