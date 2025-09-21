@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 import shutil
 import sqlite3
 from pathlib import Path
@@ -111,8 +112,8 @@ class WorkTracker:
                 ]
             )
 
-    def claim_work_unit(self, worker_id: str, output_dir: Path = None, clear_partial_shards: bool = True) -> Optional[
-        WorkUnit]:
+    def claim_work_unit(self, worker_id: str, output_dir: Path = None, clear_partial_shards: bool = True,
+                        max_retries: int = 5) -> Optional[WorkUnit]:
         """
         Atomically claim the next available work unit.
 
@@ -120,45 +121,56 @@ class WorkTracker:
             worker_id: Identifier for the worker claiming the unit
             output_dir: Directory where shard databases are stored
             clear_partial_shards: Whether to clear existing shard data on restart
+            max_retries: Maximum number of retry attempts for database locks
 
         Returns:
             The claimed WorkUnit or None if no work is available
         """
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                UPDATE work_units
-                SET status     = 'processing',
-                    worker_id  = ?,
-                    start_time = julianday('now')
-                WHERE unit_id = (SELECT unit_id
-                                 FROM work_units
-                                 WHERE status = 'pending'
-                                 ORDER BY unit_id
-                    LIMIT 1
+            for attempt in range(max_retries):
+                try:
+                    cursor = conn.execute(
+                        """
+                        UPDATE work_units
+                        SET status     = 'processing',
+                            worker_id  = ?,
+                            start_time = julianday('now')
+                        WHERE unit_id = (SELECT unit_id
+                                         FROM work_units
+                                         WHERE status = 'pending'
+                                         ORDER BY unit_id
+                            LIMIT 1
+                            )
+                            RETURNING unit_id
+                            , start_key
+                            , end_key
+                        """,
+                        (worker_id,)
                     )
-                    RETURNING unit_id
-                    , start_key
-                    , end_key
-                """,
-                (worker_id,)
-            )
 
-            row = cursor.fetchone()
-            if row:
-                unit_id = row[0]
+                    row = cursor.fetchone()
+                    if row:
+                        unit_id = row[0]
 
-                # Clear partial shard if it exists
-                if clear_partial_shards and output_dir:
-                    self._clear_partial_shard(unit_id, output_dir)
+                        # Clear partial shard if it exists
+                        if clear_partial_shards and output_dir:
+                            self._clear_partial_shard(unit_id, output_dir)
 
-                return WorkUnit(
-                    unit_id=unit_id,
-                    start_key=row[1],
-                    end_key=row[2],
-                    status="processing"
-                )
-            return None
+                        return WorkUnit(
+                            unit_id=unit_id,
+                            start_key=row[1],
+                            end_key=row[2],
+                            status="processing"
+                        )
+                    return None  # No work available
+
+                except sqlite3.OperationalError as e:
+                    if "locked" in str(e) and attempt < max_retries - 1:
+                        time.sleep(0.1 * (2 ** attempt))  # exponential backoff
+                        continue
+                    raise
+
+            return None  # All retries exhausted
 
     def _clear_partial_shard(self, unit_id: str, output_dir: Path) -> None:
         """Clear any existing shard data for the given unit_id."""
@@ -167,23 +179,32 @@ class WorkTracker:
             #print(f"  Clearing partial shard for work unit {unit_id}")
             shutil.rmtree(shard_path)
 
-    def complete_work_unit(self, unit_id: str) -> None:
+    def complete_work_unit(self, unit_id: str, max_retries: int = 5) -> None:
         """
         Mark a work unit as successfully completed.
 
         Args:
             unit_id: ID of the work unit to complete
+            max_retries: Maximum number of retry attempts for database locks
         """
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                UPDATE work_units
-                SET status   = 'completed',
-                    end_time = julianday('now')
-                WHERE unit_id = ?
-                """,
-                (unit_id,)
-            )
+        for attempt in range(max_retries):
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        """
+                        UPDATE work_units
+                        SET status   = 'completed',
+                            end_time = julianday('now')
+                        WHERE unit_id = ?
+                        """,
+                        (unit_id,)
+                    )
+                return  # Success, exit the retry loop
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.1 * (2 ** attempt))  # exponential backoff
+                    continue
+                raise
 
     def fail_work_unit(self, unit_id: str, max_retries: int = 3) -> None:
         """
@@ -345,51 +366,6 @@ class WorkTracker:
         """Remove all work units from the tracker."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM work_units")
-
-
-def create_work_units(src_db_path: Path, num_units: int = 128) -> list[WorkUnit]:
-    """
-    Create work units using ASCII printable character range.
-
-    Args:
-        src_db_path: Path to source database (for validation)
-        num_units: Number of work units to create
-
-    Returns:
-        List of WorkUnit objects covering the key space
-    """
-    print(f"  Creating {num_units} work units using ASCII range...")
-
-    # Define the printable ASCII range that contains actual data
-    first_byte = 0x21  # "!" character
-    last_byte = 0x7E  # "~" character
-    byte_range = last_byte - first_byte
-
-    work_units = []
-
-    for i in range(num_units):
-        # Determine start key
-        if i == 0:
-            start_key = None  # Start from beginning
-        else:
-            byte_value = first_byte + (i * byte_range) // num_units
-            start_key = bytes([byte_value])
-
-        # Determine end key
-        if i == num_units - 1:
-            end_key = None  # Go to end
-        else:
-            byte_value = first_byte + ((i + 1) * byte_range) // num_units
-            end_key = bytes([byte_value])
-
-        work_units.append(WorkUnit(
-            unit_id=f"unit_{i:04d}",
-            start_key=start_key,
-            end_key=end_key
-        ))
-
-    print(f"  Created {len(work_units)} work units covering range 0x{first_byte:02x}-0x{last_byte:02x}")
-    return work_units
 
 
 def validate_work_units(src_db_path: Path, work_units: list[WorkUnit]) -> bool:

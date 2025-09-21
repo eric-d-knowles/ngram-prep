@@ -12,7 +12,8 @@ from typing import Optional
 from setproctitle import setproctitle
 
 from ..config import PipelineConfig, FilterConfig
-from .work_tracker import WorkTracker, create_work_units, validate_work_units
+from ngram_filter.partitioning import create_intelligent_work_units
+from .work_tracker import WorkTracker, validate_work_units
 from .worker import WorkerConfig, run_worker_pool
 from .ingest import ingest_shards_streaming
 from .progress import create_counters, print_phase_banner, run_progress_reporter
@@ -225,15 +226,13 @@ class PipelineOrchestrator:
             print(f"  Force restart requested - clearing existing work units")
             work_tracker.clear_all_work_units()
 
-        # print("  Creating new work units...")
-        work_units = create_work_units(self.temp_paths['src_db'], num_work_units)
-
-        # print("  Validating work units...")
-        #if not validate_work_units(self.temp_paths['src_db'], work_units):
-        #    print("  WARNING: Work unit validation failed - proceeding anyway")
-        #    print("  This may indicate work unit ranges don't align with your data")
-        # else:
-        #    print("  Work units validated successfully")
+        # Use intelligent partitioning
+        sample_rate = getattr(self.pipeline_config, 'partitioning_sample_rate', 0.001)
+        work_units = create_intelligent_work_units(
+            self.temp_paths['src_db'],
+            num_work_units,
+            sample_rate=sample_rate
+        )
 
         work_tracker.add_work_units(work_units)
         progress = work_tracker.get_progress()
