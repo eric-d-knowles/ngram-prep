@@ -51,26 +51,55 @@ class IntelligentPartitioner:
         Returns:
             Dictionary mapping key prefixes to estimated record counts
         """
-        print(f"  Sampling database at {self.sample_rate:.3f} rate...")
+        print(f"  Sampling database at {self.sample_rate:.4f} rate...")
 
         prefix_counts = {}
         total_sampled = 0
 
         with open_db(self.src_db_path, mode="ro") as db:
-            for key, _ in scan_all(db):
-                # Randomly sample based on sample_rate
-                if random.random() > self.sample_rate:
-                    continue
+            # Get estimated total records for efficient sampling
+            total_records_str = db.get_property("rocksdb.estimate-num-keys")
+            total_records = int(total_records_str) if total_records_str else None
 
-                total_sampled += 1
+            if total_records and total_records > 0:
+                # Efficient random sampling with pre-generated indices
+                target_samples = int(total_records * self.sample_rate)
+                sample_indices = sorted(random.sample(range(total_records), min(target_samples, total_records)))
 
-                # Extract prefix
-                prefix = key[:prefix_length] if len(key) >= prefix_length else key
-                prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+                print(f"  Estimated {total_records:,} total records, targeting {target_samples:,} samples")
 
-                # Progress indicator
-                if total_sampled % 10000 == 0:
-                    print(f"    Sampled {total_sampled:,} records, found {len(prefix_counts)} unique prefixes")
+                current_idx = 0
+                sample_idx_ptr = 0
+
+                for key, _ in scan_all(db):
+                    if sample_idx_ptr < len(sample_indices) and current_idx == sample_indices[sample_idx_ptr]:
+                        # Extract prefix
+                        prefix = key[:prefix_length] if len(key) >= prefix_length else key
+                        prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+                        total_sampled += 1
+                        sample_idx_ptr += 1
+
+                        # Progress indicator
+                        if total_sampled % 10000 == 0:
+                            print(f"    Sampled {total_sampled:,} records, found {len(prefix_counts)} unique prefixes")
+
+                    current_idx += 1
+
+                    # Can stop early if we've collected all samples
+                    if sample_idx_ptr >= len(sample_indices):
+                        break
+            else:
+                # Fallback to streaming random sampling if estimate unavailable
+                print(f"  No record count estimate available, using streaming sampling")
+
+                for key, _ in scan_all(db):
+                    if random.random() <= self.sample_rate:
+                        prefix = key[:prefix_length] if len(key) >= prefix_length else key
+                        prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+                        total_sampled += 1
+
+                        if total_sampled % 10000 == 0:
+                            print(f"    Sampled {total_sampled:,} records, found {len(prefix_counts)} unique prefixes")
 
         # Scale up sample counts to estimated totals
         scale_factor = 1.0 / self.sample_rate
@@ -219,7 +248,7 @@ def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sampl
     partitioner = IntelligentPartitioner(src_db_path, sample_rate=sample_rate)
 
     # Sample the database to understand density
-    partitioner.sample_database_density(prefix_length=2)
+    partitioner.sample_database_density(prefix_length=1)
 
     # Create balanced work units
     work_units = partitioner.create_balanced_work_units(num_units)
