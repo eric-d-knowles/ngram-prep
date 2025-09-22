@@ -39,6 +39,7 @@ class PipelineConfig:
     # Parallelism
     readers: int = 8
     work_units_per_reader: int = 8
+    prefix_length: int = 2
     partitioning_sample_rate: float = 0.001
 
     # Progress reporting

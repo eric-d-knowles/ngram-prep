@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from common_db.api import open_db, scan_all
 from ngram_filter.pipeline.work_tracker import WorkUnit
+from utilities.reservoir_sampler import reservoir_sampling
 
 
 @dataclass
@@ -42,74 +43,37 @@ class IntelligentPartitioner:
         self.density_map: Dict[bytes, int] = {}
 
     def sample_database_density(self, prefix_length: int = 1) -> Dict[bytes, int]:
-        """
-        Sample the database to estimate record counts by key prefix.
+        print(f"  Sampling database at {self.sample_rate:.4f} rate (prefix_length={prefix_length})...")
 
-        Args:
-            prefix_length: Number of bytes to use for prefix grouping
-
-        Returns:
-            Dictionary mapping key prefixes to estimated record counts
-        """
-        print(f"  Sampling database at {self.sample_rate:.4f} rate...")
-
-        prefix_counts = {}
-        total_sampled = 0
-
+        # Get approximate target sample size
         with open_db(self.src_db_path, mode="ro") as db:
-            # Get estimated total records for efficient sampling
             total_records_str = db.get_property("rocksdb.estimate-num-keys")
-            total_records = int(total_records_str) if total_records_str else None
-
-            if total_records and total_records > 0:
-                # Efficient random sampling with pre-generated indices
-                target_samples = int(total_records * self.sample_rate)
-                sample_indices = sorted(random.sample(range(total_records), min(target_samples, total_records)))
-
-                print(f"  Estimated {total_records:,} total records, targeting {target_samples:,} samples")
-
-                current_idx = 0
-                sample_idx_ptr = 0
-
-                for key, _ in scan_all(db):
-                    if sample_idx_ptr < len(sample_indices) and current_idx == sample_indices[sample_idx_ptr]:
-                        # Extract prefix
-                        prefix = key[:prefix_length] if len(key) >= prefix_length else key
-                        prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
-                        total_sampled += 1
-                        sample_idx_ptr += 1
-
-                        # Progress indicator
-                        if total_sampled % 10000 == 0:
-                            print(f"    Sampled {total_sampled:,} records, found {len(prefix_counts)} unique prefixes")
-
-                    current_idx += 1
-
-                    # Can stop early if we've collected all samples
-                    if sample_idx_ptr >= len(sample_indices):
-                        break
+            if total_records_str:
+                target_samples = int(int(total_records_str) * self.sample_rate)
             else:
-                # Fallback to streaming random sampling if estimate unavailable
-                print(f"  No record count estimate available, using streaming sampling")
+                target_samples = 250000  # Fallback default
 
-                for key, _ in scan_all(db):
-                    if random.random() <= self.sample_rate:
-                        prefix = key[:prefix_length] if len(key) >= prefix_length else key
-                        prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
-                        total_sampled += 1
+        print(f"  Targeting {target_samples:,} samples using reservoir sampling")
 
-                        if total_sampled % 10000 == 0:
-                            print(f"    Sampled {total_sampled:,} records, found {len(prefix_counts)} unique prefixes")
+        # Use reservoir sampling to get samples
+        samples = reservoir_sampling(
+            str(self.src_db_path),
+            sample_size=target_samples,
+            return_keys=True,
+            progress_interval=10000000
+        )
 
-        # Scale up sample counts to estimated totals
+        # Build prefix counts from samples
+        prefix_counts = {}
+        for key_bytes, _ in samples:
+            prefix = key_bytes[:prefix_length]  # Direct bytes slicing, no conversion needed
+            prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
+
+        # Scale up to estimated totals
         scale_factor = 1.0 / self.sample_rate
-        estimated_counts = {
-            prefix: int(count * scale_factor)
-            for prefix, count in prefix_counts.items()
-        }
+        estimated_counts = {p: int(c * scale_factor) for p, c in prefix_counts.items()}
 
-        print(
-            f"  Sampling complete: {total_sampled:,} records sampled, estimated {sum(estimated_counts.values()):,} total")
+        print(f"  Sampling complete: {len(samples):,} samples collected, {len(prefix_counts)} unique prefixes")
         self.density_map = estimated_counts
         return estimated_counts
 
@@ -142,15 +106,12 @@ class IntelligentPartitioner:
         unit_index = 0
 
         for prefix, estimated_count in sorted_prefixes:
-            if current_start_key is None:
-                current_start_key = prefix
-
             current_unit_count += estimated_count
 
             # Check if we should close this work unit
             should_close = (
-                    current_unit_count >= target_records_per_unit or  # Hit target size
-                    unit_index == num_units - 1  # Last unit gets everything remaining
+                    current_unit_count >= target_records_per_unit or
+                    unit_index == num_units - 1
             )
 
             if should_close:
@@ -159,7 +120,7 @@ class IntelligentPartitioner:
 
                 work_units.append(WorkUnit(
                     unit_id=f"unit_{unit_index:04d}",
-                    start_key=current_start_key if unit_index > 0 else None,
+                    start_key=current_start_key,  # None for first unit, then end_key of previous
                     end_key=end_key
                 ))
 
@@ -167,7 +128,7 @@ class IntelligentPartitioner:
                       f"{end_key.hex() if end_key else 'end'} (~{current_unit_count:,} records)")
 
                 # Reset for next unit
-                current_start_key = self._get_next_key(prefix) if unit_index < num_units - 1 else None
+                current_start_key = end_key  # Next unit starts where this one ended
                 current_unit_count = 0
                 unit_index += 1
 
@@ -232,7 +193,7 @@ class IntelligentPartitioner:
         return True
 
 
-def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sample_rate: float = 0.001) -> List[
+def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sample_rate: float = 0.001, prefix_length: int = 2) -> List[
     WorkUnit]:
     """
     Create intelligently balanced work units based on actual data density.
@@ -248,7 +209,7 @@ def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sampl
     partitioner = IntelligentPartitioner(src_db_path, sample_rate=sample_rate)
 
     # Sample the database to understand density
-    partitioner.sample_database_density(prefix_length=1)
+    partitioner.sample_database_density(prefix_length=prefix_length)
 
     # Create balanced work units
     work_units = partitioner.create_balanced_work_units(num_units)

@@ -228,10 +228,12 @@ class PipelineOrchestrator:
 
         # Use intelligent partitioning
         sample_rate = getattr(self.pipeline_config, 'partitioning_sample_rate', 0.001)
+        prefix_length = getattr(self.pipeline_config, 'prefix_length', 2)
         work_units = create_intelligent_work_units(
             self.temp_paths['src_db'],
             num_work_units,
-            sample_rate=sample_rate
+            sample_rate=sample_rate,
+            prefix_length=prefix_length,
         )
 
         work_tracker.add_work_units(work_units)
