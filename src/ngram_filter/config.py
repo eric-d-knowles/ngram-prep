@@ -41,6 +41,7 @@ class PipelineConfig:
     work_units_per_reader: int = 8
     prefix_length: int = 2
     partitioning_sample_rate: float = 0.001
+    use_partition_cache: bool = True
 
     # Progress reporting
     progress_every_s: float = 5.0

@@ -8,12 +8,13 @@ rather than naive key range division.
 
 from __future__ import annotations
 
-import random
-from typing import List, Tuple, Dict
+import json
+from datetime import datetime
+from typing import List, Dict, Optional
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
-from common_db.api import open_db, scan_all
+from common_db.api import open_db
 from ngram_filter.pipeline.work_tracker import WorkUnit
 from utilities.reservoir_sampler import reservoir_sampling
 
@@ -25,6 +26,116 @@ class KeyRangeDensity:
     end_key: bytes
     estimated_count: int
     sample_size: int
+
+
+@dataclass
+class DBFingerprint:
+    """Database fingerprint for cache validation."""
+    estimated_keys: int
+
+    def matches(self, other: 'DBFingerprint', tolerance: float = 0.1) -> bool:
+        """Check if fingerprints match within tolerance."""
+        # Allow some variation in estimated keys
+        if self.estimated_keys == 0 or other.estimated_keys == 0:
+            return self.estimated_keys == other.estimated_keys
+
+        ratio = abs(self.estimated_keys - other.estimated_keys) / max(self.estimated_keys, other.estimated_keys)
+        return ratio <= tolerance
+
+
+class WorkUnitCache:
+    """Manages caching of work units to avoid repeated sampling."""
+
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
+        self.cache_path = db_path.parent / f"{db_path.name}.work_units.json"
+
+    def _compute_fingerprint(self) -> DBFingerprint:
+        """Compute a fingerprint of the database for validation."""
+        with open_db(self.db_path, mode="ro") as db:
+            # Get estimated key count
+            total_records_str = db.get_property("rocksdb.estimate-num-keys")
+            estimated_keys = int(total_records_str) if total_records_str else 0
+
+            return DBFingerprint(estimated_keys=estimated_keys)
+
+    def load(self, num_units: int, sample_rate: float, prefix_length: int) -> Optional[List[WorkUnit]]:
+        """
+        Load work units from cache if valid.
+
+        Returns:
+            List of WorkUnit objects if cache is valid, None otherwise
+        """
+        if not self.cache_path.exists():
+            return None
+
+        try:
+            with open(self.cache_path, 'r') as f:
+                cache_data = json.load(f)
+
+            # Validate configuration matches
+            config = cache_data.get('sampling_config', {})
+            if (config.get('num_units') != num_units or
+                    config.get('sample_rate') != sample_rate or
+                    config.get('prefix_length') != prefix_length):
+                print(f"  Cache config mismatch, will resample")
+                return None
+
+            # Validate fingerprint
+            current_fp = self._compute_fingerprint()
+            cached_fp = DBFingerprint(**cache_data['db_fingerprint'])
+
+            if not current_fp.matches(cached_fp):
+                print(f"  Database changed, cache invalid")
+                return None
+
+            # Reconstruct work units
+            work_units = []
+            for unit_data in cache_data['work_units']:
+                work_units.append(WorkUnit(
+                    unit_id=unit_data['unit_id'],
+                    start_key=bytes.fromhex(unit_data['start_key']) if unit_data['start_key'] else None,
+                    end_key=bytes.fromhex(unit_data['end_key']) if unit_data['end_key'] else None
+                ))
+
+            return work_units
+
+        except Exception as e:
+            print(f"  Cache load failed: {e}")
+            return None
+
+    def save(self, work_units: List[WorkUnit], num_units: int, sample_rate: float, prefix_length: int):
+        """Save work units to cache."""
+        try:
+            fingerprint = self._compute_fingerprint()
+
+            cache_data = {
+                'version': 1,
+                'source_db_path': str(self.db_path),
+                'created_at': datetime.now().isoformat(),
+                'db_fingerprint': asdict(fingerprint),
+                'sampling_config': {
+                    'num_units': num_units,
+                    'sample_rate': sample_rate,
+                    'prefix_length': prefix_length
+                },
+                'work_units': [
+                    {
+                        'unit_id': unit.unit_id,
+                        'start_key': unit.start_key.hex() if unit.start_key else None,
+                        'end_key': unit.end_key.hex() if unit.end_key else None
+                    }
+                    for unit in work_units
+                ]
+            }
+
+            with open(self.cache_path, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+
+            print(f"  Saved work units to cache: {self.cache_path}")
+
+        except Exception as e:
+            print(f"  Cache save failed: {e}")
 
 
 class IntelligentPartitioner:
@@ -43,7 +154,7 @@ class IntelligentPartitioner:
         self.density_map: Dict[bytes, int] = {}
 
     def sample_database_density(self, prefix_length: int = 1) -> Dict[bytes, int]:
-        print(f"  Sampling database at {self.sample_rate:.4f} rate (prefix_length={prefix_length})...")
+        print(f"  Sampling database at {self.sample_rate:.5f} rate (prefix_length={prefix_length})...")
 
         # Get approximate target sample size
         with open_db(self.src_db_path, mode="ro") as db:
@@ -66,7 +177,7 @@ class IntelligentPartitioner:
         # Build prefix counts from samples
         prefix_counts = {}
         for key_bytes, _ in samples:
-            prefix = key_bytes[:prefix_length]  # Direct bytes slicing, no conversion needed
+            prefix = key_bytes[:prefix_length]
             prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
 
         # Scale up to estimated totals
@@ -120,7 +231,7 @@ class IntelligentPartitioner:
 
                 work_units.append(WorkUnit(
                     unit_id=f"unit_{unit_index:04d}",
-                    start_key=current_start_key,  # None for first unit, then end_key of previous
+                    start_key=current_start_key,
                     end_key=end_key
                 ))
 
@@ -128,7 +239,7 @@ class IntelligentPartitioner:
                       f"{end_key.hex() if end_key else 'end'} (~{current_unit_count:,} records)")
 
                 # Reset for next unit
-                current_start_key = end_key  # Next unit starts where this one ended
+                current_start_key = end_key
                 current_unit_count = 0
                 unit_index += 1
 
@@ -193,8 +304,15 @@ class IntelligentPartitioner:
         return True
 
 
-def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sample_rate: float = 0.001, prefix_length: int = 2) -> List[
-    WorkUnit]:
+def create_intelligent_work_units(
+        src_db_path: Path,
+        num_units: int = 128,
+        sample_rate: float = 0.001,
+        prefix_length: int = 2,
+        sort_largest_first: bool = True,
+        use_cache: bool = True,
+        force_resample: bool = False
+) -> List[WorkUnit]:
     """
     Create intelligently balanced work units based on actual data density.
 
@@ -202,10 +320,24 @@ def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sampl
         src_db_path: Path to source database
         num_units: Number of work units to create
         sample_rate: Fraction of database to sample for density estimation
+        prefix_length: Length of key prefix for density bucketing
+        sort_largest_first: If True, sort units largest-first for optimal parallelization
+        use_cache: If True, attempt to load from cache before sampling
+        force_resample: If True, ignore cache and resample database
 
     Returns:
         List of balanced WorkUnit objects
     """
+    cache = WorkUnitCache(src_db_path)
+
+    # Try to load from cache first
+    if use_cache and not force_resample:
+        cached_units = cache.load(num_units, sample_rate, prefix_length)
+        if cached_units:
+            print(f"  Loaded {len(cached_units)} work units from cache")
+            return cached_units
+
+    # Cache miss or forced resample - do the full sampling
     partitioner = IntelligentPartitioner(src_db_path, sample_rate=sample_rate)
 
     # Sample the database to understand density
@@ -216,5 +348,20 @@ def create_intelligent_work_units(src_db_path: Path, num_units: int = 128, sampl
 
     # Analyze the balance
     partitioner.analyze_balance(work_units)
+
+    # Sort by size if requested (for better parallel efficiency)
+    if sort_largest_first:
+        work_units_with_estimates = [
+            (unit, partitioner._estimate_unit_records(unit))
+            for unit in work_units
+        ]
+        work_units_with_estimates.sort(key=lambda x: x[1], reverse=True)
+        work_units = [unit for unit, _ in work_units_with_estimates]
+
+        print(f"  Sorted {len(work_units)} work units by size (largest first) for optimal parallelization")
+
+    # Save to cache
+    if use_cache:
+        cache.save(work_units, num_units, sample_rate, prefix_length)
 
     return work_units

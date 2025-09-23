@@ -226,14 +226,18 @@ class PipelineOrchestrator:
             print(f"  Force restart requested - clearing existing work units")
             work_tracker.clear_all_work_units()
 
-        # Use intelligent partitioning
+        # Use intelligent partitioning with caching support
         sample_rate = getattr(self.pipeline_config, 'partitioning_sample_rate', 0.001)
         prefix_length = getattr(self.pipeline_config, 'prefix_length', 2)
+        use_cache = getattr(self.pipeline_config, 'use_partition_cache', True)
+
         work_units = create_intelligent_work_units(
             self.temp_paths['src_db'],
             num_work_units,
             sample_rate=sample_rate,
             prefix_length=prefix_length,
+            use_cache=use_cache,
+            force_resample=force_restart,  # If force_restart, ignore cache
         )
 
         work_tracker.add_work_units(work_units)
