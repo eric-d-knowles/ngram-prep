@@ -2,7 +2,7 @@ import cython
 import signal
 import sys
 import time as py_time
-from libc.stdlib cimport rand, srand
+from libc.stdlib cimport rand, srand, RAND_MAX
 from libc.time cimport time
 import rocks_shim as rs
 
@@ -33,7 +33,14 @@ def reservoir_sampling(
     cdef int idx
     cdef long long total_processed = 0
     cdef long long skipped_metadata = 0
-    cdef long long next_progress = progress_interval
+    cdef long long next_progress
+    cdef int reservoir_len
+    cdef int rand_val
+    cdef double rand_scale
+    cdef long long scaled_idx
+    cdef long long estimated_total = 0
+    cdef double percent_complete
+    cdef int last_percent_reported = 0
 
     def signal_handler(signum, frame):
         print(f"\nInterrupt received (signal {signum})")
@@ -45,13 +52,33 @@ def reservoir_sampling(
 
     # Seed the random number generator
     srand(int(time(NULL)))
+
+    # Pre-compute random scaling factor
+    rand_scale = 1.0 / <double> RAND_MAX
+
+    # Get database size for percentage-based progress
+    with rs.open(db_path, mode="ro") as db:
+        total_records_str = db.get_property("rocksdb.estimate-num-keys")
+        if total_records_str:
+            estimated_total = int(total_records_str)
+        else:
+            estimated_total = 0  # Will fall back to item-count progress
+
+    # Adaptive progress interval - better for large datasets
+    cdef long long adaptive_progress = max(1000000, sample_size * 100)
+    next_progress = adaptive_progress
+
     start_time = py_time.time()
 
     print("  " + "━" * 60)
     print("  RESERVOIR SAMPLING CONFIGURATION")
     print("  " + "─" * 60)
     print(f"  Target sample size:     {sample_size:,} items")
-    print(f"  Progress interval:      {progress_interval:,} items")
+    if estimated_total > 0:
+        print(f"  Database size:          {estimated_total:,} items")
+        print(f"  Progress updates:       Every 5% (20 total)")
+    else:
+        print(f"  Progress interval:      {adaptive_progress:,} items")
     if max_items is not None:
         print(f"  Database limit:         {max_items:,} entries")
     else:
@@ -69,10 +96,9 @@ def reservoir_sampling(
                     break
 
                 key_bytes = iterator.key()
-                value_bytes = iterator.value()
 
-                # Skip metadata keys (those starting with '__')
-                if key_bytes.startswith(b'__'):
+                # Optimized metadata check - direct byte comparison
+                if len(key_bytes) >= 2 and key_bytes[0] == 95 and key_bytes[1] == 95:  # 95 = ord('_')
                     skipped_metadata += 1
                     iterator.next()
                     continue
@@ -80,21 +106,44 @@ def reservoir_sampling(
                 total_processed += 1
 
                 if total_processed >= next_progress:
-                    print(f"  Processed {total_processed:,} items", flush=True)
-                    next_progress += progress_interval
+                    if estimated_total > 0:
+                        # Percentage-based progress
+                        percent_complete = (total_processed * 100.0) / estimated_total
+                        current_percent = <int> percent_complete
+
+                        # Only report every 5% to avoid spam
+                        if current_percent >= last_percent_reported + 5:
+                            print(f"  Progress: {total_processed:,} items ({percent_complete:.1f}%)", flush=True)
+                            last_percent_reported = current_percent
+                            next_progress = total_processed + adaptive_progress
+                    else:
+                        # Fall back to item-count progress if size unknown
+                        print(f"  Processed {total_processed:,} items", flush=True)
+                        next_progress += adaptive_progress
+
+                # Cache reservoir length to avoid repeated function calls
+                reservoir_len = len(reservoir)
 
                 # Reservoir sampling algorithm
-                if len(reservoir) < sample_size:
+                if reservoir_len < sample_size:
+                    # Still filling reservoir - get value only when needed
                     if return_keys:
+                        value_bytes = iterator.value()
                         reservoir.append((key_bytes, value_bytes))
                     else:
+                        value_bytes = iterator.value()
                         reservoir.append(value_bytes)
                 else:
-                    idx = rand() % total_processed
-                    if idx < sample_size:
+                    # Optimized random selection - avoid modulo operation
+                    rand_val = rand()
+                    scaled_idx = <long long> (rand_val * rand_scale * total_processed)
+                    if scaled_idx < sample_size:
+                        idx = <int> scaled_idx
                         if return_keys:
+                            value_bytes = iterator.value()
                             reservoir[idx] = (key_bytes, value_bytes)
                         else:
+                            value_bytes = iterator.value()
                             reservoir[idx] = value_bytes
 
                 iterator.next()
@@ -105,7 +154,7 @@ def reservoir_sampling(
             end_time = py_time.time()
             elapsed_time = end_time - start_time
 
-            print("  " + "━" * 60)
+            print("  " + "─" * 60)
             print("  RESERVOIR SAMPLING RESULTS")
             print("  " + "─" * 60)
             print(f"  Items processed:        {total_processed:,}")

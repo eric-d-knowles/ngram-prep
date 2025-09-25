@@ -121,15 +121,15 @@ class PipelineOrchestrator:
 
     def _prepare_directories(self) -> None:
         """Clean and create necessary directories."""
-        # Clean up destination (always safe to recreate)
+        # Always clean destination DB
         if self.temp_paths['dst_db'].exists():
             shutil.rmtree(self.temp_paths['dst_db'])
         self.temp_paths['dst_db'].parent.mkdir(parents=True, exist_ok=True)
 
-        # For temp directory: only clean if force_restart is enabled
-        force_restart = getattr(self.pipeline_config, 'force_restart', False)
+        mode = getattr(self.pipeline_config, 'mode', 'resume')
 
-        if force_restart and self.temp_paths['tmp_dir'].exists():
+        # Clean temp directory for restart or reprocess modes
+        if mode in ('restart', 'reprocess') and self.temp_paths['tmp_dir'].exists():
             shutil.rmtree(self.temp_paths['tmp_dir'])
 
         # Create temp directories if they don't exist
@@ -205,39 +205,48 @@ class PipelineOrchestrator:
         units_multiplier = getattr(self.pipeline_config, 'work_units_per_reader', 64)
         num_work_units = num_workers * units_multiplier
 
-        force_restart = getattr(self.pipeline_config, 'force_restart', False)
+        mode = getattr(self.pipeline_config, 'mode', 'resume')
 
-        if force_restart:
+        if mode == 'restart':
+            # Clean restart
+            print("  Clean restart - resampling and creating new work units")
             work_tracker.clear_all_work_units()
             self._create_new_work_units(work_tracker, num_work_units)
-        else:
+
+        elif mode == 'reprocess':
+            # Reprocess with cache
+            print("  Reprocess - loading cached work units and resetting status")
+            work_tracker.clear_all_work_units()
+            self._create_new_work_units(work_tracker, num_work_units)
+
+        elif mode == 'resume':
+            # Resume with cache
             progress = work_tracker.get_progress()
             if progress.total == 0:
-                # No existing work units found - create new ones
+                print("  No existing work units - loading from cache")
                 self._create_new_work_units(work_tracker, num_work_units)
             else:
-                # Resume existing work units
+                print("  Resuming existing work units")
                 self._resume_existing_work_units(work_tracker, progress)
 
+        else:
+            raise ValueError(f"Invalid mode: {mode}. Must be 'restart', 'resume', or 'reprocess'")
+
     def _create_new_work_units(self, work_tracker: WorkTracker, num_work_units: int) -> None:
-        """Create new work units from scratch."""
-        force_restart = getattr(self.pipeline_config, 'force_restart', False)
-        if force_restart:
-            print(f"  Force restart requested - clearing existing work units")
-            work_tracker.clear_all_work_units()
+        """Create work units from cache or by resampling."""
+        mode = getattr(self.pipeline_config, 'mode', 'resume')
 
         # Use intelligent partitioning with caching support
         sample_rate = getattr(self.pipeline_config, 'partitioning_sample_rate', 0.001)
         prefix_length = getattr(self.pipeline_config, 'prefix_length', 2)
-        use_cache = getattr(self.pipeline_config, 'use_partition_cache', True)
+        balance_factor = getattr(self.pipeline_config, 'balance_factor', 0.7)
 
         work_units = create_intelligent_work_units(
             self.temp_paths['src_db'],
             num_work_units,
             sample_rate=sample_rate,
-            prefix_length=prefix_length,
-            use_cache=use_cache,
-            force_resample=force_restart,  # If force_restart, ignore cache
+            use_cache=(mode != 'restart'),
+            force_resample=(mode == 'restart'),
         )
 
         work_tracker.add_work_units(work_units)
@@ -360,8 +369,13 @@ class PipelineOrchestrator:
         # Configure merge parameters
         ingest_batch_bytes = getattr(self.pipeline_config, 'ingest_batch_bytes', 64 * 1024 * 1024)
         ingest_batch_items = getattr(self.pipeline_config, 'ingest_batch_items', 100_000)
+        num_ingestors = getattr(self.pipeline_config, 'ingestors', 8)
+        delete_shards = getattr(self.pipeline_config, 'delete_after_ingest', False)  # Add this
 
         print(f"  Batch size: {ingest_batch_bytes // (1024 * 1024)}MB, {ingest_batch_items:,} items")
+        print(f"  Parallel readers: {num_ingestors}")
+        if delete_shards:  # Add this
+            print(f"  Delete shards: Yes (after successful ingestion)")
 
         # Perform the merge
         self.total_items, self.total_bytes = ingest_shards_streaming(
@@ -373,7 +387,9 @@ class PipelineOrchestrator:
             batch_items=ingest_batch_items,
             disable_wal=getattr(self.pipeline_config, 'ingest_disable_wal', True),
             diag_every_batches=25,
-            diag_every_seconds=3.0
+            diag_every_seconds=3.0,
+            num_readers=num_ingestors,
+            delete_after_ingest=delete_shards  # Add this
         )
 
     def _validate_final_result(self) -> None:

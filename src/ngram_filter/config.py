@@ -41,14 +41,13 @@ class PipelineConfig:
     work_units_per_reader: int = 8
     prefix_length: int = 2
     partitioning_sample_rate: float = 0.001
-    use_partition_cache: bool = True
 
     # Progress reporting
     progress_every_s: float = 5.0
 
     # Worker configuration
-    max_items_per_bucket: int = 25_000
-    max_bytes_per_bucket: int = 16 * 1024 * 1024
+    max_items_per_bucket: int = 100_000
+    max_bytes_per_bucket: int = 128 * 1024 * 1024
 
     # Writer profiles
     writer_profile: str = 'write:packed24'
@@ -57,12 +56,15 @@ class PipelineConfig:
     # Ingest/merge configuration
     ingest_read_profile: str = 'read:packed24'
     ingest_write_profile: str = 'write:packed24'
-    ingest_batch_bytes: int = 64 * 1024 * 1024
-    ingest_batch_items: int = 100_000
+    ingest_batch_bytes: int = 128 * 1024 * 1024
+    ingest_batch_items: int = 200_000
     ingest_disable_wal: bool = True
+    ingestors: int = 4
+    delete_after_ingest: bool = False
 
     # Pipeline control
-    force_restart: bool = False
+    mode: str = "resume"  # "restart", "resume", or "reprocess"
+    enable_compaction: bool = True
 
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None

@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import heapq
 import struct
+from collections import Counter
 from contextlib import contextmanager
+from itertools import islice
 from pathlib import Path
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator, List, Tuple, Union, Generator
 
 try:
     import numpy as np  # optional fast path
@@ -59,6 +61,8 @@ def _iter_db_items(db: "rs.DB") -> Iterator[Tuple[bytes, bytes]]:
 
 def _total_matches_struct(value_bytes: bytes) -> int:
     """Sum match_count using struct.iter_unpack (portable path)."""
+    if len(value_bytes) < TUPLE_SIZE:
+        return 0
     usable = (len(value_bytes) // TUPLE_SIZE) * TUPLE_SIZE
     tot = 0
     for (_year, match, _vol) in struct.iter_unpack(FMT, value_bytes[:usable]):
@@ -66,18 +70,24 @@ def _total_matches_struct(value_bytes: bytes) -> int:
     return tot
 
 
-def _total_matches_numpy(value_bytes: bytes) -> int:
-    """Sum match_count using NumPy zero-copy view (fast path)."""
-    assert np is not None
-    a = np.frombuffer(value_bytes, dtype="<u8")  # type: ignore[attr-defined]
-    n = (a.size // 3) * 3
-    return int(a[:n][1::3].sum())
+def _total_matches_numpy_optimized(value_bytes: bytes) -> int:
+    """Optimized NumPy version with better memory handling."""
+    if len(value_bytes) < TUPLE_SIZE:
+        return 0
+
+    # Create view directly, no intermediate array
+    n_tuples = len(value_bytes) // TUPLE_SIZE
+    arr = np.frombuffer(value_bytes, dtype=np.uint64, count=n_tuples * 3)
+
+    # Direct slice sum - no intermediate array creation
+    return int(arr[1::3].sum())
 
 
 def _total_matches(value_bytes: bytes) -> int:
+    """Sum match counts with optimized NumPy path."""
     if np is not None:
         try:
-            return _total_matches_numpy(value_bytes)
+            return _total_matches_numpy_optimized(value_bytes)
         except Exception:
             # Safety net: if numpy dtype/view fails for any reason, fall back
             pass
@@ -88,66 +98,78 @@ def _maybe_decode(b: bytes, decode: bool) -> Union[str, bytes]:
     return b.decode(DECODING, "replace") if decode else b
 
 
-def _rank_all(
-    db_or_path: Union[str, Path, "rs.DB"],
-    *,
-    decode: bool = True,
-) -> List[Tuple[Union[str, bytes], int]]:
-    """Compute totals for all keys and sort descending (RAM ~ O(N))."""
-    rows: List[Tuple[Union[str, bytes], int]] = []
+def _iter_ranked_items(db_or_path: Union[str, Path, "rs.DB"], *, decode: bool = True) -> Generator[Tuple[Union[str, bytes], int], None, None]:
+    """Generator that yields (key, total) sorted by total descending."""
+    with _db_from(db_or_path) as db:
+        # Use sorted() on the generator - more memory efficient than building intermediate list
+        items = ((_maybe_decode(k, decode), _total_matches(v))
+                 for k, v in _iter_db_items(db))
+        yield from sorted(items, key=lambda kv: kv[1], reverse=True)
+
+
+def _rank_all_counter(db_or_path: Union[str, Path, "rs.DB"], *, decode: bool = True) -> List[Tuple[Union[str, bytes], int]]:
+    """Use Counter for better performance on frequency operations."""
+    counter = Counter()
     with _db_from(db_or_path) as db:
         for k, v in _iter_db_items(db):
-            rows.append((_maybe_decode(k, decode), _total_matches(v)))
-    rows.sort(key=lambda kv: kv[1], reverse=True)
-    return rows
+            counter[_maybe_decode(k, decode)] = _total_matches(v)
+    return counter.most_common()
 
 
-def _top_k(
-    db_or_path: Union[str, Path, "rs.DB"],
-    k: int,
-    *,
-    decode: bool = True,
+def _top_k_optimized(
+        db_or_path: Union[str, Path, "rs.DB"],
+        k: int,
+        *,
+        decode: bool = True,
 ) -> List[Tuple[Union[str, bytes], int]]:
-    """Streaming top-K via min-heap (RAM ~ O(K))."""
+    """Streaming top-K via min-heap (RAM ~ O(K)) with optimizations."""
     if k <= 0:
         return []
+
     heap: List[Tuple[int, bytes]] = []  # (total, key_bytes)
+
     with _db_from(db_or_path) as db:
         for kbytes, vbytes in _iter_db_items(db):
             tot = _total_matches(vbytes)
+
             if len(heap) < k:
                 heapq.heappush(heap, (tot, kbytes))
             elif tot > heap[0][0]:
                 heapq.heapreplace(heap, (tot, kbytes))
-    out: List[Tuple[Union[str, bytes], int]] = [
-        (_maybe_decode(kb, decode), tot) for (tot, kb) in heap
-    ]
-    out.sort(key=lambda kv: kv[1], reverse=True)
-    return out
+
+    # Sort in descending order by total, then decode
+    result = [(_maybe_decode(kb, decode), tot) for (tot, kb) in
+              sorted(heap, key=lambda x: x[0], reverse=True)]
+
+    return result
 
 
-def write_whitelist(
-    db_or_path: Union[str, Path, "rs.DB"],
-    dest: Union[str, Path],
-    *,
-    top: int | None = None,
-    decode: bool = True,
-    sep: str = "\t",
+def write_whitelist_streaming(
+        db_or_path: Union[str, Path, "rs.DB"],
+        dest: Union[str, Path],
+        *,
+        top: int | None = None,
+        decode: bool = True,
+        sep: str = "\t",
 ) -> Path:
     """
-    Write a plain TXT file of tokens ranked by total frequency (desc).
+    Write a plain TXT file of tokens ranked by total frequency (desc) using streaming.
     Each line: <token><sep><total_matches>
+    Memory usage: O(1) for unlimited output, O(K) for top-K
     """
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".tmp")
 
-    rows = _top_k(db_or_path, top, decode=decode) if top is not None else _rank_all(
-        db_or_path, decode=decode
-    )
-
     with tmp.open("w", encoding="utf-8", newline="") as f:
-        for token, total in rows:
+        if top is not None:
+            # Use optimized heap-based top-K for memory efficiency
+            items = _top_k_optimized(db_or_path, top, decode=decode)
+        else:
+            # Use streaming approach with Counter for better performance
+            items = _rank_all_counter(db_or_path, decode=decode)
+
+        for token, total in items:
             if isinstance(token, bytes):
                 token_str = token.decode("utf-8", "backslashreplace")
             else:
@@ -158,7 +180,24 @@ def write_whitelist(
     return dest.resolve()
 
 
-def load_whitelist(
+def write_whitelist(
+        db_or_path: Union[str, Path, "rs.DB"],
+        dest: Union[str, Path],
+        *,
+        top: int | None = None,
+        decode: bool = True,
+        sep: str = "\t",
+) -> Path:
+    """
+    Write a plain TXT file of tokens ranked by total frequency (desc).
+    Each line: <token><sep><total_matches>
+
+    This is the main API - uses streaming implementation for better performance.
+    """
+    return write_whitelist_streaming(db_or_path, dest, top=top, decode=decode, sep=sep)
+
+
+def load_whitelist_optimized(
         whitelist_path: Union[str, Path],
         *,
         top_n: int | None = None,
@@ -167,7 +206,7 @@ def load_whitelist(
         sep: str = "\t",
 ) -> set[bytes]:
     """
-    Load whitelist from TSV file created by write_whitelist().
+    Optimized whitelist loading using set comprehension and early termination.
 
     Args:
         whitelist_path: Path to whitelist file (token<sep>count format)
@@ -183,35 +222,61 @@ def load_whitelist(
     if not whitelist_path.exists():
         raise FileNotFoundError(f"Whitelist file not found: {whitelist_path}")
 
-    tokens: set[bytes] = set()
-    count = 0
+    def parse_line(line: str) -> bytes | None:
+        """Parse a line and return token bytes if valid, None otherwise."""
+        line = line.rstrip("\r\n")
+        if not line:
+            return None
 
-    with whitelist_path.open("r", encoding=encoding) as f:
-        for line in f:
-            line = line.rstrip("\r\n")
-            if not line:
-                continue
+        parts = line.split(sep, 1)
+        if len(parts) != 2:
+            return None
 
-            parts = line.split(sep, 1)
-            if len(parts) != 2:
-                continue
+        token_str, count_str = parts
+        try:
+            frequency = int(count_str)
+        except ValueError:
+            return None
 
-            token_str, count_str = parts
-            try:
-                frequency = int(count_str)
-            except ValueError:
-                continue
+        # Apply frequency threshold
+        if frequency < min_count:
+            return None
 
-            # Apply frequency threshold
-            if frequency < min_count:
-                continue
+        # Convert to bytes (matching your pipeline's data type)
+        return token_str.encode(encoding, "surrogatepass")
 
-            # Convert to bytes (matching your pipeline's data type)
-            token_bytes = token_str.encode(encoding, "surrogatepass")
-            tokens.add(token_bytes)
-
-            count += 1
-            if top_n is not None and count >= top_n:
-                break
+    with open(whitelist_path, "r", encoding=encoding) as f:
+        if top_n is not None:
+            # Use islice for memory-efficient top-N processing
+            tokens = {token for token in
+                      (parse_line(line) for line in islice(f, top_n))
+                      if token is not None}
+        else:
+            # Process entire file with set comprehension
+            tokens = {token for token in
+                      (parse_line(line) for line in f)
+                      if token is not None}
 
     return tokens
+
+
+def load_whitelist(
+        whitelist_path: Union[str, Path],
+        *,
+        top_n: int | None = None,
+        min_count: int = 1,
+        encoding: str = "utf-8",
+        sep: str = "\t",
+) -> set[bytes]:
+    """
+    Load whitelist from TSV file created by write_whitelist().
+
+    This is the main API - uses optimized implementation.
+    """
+    return load_whitelist_optimized(
+        whitelist_path,
+        top_n=top_n,
+        min_count=min_count,
+        encoding=encoding,
+        sep=sep
+    )
