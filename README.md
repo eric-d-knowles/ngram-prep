@@ -8,9 +8,20 @@ End-to-end tools to acquire, filter, and store Google Books n‑grams at scale.
 - **Storage optimized for downstream use:** Shard outputs merged via streaming ingestion into a single RocksDB; optional post‑ingest compaction and whitelist generation
 - **Flexible configuration:** Control concurrency, buffer sizes, batch sizes, I/O profiles, and ingestion behavior
 
+## System Requirements
+- Designed to leverage multiprocessing and large RAM in HPC/cluster environments.
+- Benefits greatly from fast local NVMe storage.
+- For slower disks, reduce readers and ingestors and increase `progress_every_s`. Also consider disabling compaction to avoid exceed Slurm time limits; you can manually compact during a new session later.
+
+## Dependencies
+- Python 3.11+
+- `rocks-shim` is required for RocksDB access
+  - To install:
+    `pip install rocks-shim`
+
 ## Installation
 
-```bash pip install -e .```
+```pip install ngram_prep```
 
 ## Quick Start
 
@@ -82,3 +93,15 @@ build_processed_db(pcfg, fcfg)
 
 ## Monitoring
 Progress can be printed periodically (`progress_every_s`). Work status is tracked in `tmp_dir/work_tracker.db` (SQLite).
+
+As the pipeline runs, the work-unit status is tracked in a SQLite database. Run the following command from the `processing_tmp` directory to check progress:
+```
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('work_tracker.db')
+cur = conn.cursor()
+results = cur.execute('SELECT status, COUNT(*) FROM work_units GROUP BY status').fetchall()
+status_dict = dict(results)
+print(f\"Completed: {status_dict.get('completed', 0)}, Processing: {status_dict.get('processing', 0)}, Pending: {status_dict.get('pending', 0)}\")
+"
+```
