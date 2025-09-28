@@ -33,7 +33,7 @@ class FilterConfig:
 class PipelineConfig:
     # I/O
     src_db: Path
-    dst_db: Path
+    dst_db: PathW
     tmp_dir: Path
 
     # Parallelism
@@ -50,7 +50,8 @@ class PipelineConfig:
     max_bytes_per_bucket: int = 128 * 1024 * 1024
 
     # Writer profiles
-    writer_profile: str = 'write:packed24'
+    writer_read_profile: str = "read:packed24"
+    writer_write_profile: str = 'write:packed24'
     writer_disable_wal: bool = True
 
     # Ingest/merge configuration
@@ -64,7 +65,9 @@ class PipelineConfig:
 
     # Pipeline control
     mode: str = "resume"  # "restart", "resume", or "reprocess"
-    enable_compaction: bool = True
+    force_cache_use: bool = True
+    enable_ingest: bool = False
+    enable_compact: bool = True
 
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None

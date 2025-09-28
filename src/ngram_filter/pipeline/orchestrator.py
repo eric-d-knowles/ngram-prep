@@ -13,7 +13,7 @@ from setproctitle import setproctitle
 
 from ..config import PipelineConfig, FilterConfig
 from ngram_filter.partitioning import create_intelligent_work_units
-from .work_tracker import WorkTracker, validate_work_units
+from .work_tracker import WorkTracker
 from .worker import WorkerConfig, run_worker_pool
 from .ingest import ingest_shards_streaming
 from .progress import create_counters, print_phase_banner, run_progress_reporter
@@ -49,6 +49,7 @@ class PipelineOrchestrator:
     def run(self) -> None:
         """Execute the complete pipeline."""
         setproctitle("ngf:orchestrator")
+        enable_ingest = getattr(self.pipeline_config, "enable_ingest", None)
 
         self._print_pipeline_header()
         self._prepare_directories()
@@ -58,18 +59,23 @@ class PipelineOrchestrator:
         # Execute pipeline phases
         self._create_work_units()
         self._process_work_units()
-        self._merge_results()
-        self._validate_final_result()
-        self._generate_output_whitelist()
-        self._print_done_banner()
+        if enable_ingest:
+            self._merge_results()
+            self._validate_final_result()
+            self._generate_output_whitelist()
+            self._print_done_banner()
 
     def _print_pipeline_header(self) -> None:
         """Print pipeline configuration summary."""
         print("N-GRAM FILTER PIPELINE")
         print("━" * 100)
 
+        mode = getattr(self.pipeline_config, 'mode', 'resume')
+        enable_ingest = getattr(self.pipeline_config, "enable_ingest", None)
+        enable_compact = getattr(self.pipeline_config, "enable_compact", None)
+
         num_workers = getattr(self.pipeline_config, 'readers', 8)
-        units_multiplier = getattr(self.pipeline_config, 'work_units_per_reader', 64)
+        units_multiplier = getattr(self.pipeline_config, 'work_units_per_reader', 8)
         num_work_units = num_workers * units_multiplier
 
         worker_config = self._create_worker_config()
@@ -86,13 +92,21 @@ class PipelineOrchestrator:
 
         print("\nConfiguration:")
         print("═" * 100)
-        print(f"  Workers: {num_workers}")
+        print(f"  \033[4mPipeline\033[0m")
+        print(f"  Run mode: {mode}")
+        print(f"  Ingest after filtering: {enable_ingest}")
+        print(f"  Compact after ingesting: {enable_compact}")
+        print(f"  ")
+        print(f"  \033[4mWorkers\033[0m")
+        print(f"  Num Workers: {num_workers}")
         print(f"  Work units: {num_work_units}")
-        print(f"  Source: {src_db_str}")
-        print(f"  Destination: {dst_db_str}")
+        print(f"  Profiles: read={self.pipeline_config.writer_read_profile}, write={self.pipeline_config.writer_write_profile}")
         print(f"  Buffer: {worker_config.buffer_size:,} items, "
               f"{worker_config.buffer_bytes // (1024 * 1024)}MB")
-        print(f"  Profile: {worker_config.profile}")
+        print(f"  ")
+        print(f"  \033[4mFiles\033[0m")
+        print(f"  Source: {src_db_str}")
+        print(f"  Destination: {dst_db_str}")
 
         # Add input whitelist info
         whitelist_path = getattr(self.filter_config, "whitelist_path", None)
@@ -239,14 +253,16 @@ class PipelineOrchestrator:
         # Use intelligent partitioning with caching support
         sample_rate = getattr(self.pipeline_config, 'partitioning_sample_rate', 0.001)
         prefix_length = getattr(self.pipeline_config, 'prefix_length', 2)
-        balance_factor = getattr(self.pipeline_config, 'balance_factor', 0.7)
+        force_cache_use = getattr(self.pipeline_config, 'force_cache_use', False)
 
         work_units = create_intelligent_work_units(
             self.temp_paths['src_db'],
             num_work_units,
             sample_rate=sample_rate,
+            prefix_length=prefix_length,
             use_cache=(mode != 'restart'),
             force_resample=(mode == 'restart'),
+            force_cache_use=force_cache_use
         )
 
         work_tracker.add_work_units(work_units)
@@ -284,6 +300,7 @@ class PipelineOrchestrator:
                 work_tracker_path=self.temp_paths['work_tracker'],
                 output_dir=self.temp_paths['output_dir'],
                 filter_config=self.filter_config,
+                pipeline_config=self.pipeline_config,
                 worker_config=self._create_worker_config(),
                 counters=progress_reporter['counters'] if progress_reporter else None,
             )
@@ -370,7 +387,8 @@ class PipelineOrchestrator:
         ingest_batch_bytes = getattr(self.pipeline_config, 'ingest_batch_bytes', 64 * 1024 * 1024)
         ingest_batch_items = getattr(self.pipeline_config, 'ingest_batch_items', 100_000)
         num_ingestors = getattr(self.pipeline_config, 'ingestors', 8)
-        delete_shards = getattr(self.pipeline_config, 'delete_after_ingest', False)  # Add this
+        delete_shards = getattr(self.pipeline_config, 'delete_after_ingest', False)
+        enable_compact = getattr(self.pipeline_config, 'enable_compact', True)
 
         print(f"  Batch size: {ingest_batch_bytes // (1024 * 1024)}MB, {ingest_batch_items:,} items")
         print(f"  Parallel readers: {num_ingestors}")
@@ -381,15 +399,16 @@ class PipelineOrchestrator:
         self.total_items, self.total_bytes = ingest_shards_streaming(
             dst_db_path=self.temp_paths['dst_db'],
             shards_root=self.temp_paths['output_dir'],
-            read_profile=getattr(self.pipeline_config, 'ingest_read_profile', 'read'),
-            write_profile=getattr(self.pipeline_config, 'ingest_write_profile', 'bulk_write:packed24'),
+            read_profile=getattr(self.pipeline_config, 'ingest_read_profile', 'read:packed24'),
+            write_profile=getattr(self.pipeline_config, 'ingest_write_profile', 'write:packed24'),
             batch_bytes=ingest_batch_bytes,
             batch_items=ingest_batch_items,
             disable_wal=getattr(self.pipeline_config, 'ingest_disable_wal', True),
             diag_every_batches=25,
             diag_every_seconds=3.0,
             num_readers=num_ingestors,
-            delete_after_ingest=delete_shards  # Add this
+            delete_after_ingest=delete_shards,
+            enable_compact=enable_compact
         )
 
     def _validate_final_result(self) -> None:
@@ -469,7 +488,6 @@ class PipelineOrchestrator:
         return WorkerConfig(
             buffer_size=getattr(self.pipeline_config, 'max_items_per_bucket', 25_000),
             buffer_bytes=getattr(self.pipeline_config, 'max_bytes_per_bucket', 16 * 1024 * 1024),
-            profile=getattr(self.pipeline_config, 'writer_profile', 'bulk_write:packed24'),
             disable_wal=getattr(self.pipeline_config, 'writer_disable_wal', True),
             disable_compaction=True,
         )

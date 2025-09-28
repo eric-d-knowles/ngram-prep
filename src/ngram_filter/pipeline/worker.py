@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 
 from setproctitle import setproctitle
 
-from ..config import FilterConfig
+from ..config import FilterConfig, PipelineConfig
 from ..filters.builder import build_processor
 from ..filters.core_cy import METADATA_PREFIX
 from .work_tracker import WorkTracker, WorkUnit
@@ -26,7 +26,6 @@ class WorkerConfig:
 
     buffer_size: int = 10_000  # Items to buffer before flushing
     buffer_bytes: int = 8 * 1024 * 1024  # 8MB buffer limit
-    profile: str = "bulk_write:packed24"  # RocksDB profile
     disable_wal: bool = True  # Disable WAL for performance
     disable_compaction: bool = True  # Disable auto-compaction
 
@@ -37,6 +36,7 @@ def worker_process(
         work_tracker_path: Path,
         output_dir: Path,
         filter_config: FilterConfig,
+        pipeline_config: PipelineConfig,
         worker_config: WorkerConfig,
         counters: Optional[Counters] = None,
 ) -> None:
@@ -49,6 +49,7 @@ def worker_process(
         work_tracker_path: Path to work tracker database
         output_dir: Directory for output databases
         filter_config: Configuration for filtering
+        pipeline_config: Configuration for DB operations
         worker_config: Worker-specific configuration
         counters: Optional shared counters for progress tracking
     """
@@ -78,6 +79,7 @@ def worker_process(
                     output_dir,
                     processor,
                     worker_config,
+                    pipeline_config,
                     counters
                 )
 
@@ -137,6 +139,7 @@ def _process_work_unit(
         output_dir: Path,
         processor,
         config: WorkerConfig,
+        pipeline_config: PipelineConfig,
         counters: Optional[Counters] = None,
 ) -> None:
     """
@@ -158,11 +161,15 @@ def _process_work_unit(
     buffer = WriteBuffer(config.buffer_size, config.buffer_bytes)
 
     # Process the work unit's key range
-    with open_db(src_db_path, mode="ro") as src_db:
+    with open_db(
+            src_db_path,
+            mode="ro",
+            profile=pipeline_config.writer_read_profile
+    ) as src_db:
         with open_db(
                 output_path,
                 mode="rw",
-                profile=config.profile,
+                profile=pipeline_config.writer_write_profile,
                 create_if_missing=True
         ) as dst_db:
             _process_key_range(
@@ -172,11 +179,12 @@ def _process_work_unit(
                 processor,
                 buffer,
                 config,
+                pipeline_config,
                 counters
             )
 
             # Final flush and finalization
-            buffer.flush(dst_db, config.disable_wal, counters)
+            buffer.flush(dst_db, pipeline_config.writer_disable_wal, counters)
             _finalize_output_database(dst_db)
 
 
@@ -235,6 +243,7 @@ def _process_key_range(
         processor,
         buffer: WriteBuffer,
         config: WorkerConfig,
+        pipeline_config: PipelineConfig,
         counters: Optional[Counters],
 ) -> None:
     """Process all keys in the work unit's range."""
@@ -268,8 +277,7 @@ def _process_key_range(
         # Add to buffer and flush if needed
         should_flush = buffer.add(processed_key_bytes, value_bytes)
         if should_flush:
-            buffer.flush(dst_db, config.disable_wal, counters)
-
+            buffer.flush(dst_db, pipeline_config.writer_disable_wal, counters)
 
 def _ensure_bytes(data) -> bytes:
     """Ensure data is in bytes format."""
@@ -294,6 +302,7 @@ def run_worker_pool(
         work_tracker_path: Path,
         output_dir: Path,
         filter_config: FilterConfig,
+        pipeline_config: PipelineConfig,
         worker_config: WorkerConfig,
         counters: Optional[Counters] = None,
 ) -> None:
@@ -325,6 +334,7 @@ def run_worker_pool(
                 work_tracker_path,
                 output_dir,
                 filter_config,
+                pipeline_config,
                 worker_config,
                 counters,
             ),

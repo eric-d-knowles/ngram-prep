@@ -128,7 +128,7 @@ def ingest_shards_streaming(
         diag_every_seconds: float = 5.0,
         delete_after_ingest: bool = False,
         num_readers: int = 8,  # Number of parallel reader processes
-        enable_compaction: bool = True,  # Make compaction optional
+        enable_compact: bool = True,  # Make compaction optional
 ) -> tuple[int, int]:
     """
     Merge per-shard RocksDBs into a single destination database with parallel reading.
@@ -145,7 +145,7 @@ def ingest_shards_streaming(
         diag_every_seconds: Print diagnostics every N seconds
         delete_after_ingest: Delete shards after successful ingestion
         num_readers: Number of parallel reader processes
-        enable_compaction: Whether to perform final compaction (can be slow on large DBs)
+        enable_compact: Whether to perform final compaction (can be slow on large DBs)
     """
     print_phase_banner()
 
@@ -303,7 +303,7 @@ def ingest_shards_streaming(
             p.join()
 
         # Finalize the database
-        _finalize_database(dst, enable_compaction)
+        _finalize_database(dst, enable_compact)
 
     # Note: Shards are deleted during processing if delete_after_ingest=True
     # No need for cleanup here since it's done immediately after reading each shard
@@ -311,7 +311,7 @@ def ingest_shards_streaming(
     return total_items, total_bytes
 
 
-def _finalize_database(db, enable_compaction: bool = True) -> None:
+def _finalize_database(db, enable_compact: bool = True) -> None:
     """Finalize the database by flushing and optionally compacting."""
     print(f"\nPhase 3: Finalizing...")
     print("═" * 100)
@@ -322,11 +322,11 @@ def _finalize_database(db, enable_compaction: bool = True) -> None:
     except Exception as e:
         print(f"[ingest] finalize_bulk not available or failed: {e}", flush=True)
 
-    if enable_compaction:
+    if enable_compact:
         try:
             print("  Compacting...", flush=True)
             db.compact_all()
         except Exception:
-            pass  # Compaction is optional
+            pass
     else:
         print("  Skipping compaction (disabled)", flush=True)

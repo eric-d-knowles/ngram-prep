@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
@@ -59,9 +59,10 @@ class WorkUnitCache:
 
             return DBFingerprint(estimated_keys=estimated_keys)
 
-    def load(self, num_units: int, sample_rate: float, prefix_length: int) -> Optional[List[WorkUnit]]:
+    def load(self, num_units: int, sample_rate: float, prefix_length: int, force_cache_use: bool) -> Optional[
+        List[WorkUnit]]:
         """
-        Load work units from cache if valid.
+        Load work units from the cache if valid.
 
         Returns:
             List of WorkUnit objects if cache is valid, None otherwise
@@ -73,13 +74,16 @@ class WorkUnitCache:
             with open(self.cache_path, 'r') as f:
                 cache_data = json.load(f)
 
-            # Validate configuration matches
-            config = cache_data.get('sampling_config', {})
-            if (config.get('num_units') != num_units or
-                    config.get('sample_rate') != sample_rate or
-                    config.get('prefix_length') != prefix_length):
-                print(f"  Cache config mismatch, will resample")
-                return None
+            # Validate configuration matches unless `force_cache_use=True`
+            if not force_cache_use:
+                config = cache_data.get('sampling_config', {})
+                if (config.get('num_units') != num_units or
+                        config.get('sample_rate') != sample_rate or
+                        config.get('prefix_length') != prefix_length):
+                    print(f"  Cache config mismatch, will resample")
+                    return None
+            else:
+                print(f"  Forcing cache use and not checking config match")
 
             # Validate fingerprint
             current_fp = self._compute_fingerprint()
@@ -132,7 +136,12 @@ class WorkUnitCache:
             with open(self.cache_path, 'w') as f:
                 json.dump(cache_data, f, indent=2)
 
-            print(f"  Saved work units to cache: {self.cache_path}")
+            cache_path = self.cache_path.resolve()
+            if len(str(cache_path)) > 75:
+                cache_path_str = "..." + str(cache_path)[-72:]
+            else:
+                cache_path_str = str(cache_path)
+            print(f"  Saved work units to cache: {cache_path_str}")
 
         except Exception as e:
             print(f"  Cache save failed: {e}")
@@ -171,7 +180,7 @@ class IntelligentPartitioner:
             str(self.src_db_path),
             sample_size=target_samples,
             return_keys=True,
-            progress_interval=10000000
+            progress_interval=1
         )
 
         # Build prefix counts from samples
@@ -249,6 +258,99 @@ class IntelligentPartitioner:
         print(f"  Created {len(work_units)} balanced work units")
         return work_units
 
+    def detect_gaps(self, work_units: List[WorkUnit]) -> List[Tuple[bytes, bytes]]:
+        """
+        Find gaps between work units.
+
+        Args:
+            work_units: List of work units to check
+
+        Returns:
+            List of (gap_start, gap_end) tuples representing gaps
+        """
+        if len(work_units) < 2:
+            return []
+
+        # Sort work units by start key
+        sorted_units = sorted(work_units, key=lambda u: u.start_key or b'')
+
+        gaps = []
+        for i in range(len(sorted_units) - 1):
+            current_end = sorted_units[i].end_key
+            next_start = sorted_units[i + 1].start_key
+
+            # Skip if either boundary is None (start/end of keyspace)
+            if current_end is not None and next_start is not None:
+                if current_end != next_start:
+                    gaps.append((current_end, next_start))
+
+        return gaps
+
+    def backfill_gaps(self, work_units: List[WorkUnit]) -> List[WorkUnit]:
+        """
+        Fill any gaps by extending work unit boundaries.
+
+        Args:
+            work_units: List of work units to fix
+
+        Returns:
+            List of work units with gaps eliminated
+        """
+        if not work_units:
+            return work_units
+
+        # Sort work units by start key
+        sorted_units = sorted(work_units, key=lambda u: u.start_key or b'')
+
+        # Extend each unit's end_key to touch the next unit's start_key
+        for i in range(len(sorted_units) - 1):
+            current_unit = sorted_units[i]
+            next_unit = sorted_units[i + 1]
+
+            # Only modify if there's actually a gap
+            if (current_unit.end_key is not None and
+                    next_unit.start_key is not None and
+                    current_unit.end_key != next_unit.start_key):
+                # Extend current unit to cover the gap
+                current_unit.end_key = next_unit.start_key
+
+        return sorted_units
+
+    def create_gapless_work_units(self, num_units: int, target_records_per_unit: int = None) -> List[WorkUnit]:
+        """
+        Create work units with guaranteed complete coverage (no gaps).
+
+        This method combines density-based balancing with gap elimination
+        to ensure no keys can fall between work unit boundaries.
+
+        Args:
+            num_units: Desired number of work units
+            target_records_per_unit: Target records per unit (auto-calculated if None)
+
+        Returns:
+            List of WorkUnit objects with balanced workloads and no gaps
+        """
+        # Create density-based work units
+        work_units = self.create_balanced_work_units(num_units, target_records_per_unit)
+
+        # Detect any gaps
+        gaps = self.detect_gaps(work_units)
+        if gaps:
+            print(f"  Detected {len(gaps)} gaps between work units")
+            for i, (gap_start, gap_end) in enumerate(gaps):
+                print(f"    Gap {i + 1}: {gap_start.hex()} → {gap_end.hex()}")
+
+        # Backfill gaps
+        work_units = self.backfill_gaps(work_units)
+
+        # Validate no gaps remain
+        remaining_gaps = self.detect_gaps(work_units)
+        if remaining_gaps:
+            raise RuntimeError(f"Failed to eliminate gaps: {remaining_gaps}")
+
+        print(f"  Ensured gapless coverage across {len(work_units)} work units")
+        return work_units
+
     def _get_next_key(self, key: bytes) -> bytes:
         """Get the next key in lexicographic order."""
         if not key:
@@ -311,7 +413,9 @@ def create_intelligent_work_units(
         prefix_length: int = 2,
         sort_largest_first: bool = True,
         use_cache: bool = True,
-        force_resample: bool = False
+        force_cache_use: bool = False,
+        force_resample: bool = False,
+        ensure_gapless: bool = True
 ) -> List[WorkUnit]:
     """
     Create intelligently balanced work units based on actual data density.
@@ -322,8 +426,10 @@ def create_intelligent_work_units(
         sample_rate: Fraction of database to sample for density estimation
         prefix_length: Length of key prefix for density bucketing
         sort_largest_first: If True, sort units largest-first for optimal parallelization
-        use_cache: If True, attempt to load from cache before sampling
+        use_cache: If True, attempt to use cache in lieu of sampling
+        force_cache_use: If True, use cache even if config does not match
         force_resample: If True, ignore cache and resample database
+        ensure_gapless: If True, eliminate gaps to guarantee complete coverage
 
     Returns:
         List of balanced WorkUnit objects
@@ -332,7 +438,7 @@ def create_intelligent_work_units(
 
     # Try to load from cache first
     if use_cache and not force_resample:
-        cached_units = cache.load(num_units, sample_rate, prefix_length)
+        cached_units = cache.load(num_units, sample_rate, prefix_length, force_cache_use)
         if cached_units:
             print(f"  Loaded {len(cached_units)} work units from cache")
             return cached_units
@@ -343,8 +449,11 @@ def create_intelligent_work_units(
     # Sample the database to understand density
     partitioner.sample_database_density(prefix_length=prefix_length)
 
-    # Create balanced work units
-    work_units = partitioner.create_balanced_work_units(num_units)
+    # Create balanced work units (with or without gap elimination)
+    if ensure_gapless:
+        work_units = partitioner.create_gapless_work_units(num_units)
+    else:
+        work_units = partitioner.create_balanced_work_units(num_units)
 
     # Analyze the balance
     partitioner.analyze_balance(work_units)
@@ -361,7 +470,6 @@ def create_intelligent_work_units(
         print(f"  Sorted {len(work_units)} work units by size (largest first) for optimal parallelization")
 
     # Save to cache
-    if use_cache:
-        cache.save(work_units, num_units, sample_rate, prefix_length)
+    cache.save(work_units, num_units, sample_rate, prefix_length)
 
     return work_units
