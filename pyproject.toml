@@ -5,10 +5,78 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ngram-prep"
 version = "0.1.0"
+description = "A package for n-gram preprocessing and analysis"
+readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+maintainers = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+keywords = ["nlp", "ngram", "preprocessing", "text-analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "numpy>=1.20",
+    "Cython>=3.0",
+    # Add other runtime dependencies here
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/ngram-prep"
+Documentation = "https://github.com/yourusername/ngram-prep#readme"
+Repository = "https://github.com/yourusername/ngram-prep.git"
+"Bug Tracker" = "https://github.com/yourusername/ngram-prep/issues"
+Changelog = "https://github.com/yourusername/ngram-prep/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+    "build",
+    "twine",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.pyx", "*.pxd", "*.c", "*.h"]
+
+# Build configuration for Cython extensions
+[tool.cython-lint]
+max-line-length = 88
+
+# Optional: Configure other tools
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
