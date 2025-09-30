@@ -303,16 +303,16 @@ def _finalize_database(db, enable_compact: bool = True) -> None:
     print("═" * 100)
 
     try:
-        print("  Performing final flush...", flush=True)
+        print("Performing final flush...", flush=True)
         db.finalize_bulk()
     except Exception as e:
         print(f"[ingest] finalize_bulk not available or failed: {e}", flush=True)
 
     if enable_compact:
         try:
-            print("  Compacting...", flush=True)
+            print("Compacting...", flush=True)
             db.compact_all()
         except Exception:
             pass
     else:
-        print("  Skipping compaction (disabled)", flush=True)
+        print("Skipping compaction (disabled)", flush=True)
