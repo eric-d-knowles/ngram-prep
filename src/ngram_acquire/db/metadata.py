@@ -1,10 +1,9 @@
-# ngram_acquire/db/metadata.py
+"""Metadata tracking for processed ngram files in RocksDB."""
 from __future__ import annotations
 
 import logging
-from typing import Set
 
-import rocks_shim as rs  # <-- rocks-shim (not python-rocksdb)
+import rocks_shim as rs
 
 logger = logging.getLogger(__name__)
 
@@ -20,56 +19,71 @@ __all__ = [
 
 
 def processed_key(filename: str) -> bytes:
+    """Generate metadata key for a processed file."""
     return PROCESSED_PREFIX + filename.encode("utf-8")
 
 
-def is_file_processed(db: "rs.DB", filename: str) -> bool:
+def is_file_processed(db: rs.DB, filename: str) -> bool:
     """
-    O(1) membership test via a per-file marker key.
-    rocks-shim DB exposes .get() and returns None when not found.
+    Check if a file has been processed (O(1) lookup).
+    
+    Args:
+        db: RocksDB database handle
+        filename: Name of file to check
+        
+    Returns:
+        True if file has been marked as processed
     """
     try:
         return db.get(processed_key(filename)) is not None
-    except Exception as exc:
-        logger.warning("Processed check failed for %s: %s", filename, exc)
+    except Exception:
+        logger.exception("Failed to check processed status for %s", filename)
         return False
 
 
-def mark_file_as_processed(db: "rs.DB", filename: str) -> None:
+def mark_file_as_processed(db: rs.DB, filename: str) -> None:
     """
-    Atomic per-file mark; safe with concurrent writers (RocksDB key-level atomicity).
+    Mark a file as processed (atomic write).
+    
+    Args:
+        db: RocksDB database handle
+        filename: Name of file to mark
     """
     try:
         db.put(processed_key(filename), b"1")
-        logger.info("Marked processed: %s", filename)
-    except Exception as exc:
-        logger.error("Could not mark file as processed %s: %s", filename, exc)
+        logger.info("Marked as processed: %s", filename)
+    except Exception:
+        logger.exception("Failed to mark file as processed: %s", filename)
+        raise
 
 
-def get_processed_files(db: "rs.DB") -> set[str]:
+def get_processed_files(db: rs.DB) -> set[str]:
     """
-    Enumerate processed files by scanning keys with the processed prefix.
-
-    Uses a forward iterator starting at PROCESSED_PREFIX and stops when keys
-    no longer share the prefix. Prefer is_file_processed() in hot paths.
+    Retrieve all processed filenames via prefix scan.
+    
+    Scans keys with PROCESSED_PREFIX. For membership tests,
+    prefer is_file_processed() instead.
+    
+    Args:
+        db: RocksDB database handle
+        
+    Returns:
+        Set of processed filenames
     """
-    out: Set[str] = set()
+    processed = set()
+    it = db.iterator()
     try:
-        it = db.iterator()  # rocks-shim iterator: seek(), valid(), key(), value(), next()
-        prefix = PROCESSED_PREFIX
-        it.seek(prefix)
+        it.seek(PROCESSED_PREFIX)
         while it.valid():
             k = it.key()
-            if not k.startswith(prefix):
+            if not k.startswith(PROCESSED_PREFIX):
                 break
-            out.add(k[len(prefix):].decode("utf-8", "ignore"))
+            filename = k[len(PROCESSED_PREFIX):].decode("utf-8", "ignore")
+            processed.add(filename)
             it.next()
-        # If your shim exposes it.close(), it’s fine to call; otherwise ignore.
-        if hasattr(it, "close"):
-            try:
-                it.close()
-            except Exception:
-                pass
-    except Exception as exc:
-        logger.warning("Could not enumerate processed files: %s", exc)
-    return out
+    except Exception:
+        logger.exception("Failed to enumerate processed files")
+    finally:
+        del it
+
+    return processed

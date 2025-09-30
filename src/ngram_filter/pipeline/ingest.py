@@ -106,13 +106,13 @@ def shard_reader_worker(shard_paths: list[Path], queue: mp.Queue, read_profile: 
         raise
 
 
-def delete_shard_safely(shard_path: Path, shard_name: str):
-    """Safely delete a shard directory."""
+def delete_shard_safely(shard_path: Path, shard_name: str) -> str:
+    """Safely delete a shard directory and return status string."""
     try:
         shutil.rmtree(shard_path)
-        print(f"  Deleted processed shard: {shard_name}")
+        return "[deleted]"
     except Exception as e:
-        print(f"  Warning: Failed to delete {shard_name}: {e}")
+        return f"[delete failed: {e}]"
 
 
 def ingest_shards_streaming(
@@ -155,7 +155,7 @@ def ingest_shards_streaming(
         if path.is_dir() and path.name.startswith("unit_")
     )
 
-    print(f"  Folding {len(shard_dirs)} shard(s) with {num_readers} parallel readers...", flush=True)
+    print(f"\nFolding {len(shard_dirs)} shard(s) with {num_readers} parallel readers...", flush=True)
 
     # Split shards across reader processes
     shard_chunks = [shard_dirs[i::num_readers] for i in range(num_readers)]
@@ -204,24 +204,28 @@ def ingest_shards_streaming(
 
                 if msg_type == "SHARD_COMPLETE":
                     # Shard finished reading - track total batches
-                    total_batches = message[2]
+                    total_batches_for_shard = message[2]
                     if shard_name not in shard_progress:
                         shard_progress[shard_name] = {'total_batches': 0, 'ingested_batches': 0}
-                    shard_progress[shard_name]['total_batches'] = total_batches
+                    shard_progress[shard_name]['total_batches'] = total_batches_for_shard
 
                     # Check if this shard is now fully ingested
-                    if shard_progress[shard_name]['ingested_batches'] >= total_batches:
+                    if shard_progress[shard_name]['ingested_batches'] >= total_batches_for_shard:
                         completed_shards.add(shard_name)
                         stats = shard_stats[shard_name]
-                        print(
+
+                        # Build status message
+                        status_msg = (
                             f"  {shard_name}: {stats['items']:,} items "
-                            f"({stats['bytes'] / 1_000_000:.1f} MB)",
-                            flush=True
+                            f"({stats['bytes'] / 1_000_000:.1f} MB)"
                         )
 
-                        # Safe to delete now - fully ingested
+                        # Add deletion status if enabled
                         if delete_after_ingest:
-                            delete_shard_safely(shard_paths_map[shard_name], shard_name)
+                            deletion_status = delete_shard_safely(shard_paths_map[shard_name], shard_name)
+                            status_msg += f" {deletion_status}"
+
+                        print(status_msg, flush=True)
                     continue
 
                 elif msg_type == "BATCH":
@@ -263,24 +267,6 @@ def ingest_shards_streaming(
 
                     # Mark this batch as successfully ingested
                     shard_progress[shard_name]['ingested_batches'] += 1
-
-                    # Check if shard is now complete (all batches ingested)
-                    if (shard_progress[shard_name]['total_batches'] > 0 and
-                            shard_progress[shard_name]['ingested_batches'] >= shard_progress[shard_name][
-                                'total_batches']):
-
-                        if shard_name not in completed_shards:
-                            completed_shards.add(shard_name)
-                            stats = shard_stats[shard_name]
-                            print(
-                                f"  {shard_name}: {stats['items']:,} items "
-                                f"({stats['bytes'] / 1_000_000:.1f} MB)",
-                                flush=True
-                            )
-
-                            # Safe to delete now - fully ingested
-                            if delete_after_ingest:
-                                delete_shard_safely(shard_paths_map[shard_name], shard_name)
 
             except Empty:
                 # Queue timeout - check if we're done

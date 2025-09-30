@@ -1,3 +1,5 @@
+"""Optimized reservoir sampling for RocksDB databases."""
+
 import cython
 import signal
 import sys
@@ -6,25 +8,31 @@ from libc.stdlib cimport rand, srand, RAND_MAX
 from libc.time cimport time
 import rocks_shim as rs
 
-# Cython-specific optimizations
+__all__ = ["reservoir_sampling"]
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def reservoir_sampling(
         db_path,
         sample_size,
+        total_records=None,
         progress_interval=5,
-        max_items=None,
         return_keys: bool = False,
+        max_items=None,
 ):
     """
     Perform reservoir sampling on a RocksDB database.
 
+    Uses optimized Cython implementation with low-level C operations
+    for maximum performance on large databases.
+
     Args:
         db_path: Path to the RocksDB database
         sample_size: Number of samples to collect
-        progress_interval: Report progress every N percentage points (default: 5%)
+        total_records: Estimated total records (for progress reporting)
+        progress_interval: Report progress every N percentage points
+        return_keys: If True, return (key, value) tuples; else just values
         max_items: Optional limit on items to process
-        return_keys: If True, return (key_bytes, value_bytes) tuples; else just values
 
     Returns:
         List of samples (either values or (key, value) tuples)
@@ -33,16 +41,18 @@ def reservoir_sampling(
     cdef int idx
     cdef long long total_processed = 0
     cdef long long skipped_metadata = 0
-    cdef long long next_item_milestone = 1_000_000  # Report every 1M items as fallback
     cdef int reservoir_len
     cdef int rand_val
     cdef double rand_scale
     cdef long long scaled_idx
-    cdef long long estimated_total = 0
+    cdef long long estimated_total = (
+        total_records if total_records else 0
+    )
     cdef double percent_complete
-    cdef int last_percent_reported = 0
+    cdef double next_percent_milestone = progress_interval
 
     def signal_handler(signum, frame):
+        """Handle interrupt signals gracefully."""
         print(f"\nInterrupt received (signal {signum})")
         print("Cleanup complete. Exiting...")
         sys.exit(0)
@@ -56,29 +66,24 @@ def reservoir_sampling(
     # Pre-compute random scaling factor
     rand_scale = 1.0 / <double> RAND_MAX
 
-    # Get database size for percentage-based progress
-    with rs.open(db_path, mode="ro") as db:
-        total_records_str = db.get_property("rocksdb.estimate-num-keys")
-        if total_records_str:
-            estimated_total = int(total_records_str)
-        else:
-            estimated_total = 0  # Will fall back to item-count progress
-
     start_time = py_time.time()
 
+    # Print configuration
     print("  " + "━" * 60)
     print("  RESERVOIR SAMPLING CONFIGURATION")
     print("  " + "─" * 60)
     print(f"  Target sample size:     {sample_size:,} items")
     if estimated_total > 0:
         print(f"  Database size:          {estimated_total:,} items")
-        print(f"  Progress reporting:     Every {progress_interval}% complete")
+        print(
+            f"  Progress reporting:     Every {progress_interval}% complete"
+        )
     else:
-        print(f"  Database size:          Unknown (will report every 1M items)")
+        print("  Database size:          Unknown (will report every 1M items)")
     if max_items is not None:
         print(f"  Database limit:         {max_items:,} entries")
     else:
-        print(f"  Database limit:         No limit (full traversal)")
+        print("  Database limit:         No limit (full traversal)")
     print("  " + "─" * 60)
 
     try:
@@ -87,14 +92,23 @@ def reservoir_sampling(
             iterator.seek(b"")
 
             while iterator.valid():
-                if max_items is not None and (total_processed + skipped_metadata) >= max_items:
+                # Check traversal limit
+                if (
+                        max_items is not None
+                        and (total_processed + skipped_metadata) >= max_items
+                ):
                     print(f"  Reached traversal limit of {max_items:,} entries")
                     break
 
                 key_bytes = iterator.key()
 
                 # Optimized metadata check - direct byte comparison
-                if len(key_bytes) >= 2 and key_bytes[0] == 95 and key_bytes[1] == 95:  # 95 = ord('_')
+                # Skip keys starting with "__" (95 = ord('_'))
+                if (
+                        len(key_bytes) >= 2
+                        and key_bytes[0] == 95
+                        and key_bytes[1] == 95
+                ):
                     skipped_metadata += 1
                     iterator.next()
                     continue
@@ -102,26 +116,25 @@ def reservoir_sampling(
                 total_processed += 1
 
                 # Progress reporting logic
-                if total_processed >= next_item_milestone:
-                    if estimated_total > 0:
-                        # Percentage-based progress reporting
-                        percent_complete = (total_processed * 100.0) / estimated_total
-                        if percent_complete >= last_percent_reported + progress_interval:
-                            print(f"  Progress: {total_processed:,} items ({percent_complete:.1f}%)", flush=True)
-                            last_percent_reported = int(percent_complete // progress_interval) * progress_interval
-                    else:
-                        # Fallback to item-count progress if size unknown
+                if estimated_total > 0:
+                    percent_complete = (total_processed * 100.0) / estimated_total
+                    if percent_complete >= next_percent_milestone:
+                        print(
+                            f"  Progress: {percent_complete:.1f}% ({total_processed:,} items)",
+                            flush=True
+                        )
+                        next_percent_milestone += progress_interval
+                else:
+                    # Fallback for unknown size - report every million
+                    if total_processed % 1_000_000 == 0:
                         print(f"  Processed {total_processed:,} items", flush=True)
 
-                    # Set next milestone
-                    next_item_milestone += 1_000_000
-
-                # Cache reservoir length to avoid repeated function calls
+                # Cache reservoir length to avoid repeated calls
                 reservoir_len = len(reservoir)
 
                 # Reservoir sampling algorithm
                 if reservoir_len < sample_size:
-                    # Still filling reservoir - get value only when needed
+                    # Still filling reservoir
                     if return_keys:
                         value_bytes = iterator.value()
                         reservoir.append((key_bytes, value_bytes))
@@ -129,9 +142,11 @@ def reservoir_sampling(
                         value_bytes = iterator.value()
                         reservoir.append(value_bytes)
                 else:
-                    # Optimized random selection - avoid modulo operation
+                    # Optimized random selection
                     rand_val = rand()
-                    scaled_idx = <long long> (rand_val * rand_scale * total_processed)
+                    scaled_idx = <long long> (
+                            rand_val * rand_scale * total_processed
+                    )
                     if scaled_idx < sample_size:
                         idx = <int> scaled_idx
                         if return_keys:
@@ -160,11 +175,21 @@ def reservoir_sampling(
 
             if elapsed_time > 0:
                 items_per_second = total_processed / elapsed_time
-                microseconds_per_item = (elapsed_time * 1_000_000) / total_processed if total_processed > 0 else 0
+                microseconds_per_item = (
+                    (elapsed_time * 1_000_000) / total_processed
+                    if total_processed > 0
+                    else 0
+                )
                 print("  PERFORMANCE METRICS")
                 print("  " + "─" * 60)
-                print(f"  Processing rate:        {items_per_second:,.0f} items/second")
-                print(f"  Time per item:          {microseconds_per_item:.2f} microseconds")
+                print(
+                    f"  Processing rate:        "
+                    f"{items_per_second:,.0f} items/second"
+                )
+                print(
+                    f"  Time per item:          "
+                    f"{microseconds_per_item:.2f} microseconds"
+                )
             print("  " + "━" * 60)
 
             return reservoir
@@ -173,5 +198,5 @@ def reservoir_sampling(
         print(f"\nInterrupted! Processed {total_processed:,} items so far.")
         return reservoir
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error during sampling: {e}")
         raise

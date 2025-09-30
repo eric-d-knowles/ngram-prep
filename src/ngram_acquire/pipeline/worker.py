@@ -1,4 +1,4 @@
-# ngram_acquire/pipeline/worker.py
+"""Worker process for downloading and parsing ngram files."""
 from __future__ import annotations
 
 import gzip
@@ -11,131 +11,145 @@ from typing import Callable, Dict, Optional, Tuple, TYPE_CHECKING
 
 import requests
 
-from src.ngram_acquire.io.download import stream_download_with_retries
-from src.ngram_acquire.io.parse import parse_line
+from ngram_acquire.io.download import stream_download_with_retries
+from ngram_acquire.io.parse import parse_line
 
 if TYPE_CHECKING:
-    from src.ngram_acquire.io.parse import NgramRecord
+    from ngram_acquire.io.parse import NgramRecord
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["process_and_ingest_file"]
+
 try:
-    import setproctitle as _setproctitle  # optional
-except Exception:  # pragma: no cover
+    import setproctitle as _setproctitle
+except ImportError:
     _setproctitle = None
 
 
 def process_and_ingest_file(
-        url: str,
-        worker_id: int,
-        filter_pred: Optional[Callable[[str], bool]] = None,
-        log_file_path: Optional[str] = None,
-        *,
-        session: Optional[requests.Session] = None,
+    url: str,
+    worker_id: int,
+    filter_pred: Optional[Callable[[str], bool]] = None,
+    log_file_path: Optional[str] = None,
+    *,
+    session: Optional[requests.Session] = None,
 ) -> Tuple[str, Dict[str, bytes], int]:
     """
-    Download a gzip n-gram file, parse line-by-line, and pack values to bytes.
+    Download, decompress, and parse a gzipped ngram file.
 
-    Returns
-    -------
-    (status_message, {ngram_key: packed_bytes}, uncompressed_bytes)
+    Downloads the file from the given URL, decompresses it line-by-line,
+    parses each line into structured data, and packs the results into
+    compact binary format.
 
-    Packing format
-    --------------
-    Values packed as little-endian uint64 triplets per year:
-      (year, frequency, document_count) → struct fmt '<{3*N}Q'
+    Args:
+        url: Download URL for the gzipped ngram file
+        worker_id: Worker identifier for logging
+        filter_pred: Optional predicate to filter ngrams by text
+        log_file_path: Optional path to log file for worker output
+        session: Optional requests.Session for connection pooling
+
+    Returns:
+        Tuple of (status_message, parsed_data_dict, uncompressed_bytes)
+        - status_message: Success or error message
+        - parsed_data_dict: Mapping of ngram keys to packed binary values
+        - uncompressed_bytes: Total bytes of uncompressed data processed
+
+    Packing Format:
+        Values are packed as little-endian uint64 triplets per year:
+        (year, frequency, document_count) → struct format '<{3*N}Q'
     """
-
-    # Set up worker logging if log file path provided
+    # Set up worker-specific logging
     if log_file_path:
         worker_logger = logging.getLogger(f"worker_{os.getpid()}")
 
         # Only add handler if not already present
         if not worker_logger.handlers:
             try:
-                file_handler = logging.FileHandler(log_file_path, mode='a')
+                file_handler = logging.FileHandler(log_file_path, mode="a")
                 formatter = logging.Formatter(
-                    "%(asctime)s %(levelname)s %(name)s: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S"
+                    "%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S",
                 )
                 file_handler.setFormatter(formatter)
                 worker_logger.addHandler(file_handler)
                 worker_logger.setLevel(logging.INFO)
-                worker_logger.propagate = False  # Don't duplicate to root logger
+                worker_logger.propagate = False
             except Exception as e:
                 # Fallback to standard logger if file logging fails
-                logger.warning(f"Worker {os.getpid()}: Could not set up file logging: {e}")
+                logger.warning(
+                    "Worker %s (PID %s): Could not set up file logging: %s",
+                    worker_id, os.getpid(), e
+                )
                 worker_logger = logger
     else:
-        # Use standard logger if no log file path provided
         worker_logger = logger
 
-    if _setproctitle is not None:  # harmless if library is absent
+    # Set process title if available (helps with process monitoring)
+    if _setproctitle is not None:
         try:
             _setproctitle.setproctitle("PROC_WORKER")
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
     filename = PurePosixPath(url).name
     parsed_data: Dict[str, bytes] = {}
-    uncompressed_bytes = 0  # Track total uncompressed bytes processed
+    uncompressed_bytes = 0
     pid = os.getpid()
 
     try:
-        worker_logger.info("Worker %s (PID %s): Processing %s", worker_id, pid, filename)
+        worker_logger.info(
+            "Worker %s (PID %s): Processing %s",
+            worker_id, pid, filename
+        )
+
+        # Download file with retry logic
         resp = stream_download_with_retries(url, session=session)
 
         with closing(resp):
+            # Log compressed file size if available
             content_length = resp.headers.get("content-length")
             if content_length:
                 try:
                     worker_logger.info(
                         "Worker %s (PID %s): File size: %s bytes (compressed)",
-                        worker_id,
-                        pid,
-                        f"{int(content_length):,}",
+                        worker_id, pid, f"{int(content_length):,}"
                     )
                 except ValueError:
                     worker_logger.debug(
                         "Worker %s (PID %s): Non-numeric content-length=%r",
-                        worker_id,
-                        pid,
-                        content_length,
+                        worker_id, pid, content_length
                     )
 
+            # Process gzipped content line by line
             lines_processed = 0
             with gzip.GzipFile(fileobj=resp.raw, mode="rb") as gz:
                 for raw in gz:
-                    # Track uncompressed bytes (length of each decompressed line)
+                    # Track uncompressed bytes
                     uncompressed_bytes += len(raw)
                     lines_processed += 1
 
                     try:
+                        # Parse line and pack if valid
                         key, rec = parse_line(
-                            raw.decode("utf-8"), filter_pred=filter_pred
+                            raw.decode("utf-8"),
+                            filter_pred=filter_pred
                         )
                         if key and rec:
                             parsed_data[key] = _pack_record(rec)
+
                     except UnicodeDecodeError as exc:
                         worker_logger.warning(
                             "Worker %s (PID %s): Unicode error in %s line %s: %s",
-                            worker_id,
-                            pid,
-                            filename,
-                            lines_processed,
-                            exc,
+                            worker_id, pid, filename, lines_processed, exc
                         )
                     except Exception as exc:
                         worker_logger.warning(
                             "Worker %s (PID %s): Error processing line %s from %s: %s",
-                            worker_id,
-                            pid,
-                            lines_processed,
-                            filename,
-                            exc,
+                            worker_id, pid, lines_processed, filename, exc
                         )
 
-        # Enhanced success message with byte counts
+        # Success message
         msg = (
             f"SUCCESS: {filename} - {lines_processed:,} lines, "
             f"{len(parsed_data):,} entries, {uncompressed_bytes:,} uncompressed bytes"
@@ -145,27 +159,54 @@ def process_and_ingest_file(
 
     except requests.Timeout:
         msg = f"TIMEOUT: {filename}"
-        worker_logger.error("Worker %s (PID %s): Timeout - %s", worker_id, pid, filename)
+        worker_logger.error(
+            "Worker %s (PID %s): Timeout - %s",
+            worker_id, pid, filename
+        )
         return msg, {}, 0
+
     except requests.RequestException as exc:
         msg = f"NETWORK_ERROR: {filename}"
         worker_logger.error(
-            "Worker %s (PID %s): Network error - %s (%s)", worker_id, pid, filename, exc
+            "Worker %s (PID %s): Network error - %s (%s)",
+            worker_id, pid, filename, exc
         )
         return msg, {}, 0
+
     except Exception as exc:
         msg = f"ERROR: {filename} - {exc}"
-        worker_logger.error("Worker %s (PID %s): Error - %s: %s", worker_id, pid, filename, exc)
+        worker_logger.error(
+            "Worker %s (PID %s): Error - %s: %s",
+            worker_id, pid, filename, exc
+        )
         return msg, {}, 0
 
 
 def _pack_record(rec: NgramRecord) -> bytes:
-    """Pack (year, frequency, document_count) as <uint64> triplets."""
+    """
+    Pack frequency data into compact binary format.
+
+    Converts year/frequency/document_count triplets into little-endian
+    uint64 values for efficient storage.
+
+    Args:
+        rec: NgramRecord containing frequency data
+
+    Returns:
+        Packed binary data as bytes
+    """
     freqs = rec.get("frequencies", [])
     if not freqs:
         return b""
+
+    # Flatten triplets into single list (cache extend for performance)
     flat: list[int] = []
     extend = flat.extend
     for f in freqs:
-        extend((int(f["year"]), int(f["frequency"]), int(f["document_count"])))
+        extend((
+            int(f["year"]),
+            int(f["frequency"]),
+            int(f["document_count"])
+        ))
+
     return struct.pack(f"<{len(flat)}Q", *flat)

@@ -1,4 +1,3 @@
-# ngram_filter/partitioning/intelligent.py
 """
 Intelligent data-aware partitioning for work units.
 
@@ -10,18 +9,57 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 
 from common_db.api import open_db
 from ngram_filter.pipeline.work_tracker import WorkUnit
 from utilities.reservoir_sampler import reservoir_sampling
 
+__all__ = [
+    "create_intelligent_work_units",
+    "IntelligentPartitioner",
+    "WorkUnitCache",
+]
+
+# Constants
+DEFAULT_TARGET_SAMPLES = 250_000
+LINE_WIDTH = 100
+
+
+def _truncate_path_to_fit(
+    path: Path | str,
+    prefix: str,
+    total_width: int = LINE_WIDTH,
+) -> str:
+    """
+    Truncate path to fit within total_width including prefix.
+
+    Args:
+        path: Path to display
+        prefix: The label/prefix before the path
+        total_width: Total character width for the entire line
+
+    Returns:
+        Truncated path that fits within (total_width - len(prefix))
+    """
+    path_str = str(path)
+    max_path_length = total_width - len(prefix)
+
+    if len(path_str) <= max_path_length:
+        return path_str
+
+    if max_path_length < 4:
+        return "..."
+
+    return "..." + path_str[-(max_path_length - 3):]
+
 
 @dataclass
 class KeyRangeDensity:
     """Represents the data density for a key range."""
+
     start_key: bytes
     end_key: bytes
     estimated_count: int
@@ -31,15 +69,33 @@ class KeyRangeDensity:
 @dataclass
 class DBFingerprint:
     """Database fingerprint for cache validation."""
+
     estimated_keys: int
 
-    def matches(self, other: 'DBFingerprint', tolerance: float = 0.1) -> bool:
-        """Check if fingerprints match within tolerance."""
-        # Allow some variation in estimated keys
+    def matches(
+        self,
+        other: DBFingerprint,
+        tolerance: float = 0.1,
+    ) -> bool:
+        """
+        Check if fingerprints match within tolerance.
+
+        Args:
+            other: Fingerprint to compare against
+            tolerance: Maximum allowed ratio difference
+
+        Returns:
+            True if fingerprints match within tolerance
+        """
+        # Handle zero case
         if self.estimated_keys == 0 or other.estimated_keys == 0:
             return self.estimated_keys == other.estimated_keys
 
-        ratio = abs(self.estimated_keys - other.estimated_keys) / max(self.estimated_keys, other.estimated_keys)
+        # Calculate ratio difference
+        ratio = abs(
+            self.estimated_keys - other.estimated_keys
+        ) / max(self.estimated_keys, other.estimated_keys)
+
         return ratio <= tolerance
 
 
@@ -47,22 +103,44 @@ class WorkUnitCache:
     """Manages caching of work units to avoid repeated sampling."""
 
     def __init__(self, db_path: Path):
+        """
+        Initialize cache manager.
+
+        Args:
+            db_path: Path to source database
+        """
         self.db_path = db_path
         self.cache_path = db_path.parent / f"{db_path.name}.work_units.json"
 
     def _compute_fingerprint(self) -> DBFingerprint:
-        """Compute a fingerprint of the database for validation."""
-        with open_db(self.db_path, mode="ro") as db:
-            # Get estimated key count
-            total_records_str = db.get_property("rocksdb.estimate-num-keys")
-            estimated_keys = int(total_records_str) if total_records_str else 0
+        """
+        Compute a fingerprint of the database for validation.
 
+        Returns:
+            Database fingerprint with key count estimate
+        """
+        with open_db(self.db_path, mode="ro") as db:
+            total_records_str = db.get_property("rocksdb.estimate-num-keys")
+            estimated_keys = (
+                int(total_records_str) if total_records_str else 0
+            )
             return DBFingerprint(estimated_keys=estimated_keys)
 
-    def load(self, num_units: int, sample_rate: float, prefix_length: int, force_cache_use: bool) -> Optional[
-        List[WorkUnit]]:
+    def load(
+        self,
+        num_units: int,
+        sample_rate: float,
+        prefix_length: int,
+        force_cache_use: bool,
+    ) -> Optional[List[WorkUnit]]:
         """
         Load work units from the cache if valid.
+
+        Args:
+            num_units: Expected number of work units
+            sample_rate: Expected sample rate
+            prefix_length: Expected prefix length
+            force_cache_use: If True, skip config validation
 
         Returns:
             List of WorkUnit objects if cache is valid, None otherwise
@@ -71,26 +149,28 @@ class WorkUnitCache:
             return None
 
         try:
-            with open(self.cache_path, 'r') as f:
+            with open(self.cache_path, 'r', encoding='utf-8') as f:
                 cache_data = json.load(f)
 
-            # Validate configuration matches unless `force_cache_use=True`
+            # Validate configuration unless forced
             if not force_cache_use:
                 config = cache_data.get('sampling_config', {})
-                if (config.get('num_units') != num_units or
-                        config.get('sample_rate') != sample_rate or
-                        config.get('prefix_length') != prefix_length):
-                    print(f"  Cache config mismatch, will resample")
+                if (
+                    config.get('num_units') != num_units
+                    or config.get('sample_rate') != sample_rate
+                    or config.get('prefix_length') != prefix_length
+                ):
+                    print("  Cache config mismatch, will resample")
                     return None
             else:
-                print(f"  Forcing cache use and not checking config match")
+                print("  Forcing cache use and not checking config match")
 
             # Validate fingerprint
             current_fp = self._compute_fingerprint()
             cached_fp = DBFingerprint(**cache_data['db_fingerprint'])
 
             if not current_fp.matches(cached_fp):
-                print(f"  Database changed, cache invalid")
+                print("  Database changed, cache invalid")
                 return None
 
             # Reconstruct work units
@@ -98,18 +178,43 @@ class WorkUnitCache:
             for unit_data in cache_data['work_units']:
                 work_units.append(WorkUnit(
                     unit_id=unit_data['unit_id'],
-                    start_key=bytes.fromhex(unit_data['start_key']) if unit_data['start_key'] else None,
-                    end_key=bytes.fromhex(unit_data['end_key']) if unit_data['end_key'] else None
+                    start_key=(
+                        bytes.fromhex(unit_data['start_key'])
+                        if unit_data['start_key']
+                        else None
+                    ),
+                    end_key=(
+                        bytes.fromhex(unit_data['end_key'])
+                        if unit_data['end_key']
+                        else None
+                    ),
                 ))
 
             return work_units
 
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"  Cache load failed: {e}")
             return None
+        except Exception as e:
+            print(f"  Unexpected error loading cache: {e}")
+            return None
 
-    def save(self, work_units: List[WorkUnit], num_units: int, sample_rate: float, prefix_length: int):
-        """Save work units to cache."""
+    def save(
+        self,
+        work_units: List[WorkUnit],
+        num_units: int,
+        sample_rate: float,
+        prefix_length: int,
+    ) -> None:
+        """
+        Save work units to cache.
+
+        Args:
+            work_units: Work units to cache
+            num_units: Number of work units
+            sample_rate: Sample rate used
+            prefix_length: Prefix length used
+        """
         try:
             fingerprint = self._compute_fingerprint()
 
@@ -126,25 +231,36 @@ class WorkUnitCache:
                 'work_units': [
                     {
                         'unit_id': unit.unit_id,
-                        'start_key': unit.start_key.hex() if unit.start_key else None,
-                        'end_key': unit.end_key.hex() if unit.end_key else None
+                        'start_key': (
+                            unit.start_key.hex()
+                            if unit.start_key
+                            else None
+                        ),
+                        'end_key': (
+                            unit.end_key.hex()
+                            if unit.end_key
+                            else None
+                        ),
                     }
                     for unit in work_units
                 ]
             }
 
-            with open(self.cache_path, 'w') as f:
+            with open(self.cache_path, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2)
 
-            cache_path = self.cache_path.resolve()
-            if len(str(cache_path)) > 75:
-                cache_path_str = "..." + str(cache_path)[-72:]
-            else:
-                cache_path_str = str(cache_path)
-            print(f"  Saved work units to cache: {cache_path_str}")
+            # Print with truncated path
+            prefix = "Saved work units to cache: "
+            cache_path_str = _truncate_path_to_fit(
+                self.cache_path.resolve(),
+                prefix,
+            )
+            print(f"{prefix}{cache_path_str}")
 
-        except Exception as e:
+        except (OSError, IOError) as e:
             print(f"  Cache save failed: {e}")
+        except Exception as e:
+            print(f"  Unexpected error saving cache: {e}")
 
 
 class IntelligentPartitioner:
@@ -162,25 +278,43 @@ class IntelligentPartitioner:
         self.sample_rate = sample_rate
         self.density_map: Dict[bytes, int] = {}
 
-    def sample_database_density(self, prefix_length: int = 1) -> Dict[bytes, int]:
-        print(f"  Sampling database at {self.sample_rate:.5f} rate (prefix_length={prefix_length})...")
+    def sample_database_density(
+        self,
+        prefix_length: int = 1,
+    ) -> Dict[bytes, int]:
+        """
+        Sample database to estimate key distribution.
+
+        Args:
+            prefix_length: Length of key prefix for bucketing
+
+        Returns:
+            Dictionary mapping prefixes to estimated counts
+        """
+        print(
+            f"  Sampling database at {self.sample_rate:.5f} rate "
+            f"(prefix_length={prefix_length})..."
+        )
 
         # Get approximate target sample size
         with open_db(self.src_db_path, mode="ro") as db:
             total_records_str = db.get_property("rocksdb.estimate-num-keys")
-            if total_records_str:
-                target_samples = int(int(total_records_str) * self.sample_rate)
-            else:
-                target_samples = 250000  # Fallback default
+            total_records = int(total_records_str) if total_records_str else 0
 
-        print(f"  Targeting {target_samples:,} samples using reservoir sampling")
+            if total_records:
+                target_samples = int(total_records * self.sample_rate)
+            else:
+                target_samples = DEFAULT_TARGET_SAMPLES
+
+        print(f"  Targeting {target_samples:,} samples using reservoir sampling\n")
 
         # Use reservoir sampling to get samples
         samples = reservoir_sampling(
             str(self.src_db_path),
-            sample_size=target_samples,
-            return_keys=True,
-            progress_interval=1
+            target_samples,
+            total_records=total_records,
+            progress_interval=5,
+            return_keys=True
         )
 
         # Build prefix counts from samples
@@ -191,22 +325,34 @@ class IntelligentPartitioner:
 
         # Scale up to estimated totals
         scale_factor = 1.0 / self.sample_rate
-        estimated_counts = {p: int(c * scale_factor) for p, c in prefix_counts.items()}
+        estimated_counts = {
+            p: int(c * scale_factor) for p, c in prefix_counts.items()
+        }
 
-        print(f"  Sampling complete: {len(samples):,} samples collected, {len(prefix_counts)} unique prefixes")
+        print(
+            f"  \nSampling complete: {len(samples):,} samples collected, "
+            f"{len(prefix_counts)} unique prefixes\n"
+        )
         self.density_map = estimated_counts
         return estimated_counts
 
-    def create_balanced_work_units(self, num_units: int, target_records_per_unit: int = None) -> List[WorkUnit]:
+    def create_balanced_work_units(
+        self,
+        num_units: int,
+        target_records_per_unit: Optional[int] = None,
+    ) -> List[WorkUnit]:
         """
         Create work units with roughly equal estimated record counts.
 
         Args:
             num_units: Desired number of work units
-            target_records_per_unit: Target records per unit (auto-calculated if None)
+            target_records_per_unit: Target records per unit (auto if None)
 
         Returns:
             List of WorkUnit objects with balanced workloads
+
+        Raises:
+            ValueError: If density map not initialized
         """
         if not self.density_map:
             raise ValueError("Must call sample_database_density() first")
@@ -215,7 +361,10 @@ class IntelligentPartitioner:
         if target_records_per_unit is None:
             target_records_per_unit = total_estimated_records // num_units
 
-        print(f"  Creating {num_units} work units targeting {target_records_per_unit:,} records each")
+        print(
+            f"Creating {num_units} work units targeting "
+            f"{target_records_per_unit:,} records each:"
+        )
 
         # Sort prefixes by key to maintain ordering
         sorted_prefixes = sorted(self.density_map.items(), key=lambda x: x[0])
@@ -230,13 +379,17 @@ class IntelligentPartitioner:
 
             # Check if we should close this work unit
             should_close = (
-                    current_unit_count >= target_records_per_unit or
-                    unit_index == num_units - 1
+                current_unit_count >= target_records_per_unit
+                or unit_index == num_units - 1
             )
 
             if should_close:
                 # Create work unit
-                end_key = self._get_next_key(prefix) if unit_index < num_units - 1 else None
+                end_key = (
+                    self._get_next_key(prefix)
+                    if unit_index < num_units - 1
+                    else None
+                )
 
                 work_units.append(WorkUnit(
                     unit_id=f"unit_{unit_index:04d}",
@@ -244,8 +397,16 @@ class IntelligentPartitioner:
                     end_key=end_key
                 ))
 
-                print(f"    Unit {unit_index}: {current_start_key.hex() if current_start_key else 'start'} → "
-                      f"{end_key.hex() if end_key else 'end'} (~{current_unit_count:,} records)")
+                start_hex = (
+                    current_start_key.hex()
+                    if current_start_key
+                    else 'start'
+                )
+                end_hex = end_key.hex() if end_key else 'end'
+                print(
+                    f"  Unit {unit_index}: {start_hex} → {end_hex} "
+                    f"(~{current_unit_count:,} records)"
+                )
 
                 # Reset for next unit
                 current_start_key = end_key
@@ -255,10 +416,13 @@ class IntelligentPartitioner:
                 if unit_index >= num_units:
                     break
 
-        print(f"  Created {len(work_units)} balanced work units")
+        print(f"\nCreated {len(work_units)} balanced work units")
         return work_units
 
-    def detect_gaps(self, work_units: List[WorkUnit]) -> List[Tuple[bytes, bytes]]:
+    def detect_gaps(
+        self,
+        work_units: List[WorkUnit],
+    ) -> List[Tuple[bytes, bytes]]:
         """
         Find gaps between work units.
 
@@ -272,7 +436,10 @@ class IntelligentPartitioner:
             return []
 
         # Sort work units by start key
-        sorted_units = sorted(work_units, key=lambda u: u.start_key or b'')
+        sorted_units = sorted(
+            work_units,
+            key=lambda u: u.start_key or b'',
+        )
 
         gaps = []
         for i in range(len(sorted_units) - 1):
@@ -286,7 +453,10 @@ class IntelligentPartitioner:
 
         return gaps
 
-    def backfill_gaps(self, work_units: List[WorkUnit]) -> List[WorkUnit]:
+    def backfill_gaps(
+        self,
+        work_units: List[WorkUnit],
+    ) -> List[WorkUnit]:
         """
         Fill any gaps by extending work unit boundaries.
 
@@ -300,7 +470,10 @@ class IntelligentPartitioner:
             return work_units
 
         # Sort work units by start key
-        sorted_units = sorted(work_units, key=lambda u: u.start_key or b'')
+        sorted_units = sorted(
+            work_units,
+            key=lambda u: u.start_key or b'',
+        )
 
         # Extend each unit's end_key to touch the next unit's start_key
         for i in range(len(sorted_units) - 1):
@@ -308,30 +481,39 @@ class IntelligentPartitioner:
             next_unit = sorted_units[i + 1]
 
             # Only modify if there's actually a gap
-            if (current_unit.end_key is not None and
-                    next_unit.start_key is not None and
-                    current_unit.end_key != next_unit.start_key):
+            if (
+                current_unit.end_key is not None
+                and next_unit.start_key is not None
+                and current_unit.end_key != next_unit.start_key
+            ):
                 # Extend current unit to cover the gap
                 current_unit.end_key = next_unit.start_key
 
         return sorted_units
 
-    def create_gapless_work_units(self, num_units: int, target_records_per_unit: int = None) -> List[WorkUnit]:
+    def create_gapless_work_units(
+        self,
+        num_units: int,
+        target_records_per_unit: Optional[int] = None,
+    ) -> List[WorkUnit]:
         """
         Create work units with guaranteed complete coverage (no gaps).
 
-        This method combines density-based balancing with gap elimination
-        to ensure no keys can fall between work unit boundaries.
-
         Args:
             num_units: Desired number of work units
-            target_records_per_unit: Target records per unit (auto-calculated if None)
+            target_records_per_unit: Target records per unit (auto if None)
 
         Returns:
             List of WorkUnit objects with balanced workloads and no gaps
+
+        Raises:
+            RuntimeError: If gaps cannot be eliminated
         """
         # Create density-based work units
-        work_units = self.create_balanced_work_units(num_units, target_records_per_unit)
+        work_units = self.create_balanced_work_units(
+            num_units,
+            target_records_per_unit,
+        )
 
         # Detect any gaps
         gaps = self.detect_gaps(work_units)
@@ -348,11 +530,19 @@ class IntelligentPartitioner:
         if remaining_gaps:
             raise RuntimeError(f"Failed to eliminate gaps: {remaining_gaps}")
 
-        print(f"  Ensured gapless coverage across {len(work_units)} work units")
+        print(f"Ensured gapless coverage across all work units")
         return work_units
 
     def _get_next_key(self, key: bytes) -> bytes:
-        """Get the next key in lexicographic order."""
+        """
+        Get the next key in lexicographic order.
+
+        Args:
+            key: Current key
+
+        Returns:
+            Next key in sequence
+        """
         if not key:
             return b'\x00'
 
@@ -362,14 +552,18 @@ class IntelligentPartitioner:
             if key_list[i] < 255:
                 key_list[i] += 1
                 return bytes(key_list)
-            else:
-                key_list[i] = 0
+            key_list[i] = 0
 
         # All bytes were 255, need to extend
         return key + b'\x00'
 
     def analyze_balance(self, work_units: List[WorkUnit]) -> None:
-        """Analyze the balance of work units based on density estimates."""
+        """
+        Analyze the balance of work units based on density estimates.
+
+        Args:
+            work_units: Work units to analyze
+        """
         if not self.density_map:
             print("  No density data available for analysis")
             return
@@ -384,13 +578,23 @@ class IntelligentPartitioner:
             min_records = min(unit_estimates)
             max_records = max(unit_estimates)
 
-            print(f"  Work unit balance analysis:")
-            print(f"    Average: {avg_records:,.0f} records per unit")
-            print(f"    Range: {min_records:,} to {max_records:,}")
-            print(f"    Ratio: {max_records / min_records:.1f}x difference")
+            print("\nWork unit balance analysis:")
+            print(f"  Average: {avg_records:,.0f} records per unit")
+            print(f"  Range: {min_records:,} to {max_records:,}")
+            if min_records > 0:
+                ratio = max_records / min_records
+                print(f"  Ratio: {ratio:.1f}x difference")
 
     def _estimate_unit_records(self, unit: WorkUnit) -> int:
-        """Estimate record count for a work unit based on density map."""
+        """
+        Estimate record count for a work unit based on density map.
+
+        Args:
+            unit: Work unit to estimate
+
+        Returns:
+            Estimated record count
+        """
         total = 0
         for prefix, count in self.density_map.items():
             if self._key_in_unit_range(prefix, unit):
@@ -398,7 +602,16 @@ class IntelligentPartitioner:
         return total
 
     def _key_in_unit_range(self, key: bytes, unit: WorkUnit) -> bool:
-        """Check if a key falls within a work unit's range."""
+        """
+        Check if a key falls within a work unit's range.
+
+        Args:
+            key: Key to check
+            unit: Work unit with range boundaries
+
+        Returns:
+            True if key is within unit's range
+        """
         if unit.start_key is not None and key < unit.start_key:
             return False
         if unit.end_key is not None and key >= unit.end_key:
@@ -407,15 +620,15 @@ class IntelligentPartitioner:
 
 
 def create_intelligent_work_units(
-        src_db_path: Path,
-        num_units: int = 128,
-        sample_rate: float = 0.001,
-        prefix_length: int = 2,
-        sort_largest_first: bool = True,
-        use_cache: bool = True,
-        force_cache_use: bool = False,
-        force_resample: bool = False,
-        ensure_gapless: bool = True
+    src_db_path: Path,
+    num_units: int = 128,
+    sample_rate: float = 0.001,
+    prefix_length: int = 2,
+    sort_largest_first: bool = True,
+    use_cache: bool = True,
+    force_cache_use: bool = False,
+    force_resample: bool = False,
+    ensure_gapless: bool = True,
 ) -> List[WorkUnit]:
     """
     Create intelligently balanced work units based on actual data density.
@@ -425,11 +638,11 @@ def create_intelligent_work_units(
         num_units: Number of work units to create
         sample_rate: Fraction of database to sample for density estimation
         prefix_length: Length of key prefix for density bucketing
-        sort_largest_first: If True, sort units largest-first for optimal parallelization
+        sort_largest_first: If True, sort units largest-first
         use_cache: If True, attempt to use cache in lieu of sampling
         force_cache_use: If True, use cache even if config does not match
         force_resample: If True, ignore cache and resample database
-        ensure_gapless: If True, eliminate gaps to guarantee complete coverage
+        ensure_gapless: If True, eliminate gaps for complete coverage
 
     Returns:
         List of balanced WorkUnit objects
@@ -438,9 +651,14 @@ def create_intelligent_work_units(
 
     # Try to load from cache first
     if use_cache and not force_resample:
-        cached_units = cache.load(num_units, sample_rate, prefix_length, force_cache_use)
+        cached_units = cache.load(
+            num_units,
+            sample_rate,
+            prefix_length,
+            force_cache_use,
+        )
         if cached_units:
-            print(f"  Loaded {len(cached_units)} work units from cache")
+            print(f"Loaded {len(cached_units)} work units from cache")
             return cached_units
 
     # Cache miss or forced resample - do the full sampling
@@ -467,7 +685,10 @@ def create_intelligent_work_units(
         work_units_with_estimates.sort(key=lambda x: x[1], reverse=True)
         work_units = [unit for unit, _ in work_units_with_estimates]
 
-        print(f"  Sorted {len(work_units)} work units by size (largest first) for optimal parallelization")
+        print(
+            f"\nSorted {len(work_units)} work units by size "
+            f"(largest first) for optimal parallelization"
+        )
 
     # Save to cache
     cache.save(work_units, num_units, sample_rate, prefix_length)

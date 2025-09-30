@@ -1,35 +1,67 @@
 # common_db/api.py
+"""High-level API for RocksDB operations via rocks_shim C++ binding."""
 from __future__ import annotations
+
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, Iterator, Tuple, Union
+from typing import Iterator, Optional, Tuple, Union
+
 import rocks_shim as rs
 
 PathLike = Union[str, Path]
 KV = Tuple[bytes, bytes]
 
+
 @contextmanager
 def open_db(
-    path: Path | str,
-    *,
-    mode: str = "rw",
-    profile: Optional[str] = None,
-    create_if_missing: Optional[bool] = None,
-    error_if_exists: Optional[bool] = None,   # reserved
-    merge_operator: Optional[str] = None,     # reserved
+        path: PathLike,
+        *,
+        mode: str = "rw",
+        profile: Optional[str] = None,
+        create_if_missing: Optional[bool] = None,
+        error_if_exists: Optional[bool] = None,
+        merge_operator: Optional[str] = None,
 ):
+    """
+    Open a RocksDB database with automatic cleanup.
+
+    Args:
+        path: Path to database directory
+        mode: Access mode - 'r' (read-only), 'rw' (read-write)
+        profile: Performance profile name (if supported by shim)
+        create_if_missing: Create database if it doesn't exist
+        error_if_exists: Error if database already exists (reserved)
+        merge_operator: Custom merge operator name (reserved)
+    """
     kwargs = {}
     if profile is not None:
         kwargs["profile"] = profile
     if create_if_missing is not None:
         kwargs["create_if_missing"] = create_if_missing
+    # Reserved for future use
+    if error_if_exists is not None:
+        kwargs["error_if_exists"] = error_if_exists
+    if merge_operator is not None:
+        kwargs["merge_operator"] = merge_operator
+
     db = rs.open(str(path), mode=mode, **kwargs)
     try:
         yield db
     finally:
         db.close()
 
+
 def prefix_scan(db: rs.DB, prefix: bytes) -> Iterator[KV]:
+    """
+    Scan all key-value pairs matching a given prefix.
+
+    Args:
+        db: RocksDB database handle
+        prefix: Binary prefix to match
+    """
+    if not isinstance(prefix, bytes):
+        raise TypeError(f"prefix must be bytes, got {type(prefix).__name__}")
+
     it = db.iterator()
     try:
         it.seek(prefix)
@@ -40,21 +72,33 @@ def prefix_scan(db: rs.DB, prefix: bytes) -> Iterator[KV]:
             yield k, it.value()
             it.next()
     finally:
-        # Iterator has no .close(); drop it so C++ dtor runs before DB closes
         del it
 
+
 def range_scan(
-    db: rs.DB,
-    lower: bytes = b"",
-    upper_exclusive: Optional[bytes] = None,
+        db: rs.DB,
+        lower: bytes = b"",
+        upper_exclusive: Optional[bytes] = None,
 ) -> Iterator[KV]:
-    # normalize inputs (optional)
+    """
+    Scan key-value pairs in range [lower, upper_exclusive).
+
+    Args:
+        db: RocksDB database handle
+        lower: Inclusive lower bound (default: scan from start)
+        upper_exclusive: Exclusive upper bound (default: scan to end)
+    """
+    # Normalize bytes-like inputs to bytes
     if not isinstance(lower, (bytes, bytearray, memoryview)):
-        raise TypeError("lower must be bytes-like")
+        raise TypeError(f"lower must be bytes-like, got {type(lower).__name__}")
     if isinstance(lower, (bytearray, memoryview)):
         lower = bytes(lower)
-    if upper_exclusive is not None and isinstance(upper_exclusive, (bytearray, memoryview)):
-        upper_exclusive = bytes(upper_exclusive)
+
+    if upper_exclusive is not None:
+        if not isinstance(upper_exclusive, (bytes, bytearray, memoryview)):
+            raise TypeError(f"upper_exclusive must be bytes-like, got {type(upper_exclusive).__name__}")
+        if isinstance(upper_exclusive, (bytearray, memoryview)):
+            upper_exclusive = bytes(upper_exclusive)
 
     it = db.iterator()
     try:
@@ -66,9 +110,9 @@ def range_scan(
             yield k, it.value()
             it.next()
     finally:
-        # important: release iterator before DB context exits
         del it
 
+
 def scan_all(db: rs.DB) -> Iterator[KV]:
-    """Full forward scan."""
+    """Full forward scan of all key-value pairs."""
     return range_scan(db, b"", None)

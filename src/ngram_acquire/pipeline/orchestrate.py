@@ -1,4 +1,4 @@
-# ngram_acquire/pipeline/orchestrate.py
+"""Main orchestration for ngram acquisition pipeline."""
 from __future__ import annotations
 
 import logging
@@ -9,12 +9,7 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Optional, Tuple, Type
 
-try:
-    import setproctitle as _setproctitle  # optional nicety
-except Exception:  # pragma: no cover
-    _setproctitle = None
-
-from ngram_acquire.io.locations import set_location_info
+from ngram_acquire.io.locations import build_location_info
 from ngram_acquire.io.fetch import fetch_file_urls
 from ngram_acquire.utils.filters import make_ngram_type_predicate
 from ngram_acquire.pipeline.report import print_run_summary
@@ -22,19 +17,26 @@ from ngram_acquire.pipeline.runner import process_files
 from ngram_acquire.db.metadata import is_file_processed
 from ngram_acquire.db.write import DEFAULT_WRITE_BATCH_SIZE
 from ngram_acquire.utils.cleanup import safe_db_cleanup
+from ngram_acquire.db.build_path import build_db_path
 from common_db.api import open_db
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["download_and_ingest_to_rocksdb"]
+
+try:
+    import setproctitle as _setproctitle
+except ImportError:
+    _setproctitle = None
+
 
 def _format_bytes(byte_count: int) -> str:
     """Convert bytes to human-readable format."""
-    for unit in ['bytes', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["bytes", "KB", "MB", "GB", "TB"]:
         if byte_count < 1024.0:
-            if unit == 'bytes':
+            if unit == "bytes":
                 return f"{byte_count:,} {unit}"
-            else:
-                return f"{byte_count:.2f} {unit}"
+            return f"{byte_count:.2f} {unit}"
         byte_count /= 1024.0
     return f"{byte_count:.2f} PB"
 
@@ -43,7 +45,7 @@ def download_and_ingest_to_rocksdb(
         ngram_size: int,
         repo_release_id: str,
         repo_corpus_id: str,
-        db_path: str,
+        db_path_stub: str,
         file_range: Optional[Tuple[int, int]] = None,
         workers: Optional[int] = None,
         use_threads: bool = False,
@@ -54,10 +56,36 @@ def download_and_ingest_to_rocksdb(
         open_type: str = "read",
         post_compact: bool = False,
 ) -> None:
-    """Discover files, download/parse, and ingest into RocksDB (via rocks-shim)."""
+    """
+    Main pipeline: discover, download, parse, and ingest ngram files into RocksDB.
+
+    Orchestrates the complete ngram acquisition workflow:
+    1. Builds database path from stub and parameters
+    2. Discovers available files from repository
+    3. Opens/creates RocksDB with specified profile
+    4. Downloads and processes files concurrently
+    5. Writes batched results to database
+    6. Optionally performs post-ingestion compaction
+
+    Args:
+        ngram_size: N-gram size (1-5)
+        repo_release_id: Release date in YYYYMMDD format (e.g., "20200217")
+        repo_corpus_id: Corpus identifier (e.g., "eng", "eng-us")
+        db_path_stub: Base directory for database (will be expanded)
+        file_range: Optional (start_idx, end_idx) to process subset of files
+        workers: Number of concurrent workers (default: min(40, cpu_count * 2))
+        use_threads: If True, use threads; otherwise use processes
+        ngram_type: Filter type ("all", "tagged", etc.)
+        overwrite: If True, remove existing database before starting
+        random_seed: Optional seed for randomizing file processing order
+        write_batch_size: Number of entries per batch write
+        open_type: RocksDB profile ("read", "write", "read:packed24", "write:packed24")
+        post_compact: If True, run manual compaction after ingestion
+    """
     logger.info("Starting N-gram processing pipeline")
 
-    if _setproctitle is not None:  # pragma: no cover
+    # Set process title if available
+    if _setproctitle is not None:
         try:
             _setproctitle.setproctitle("PROC_MAIN")
         except Exception:
@@ -65,14 +93,20 @@ def download_and_ingest_to_rocksdb(
 
     start_time = datetime.now()
 
-    # Worker count
+    # Build full database path from stub
+    db_path = build_db_path(
+        db_path_stub, ngram_size, repo_release_id, repo_corpus_id
+    )
+    logger.info("Database path: %s", db_path)
+
+    # Determine worker count
     if workers is None:
         cpu = os.cpu_count() or 4
         workers = min(40, cpu * 2)
 
-    # Overwrite existing DB dir
+    # Handle existing database
     if overwrite and os.path.exists(db_path):
-        logger.info("Removing existing database for fresh start…")
+        logger.info("Removing existing database for fresh start")
         if not safe_db_cleanup(db_path):
             raise RuntimeError(
                 f"Failed to remove existing database at {db_path}. "
@@ -80,18 +114,18 @@ def download_and_ingest_to_rocksdb(
             )
         logger.info("Successfully removed existing database")
 
-    # Ensure parent dir exists
+    # Ensure parent directory exists
     db_dir = os.path.dirname(db_path)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
 
-    # 1) Discover files
-    page_url, file_rx = set_location_info(ngram_size, repo_release_id, repo_corpus_id)
+    # Discover available files
+    page_url, file_rx = build_location_info(ngram_size, repo_release_id, repo_corpus_id)
     file_urls_available = fetch_file_urls(page_url, file_rx)
     if not file_urls_available:
         raise RuntimeError("No n-gram files found in the repository")
 
-    # 2) Select subset
+    # Select file subset
     if file_range is None:
         file_range = (0, len(file_urls_available) - 1)
 
@@ -100,35 +134,21 @@ def download_and_ingest_to_rocksdb(
         raise ValueError(
             f"Invalid file range {file_range}. Available: 0..{len(file_urls_available) - 1}"
         )
-    file_urls_to_use = file_urls_available[start_idx : end_idx + 1]
+    file_urls_to_use = file_urls_available[start_idx: end_idx + 1]
 
-    # 3) Open DB with rocks-shim
-    ot = (open_type).lower()
-    if ot not in {"read", "write", "read:packed24", "write:packed24"}:
-        raise ValueError("open_type must be one of 'read', 'write', 'read:packed24', 'write:packed24'")
-    profile = ot
+    # Validate and normalize open_type
+    open_type = open_type.lower()
+    valid_profiles = {"read", "write", "read:packed24", "write:packed24"}
+    if open_type not in valid_profiles:
+        raise ValueError(
+            f"open_type must be one of {valid_profiles}, got {open_type!r}"
+        )
 
-    if ot == "read":
-        logger.info("Using read-optimized RocksDB options")
-    elif ot == "write":
-        logger.info("Using write-optimized RocksDB options")
-    elif ot == "read:packed24":
-        logger.info("Using read-optimized RocksDB options (packed24)")
-    elif ot == "write:packed24":
-        logger.info("Using write-optimized RocksDB options (packed24)")
+    logger.info("Using RocksDB profile: %s", open_type)
 
-    # Add this debug code right before "with open_db(db_path, profile=profile) as db:"
-    #print(f"DEBUG orchestrate.py: open_type='{open_type}', ot='{ot}', profile='{profile}'")
-
-    with open_db(db_path, profile=profile) as db:
-        # Add this debug check right after opening
-        #if hasattr(db, 'get_property'):
-        #    try:
-        #        auto_compact = db.get_property("rocksdb.disable-auto-compactions")
-        #        print(f"DEBUG: After opening, disable_auto_compactions = {auto_compact}")
-        #    except Exception as e:
-        #        print(f"DEBUG: Could not read property: {e}")
-        # Resume filter
+    # Open database with specified profile
+    with open_db(db_path, profile=open_type) as db:
+        # Resume mode: skip already-processed files
         files_to_skip = 0
         if not overwrite:
             to_keep = []
@@ -138,24 +158,26 @@ def download_and_ingest_to_rocksdb(
                     to_keep.append(url)
             files_to_skip = len(file_urls_to_use) - len(to_keep)
             file_urls_to_use = to_keep
-            if files_to_skip:
-                logger.info("Resume mode: skipping %s processed files", files_to_skip)
-            if not file_urls_to_use:
-                print("🎉 All files in the specified range are already processed!")
-                return  # context closes DB
 
-        # Optional shuffle
+            if files_to_skip:
+                logger.info("Resume mode: skipping %d processed files", files_to_skip)
+
+            if not file_urls_to_use:
+                print("All files in the specified range are already processed!")
+                return
+
+        # Optional randomization
         if random_seed is not None:
             random.seed(random_seed)
             random.shuffle(file_urls_to_use)
-            logger.info("Randomized file order with seed %s", random_seed)
+            logger.info("Randomized file order with seed %d", random_seed)
 
-        # Executor & predicate
+        # Configure executor
         executor_class: Type = ThreadPoolExecutor if use_threads else ProcessPoolExecutor
         executor_name = "threads" if use_threads else "processes"
         filter_pred = make_ngram_type_predicate(ngram_type)
 
-        # 3.5) Summary
+        # Print run summary
         print_run_summary(
             ngram_repo_url=page_url,
             db_path=db_path,
@@ -170,10 +192,11 @@ def download_and_ingest_to_rocksdb(
             overwrite=overwrite,
             files_to_skip=files_to_skip,
             write_batch_size=write_batch_size,
-            color=True,
+            profile=open_type,
+            post_compact=post_compact,
         )
 
-        # 4) Process & ingest - now returns uncompressed byte count
+        # Process and ingest files
         success, failure, written, batches, uncompressed_bytes = process_files(
             urls=file_urls_to_use,
             executor_class=executor_class,
@@ -183,43 +206,42 @@ def download_and_ingest_to_rocksdb(
             write_batch_size=write_batch_size,
         )
 
+        # Optional post-ingestion compaction
         if post_compact:
-            logger.info("Bulk ingestion complete. Starting manual compaction...")
-            print("\n\033[33mStarting post-ingest compaction...\033[0m")
+            logger.info("Bulk ingestion complete. Starting manual compaction")
+            print("Compacting... ", end="", flush=True)
 
             compact_start = datetime.now()
-            # Perform full manual compaction
             db.compact_all()
-            logger.info("Manual compaction completed successfully")
 
             compact_end = datetime.now()
             compact_time = compact_end - compact_start
-            print(f"\033[32mCompaction completed in {compact_time}\033[0m")
+            print(f"completed in {compact_time}")
+            logger.info("Manual compaction completed in %s", compact_time)
 
-    # 5) Report stats
+    # Report final statistics
     end_time = datetime.now()
     total_runtime = end_time - start_time
     ok = len(success)
     bad = len(failure)
     time_per_file = (total_runtime / ok) if ok else total_runtime
     fph = (3600 / time_per_file.total_seconds()) if ok else 0.0
+    mb_per_sec = (uncompressed_bytes / (1024 * 1024)) / total_runtime.total_seconds()
 
-    print("\033[32m\nProcessing completed!\033[0m")
-    print(f"Fully processed files: {ok}")
-    if bad:
-        print(f"\033[31mFailed files: {bad}\033[0m")
-    print(f"Total entries written: {written:,}")
-    print(f"Write batches flushed: {batches}")
+    lines = [
+        "\nProcessing complete!",
+        "\nProcessing Summary",
+        "═" * 100,
+        f"Fully processed files:       {ok}",
+        f"Failed files:                {bad}",
+        f"Total entries written:       {written:,}",
+        f"Write batches flushed:       {batches}",
+        f"Uncompressed data processed: {_format_bytes(uncompressed_bytes)}",
+        f"Processing throughput:       {mb_per_sec:.2f} MB/sec",
+        f"\nEnd Time: {end_time}",
+        f"Total Runtime: {total_runtime}",
+        f"Time per file: {time_per_file}",
+        f"Files per hour: {fph:.1f}",
+    ]
 
-    # New: Display uncompressed data processed
-    print(f"Uncompressed data processed: {_format_bytes(uncompressed_bytes)}")
-
-    # Calculate and display processing throughput
-    if total_runtime.total_seconds() > 0:
-        mb_per_sec = (uncompressed_bytes / (1024 * 1024)) / total_runtime.total_seconds()
-        print(f"Processing throughput: {mb_per_sec:.2f} MB/sec")
-
-    print(f"\033[31m\nEnd Time: {end_time}\033[0m")
-    print(f"\033[31mTotal Runtime: {total_runtime}\033[0m")
-    print(f"\033[34m\nTime per file: {time_per_file}\033[0m")
-    print(f"\033[34mFiles per hour: {fph:.1f}\033[0m")
+    print("\n".join(lines))
