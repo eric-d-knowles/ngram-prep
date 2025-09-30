@@ -689,17 +689,17 @@ class PipelineOrchestrator:
                 total_width=87,
             )
 
-        print("\n╭" + "─" * 85 + "╮")
+        print("\n╭" + "─" * 87 + "╮")
         total_mb = self.total_bytes / 1_000_000
         message1 = (
             f"PROCESSING COMPLETE: Final DB contains "
             f"{self.total_items:,} items, {total_mb:,.1f} MB"
         )
-        print(f"│ {message1:<83} │")
+        print(f"│ {message1:<83}   │")
         print(f"│ DB: {db_path_str:<79} │")
         if whitelist_str:
             print(f"│ Whitelist: {whitelist_str:<72} │")
-        print("╰" + "─" * 85 + "╯\n")
+        print("╰" + "─" * 87 + "╯\n")
 
     def _create_worker_config(self) -> WorkerConfig:
         """
