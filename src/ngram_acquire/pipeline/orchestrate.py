@@ -18,6 +18,7 @@ from ngram_acquire.db.metadata import is_file_processed
 from ngram_acquire.db.write import DEFAULT_WRITE_BATCH_SIZE
 from ngram_acquire.utils.cleanup import safe_db_cleanup
 from ngram_acquire.db.build_path import build_db_path
+from utilities.compact_incremental import compact_incremental
 from common_db.api import open_db
 
 logger = logging.getLogger(__name__)
@@ -50,11 +51,13 @@ def download_and_ingest_to_rocksdb(
         workers: Optional[int] = None,
         use_threads: bool = False,
         ngram_type: str = "all",
-        overwrite: bool = True,
+        overwrite_db: bool = True,
         random_seed: Optional[int] = None,
         write_batch_size: int = DEFAULT_WRITE_BATCH_SIZE,
         open_type: str = "read",
+        overwrite_checkpoint: bool = False,
         post_compact: bool = False,
+        prefix_bytes: int = None,
 ) -> None:
     """
     Main pipeline: discover, download, parse, and ingest ngram files into RocksDB.
@@ -76,11 +79,14 @@ def download_and_ingest_to_rocksdb(
         workers: Number of concurrent workers (default: min(40, cpu_count * 2))
         use_threads: If True, use threads; otherwise use processes
         ngram_type: Filter type ("all", "tagged", etc.)
-        overwrite: If True, remove existing database before starting
+        overwrite_db: If True, remove existing database before starting
         random_seed: Optional seed for randomizing file processing order
         write_batch_size: Number of entries per batch write
         open_type: RocksDB profile ("read", "write", "read:packed24", "write:packed24")
         post_compact: If True, run manual compaction after ingestion
+        overwrite_checkpoint: If True, remove existing checkpoint before starting
+        prefix_bytes: Prefix bytes for compaction ranges (1, 2, or None).
+                     If None, uses cache-based compaction (falls back to full compaction).
     """
     logger.info("Starting N-gram processing pipeline")
 
@@ -105,7 +111,7 @@ def download_and_ingest_to_rocksdb(
         workers = min(40, cpu * 2)
 
     # Handle existing database
-    if overwrite and os.path.exists(db_path):
+    if overwrite_db and os.path.exists(db_path):
         logger.info("Removing existing database for fresh start")
         if not safe_db_cleanup(db_path):
             raise RuntimeError(
@@ -146,11 +152,11 @@ def download_and_ingest_to_rocksdb(
 
     logger.info("Using RocksDB profile: %s", open_type)
 
-    # Open database with specified profile
-    with open_db(db_path, profile=open_type) as db:
+    # Open database with specified profile (flush happens automatically on exit)
+    with open_db(db_path, profile=open_type, create_if_missing=True) as db:
         # Resume mode: skip already-processed files
         files_to_skip = 0
-        if not overwrite:
+        if not overwrite_db:
             to_keep = []
             for url in file_urls_to_use:
                 name = PurePosixPath(url).name
@@ -161,10 +167,6 @@ def download_and_ingest_to_rocksdb(
 
             if files_to_skip:
                 logger.info("Resume mode: skipping %d processed files", files_to_skip)
-
-            if not file_urls_to_use:
-                print("All files in the specified range are already processed!")
-                return
 
         # Optional randomization
         if random_seed is not None:
@@ -186,10 +188,9 @@ def download_and_ingest_to_rocksdb(
             file_urls_to_use=file_urls_to_use,
             ngram_size=ngram_size,
             workers=workers,
-            executor_name=executor_name,
             start_time=start_time,
             ngram_type=ngram_type,
-            overwrite=overwrite,
+            overwrite_db=overwrite_db,
             files_to_skip=files_to_skip,
             write_batch_size=write_batch_size,
             profile=open_type,
@@ -205,19 +206,17 @@ def download_and_ingest_to_rocksdb(
             filter_pred=filter_pred,
             write_batch_size=write_batch_size,
         )
+        # Database is automatically flushed by context manager on exit
 
-        # Optional post-ingestion compaction
-        if post_compact:
-            logger.info("Bulk ingestion complete. Starting manual compaction")
-            print("Compacting... ", end="", flush=True)
-
-            compact_start = datetime.now()
-            db.compact_all()
-
-            compact_end = datetime.now()
-            compact_time = compact_end - compact_start
-            print(f"completed in {compact_time}")
-            logger.info("Manual compaction completed in %s", compact_time)
+    # Optional post-ingestion compaction (done after closing the write handle)
+    if post_compact:
+        logger.info("Bulk ingestion complete. Starting incremental compaction")
+        compact_incremental(
+            db_path,
+            prefix_bytes=prefix_bytes,
+            overwrite_checkpoint=overwrite_checkpoint
+        )
+        logger.info("Incremental compaction completed")
 
     # Report final statistics
     end_time = datetime.now()
@@ -230,7 +229,7 @@ def download_and_ingest_to_rocksdb(
 
     lines = [
         "\nProcessing complete!",
-        "\nProcessing Summary",
+        "\nFinal Summary",
         "═" * 100,
         f"Fully processed files:       {ok}",
         f"Failed files:                {bad}",
@@ -242,6 +241,6 @@ def download_and_ingest_to_rocksdb(
         f"Total Runtime: {total_runtime}",
         f"Time per file: {time_per_file}",
         f"Files per hour: {fph:.1f}",
-    ]
+        ]
 
     print("\n".join(lines))

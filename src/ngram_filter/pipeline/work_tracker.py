@@ -382,7 +382,7 @@ def validate_work_units(src_db_path: Path, work_units: list[WorkUnit]) -> bool:
     print(f"  Validating {len(work_units)} work units...")
 
     try:
-        with open_db(src_db_path, mode="ro") as db:
+        with open_db(src_db_path, mode="r") as db:
             total_keys_found = 0
             validation_sample_size = min(10, len(work_units))
 

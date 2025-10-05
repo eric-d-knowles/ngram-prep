@@ -8,7 +8,7 @@ SRC_DB = Path("/vast/edk202/NLP_corpora/Google_Books/20200217/eng/5gram_files/5g
 def check_db_properties(db_path):
     """Check what RocksDB properties are available."""
 
-    with open_db(db_path, mode="ro") as db:
+    with open_db(db_path, mode="r") as db:
         properties_to_check = [
             "rocksdb.estimate-num-keys",
             "rocksdb.estimate-table-readers-mem",

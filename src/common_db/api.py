@@ -48,6 +48,14 @@ def open_db(
     try:
         yield db
     finally:
+        # Flush memtables to SST files before closing (write modes only)
+        if mode in ("rw", "w"):
+            try:
+                db.finalize_bulk()
+            except AttributeError:
+                print(f"Warning: finalize_bulk() not available on RocksDB handle for {path}", flush=True)
+            except Exception as e:
+                print(f"Warning: Database flush failed for {path}: {e}", flush=True)
         db.close()
 
 

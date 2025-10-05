@@ -40,7 +40,7 @@ def _db_from(db_or_path: Union[str, Path, "rs.DB"]):
     else:
         path = str(Path(db_or_path))
         # Use your rocks-shim context manager. If "read" is unsupported, shim can ignore it.
-        with open_db(path, mode="ro", profile="read") as db:
+        with open_db(path, mode="r", profile="read") as db:
             yield db
 
 

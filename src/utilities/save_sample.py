@@ -119,7 +119,7 @@ def verify_sample_db(db_path, show_count=5, decode_output=False, unpack_ngram=Fa
         unpack_ngram: If True, unpack and format N-gram frequency data
     """
     try:
-        with rs.open(db_path, mode="ro") as db:
+        with rs.open(db_path, mode="r") as db:
             iterator = db.iterator()
             iterator.seek(b"")
 

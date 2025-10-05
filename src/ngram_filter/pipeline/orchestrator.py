@@ -140,9 +140,9 @@ class PipelineOrchestrator:
             "enable_ingest",
             None,
         )
-        enable_compact = getattr(
+        post_compact = getattr(
             self.pipeline_config,
-            "enable_compact",
+            "post_compact",
             None,
         )
 
@@ -161,7 +161,7 @@ class PipelineOrchestrator:
         print("\033[4mPipeline\033[0m")
         print(f"Run mode: {mode}")
         print(f"Ingest after filtering: {enable_ingest}")
-        print(f"Compact after ingesting: {enable_compact}")
+        print(f"Compact after ingesting: {post_compact}")
         print("  ")
         print("\033[4mWorkers\033[0m")
         print(f"Num Workers: {num_workers}")
@@ -239,17 +239,18 @@ class PipelineOrchestrator:
 
     def _prepare_directories(self) -> None:
         """Clean and create necessary directories."""
-        # Always clean destination DB
-        if self.temp_paths['dst_db'].exists():
-            shutil.rmtree(self.temp_paths['dst_db'])
-        self.temp_paths['dst_db'].parent.mkdir(parents=True, exist_ok=True)
-
         mode = getattr(self.pipeline_config, 'mode', 'resume')
+
+        # Clean destination DB only for restart/reprocess modes
+        if mode in ('restart', 'reprocess') and self.temp_paths['dst_db'].exists():
+            shutil.rmtree(self.temp_paths['dst_db'])
+
+        self.temp_paths['dst_db'].parent.mkdir(parents=True, exist_ok=True)
 
         # Clean temp directory for restart or reprocess modes
         if (
-            mode in ('restart', 'reprocess')
-            and self.temp_paths['tmp_dir'].exists()
+                mode in ('restart', 'reprocess')
+                and self.temp_paths['tmp_dir'].exists()
         ):
             shutil.rmtree(self.temp_paths['tmp_dir'])
 
@@ -365,7 +366,7 @@ class PipelineOrchestrator:
         mode = getattr(self.pipeline_config, 'mode', 'resume')
 
         if mode == 'restart':
-            print("Clean restart - resampling and creating new work units\n")
+            print("Clean restart - resampling and creating new work units")
             work_tracker.clear_all_work_units()
             self._create_new_work_units(work_tracker, num_work_units)
 
@@ -548,12 +549,6 @@ class PipelineOrchestrator:
         print("\nPhase 3: Merging worker outputs into final database...")
         print("═" * 100)
 
-        output_files = sorted(self.temp_paths['output_dir'].glob("*.db"))
-        print(f"Found {len(output_files)} worker output files")
-
-        if not output_files:
-            raise RuntimeError("No worker output files found")
-
         # Configure merge parameters
         ingest_batch_bytes = getattr(
             self.pipeline_config,
@@ -571,10 +566,15 @@ class PipelineOrchestrator:
             'delete_after_ingest',
             False,
         )
-        enable_compact = getattr(
+        post_compact = getattr(
             self.pipeline_config,
-            'enable_compact',
+            'post_compact',
             True,
+        )
+        overwrite_checkpoint = getattr(
+            self.pipeline_config,
+            'overwrite_checkpoint',
+            False,
         )
 
         batch_mb = ingest_batch_bytes // (1024 * 1024)
@@ -587,7 +587,7 @@ class PipelineOrchestrator:
         else:
             print("Retaining shards after successful ingestion")
 
-        # Perform the merge
+        # Perform the merge (or skip if already done and run compaction if needed)
         self.total_items, self.total_bytes = ingest_shards_streaming(
             dst_db_path=self.temp_paths['dst_db'],
             shards_root=self.temp_paths['output_dir'],
@@ -612,7 +612,9 @@ class PipelineOrchestrator:
             diag_every_seconds=3.0,
             num_readers=num_ingestors,
             delete_after_ingest=delete_shards,
-            enable_compact=enable_compact
+            post_compact=post_compact,
+            overwrite_checkpoint=overwrite_checkpoint,
+            skip_if_exists=True,
         )
 
     def _validate_final_result(self) -> None:
@@ -621,7 +623,7 @@ class PipelineOrchestrator:
             raise RuntimeError("Final database was not created")
 
         try:
-            with open_db(self.temp_paths['dst_db'], mode="ro") as result_db:
+            with open_db(self.temp_paths['dst_db'], mode="r") as result_db:
                 result_db.get_property("rocksdb.estimate-num-keys")
         except Exception as e:
             print(f"Could not validate final database: {e}")

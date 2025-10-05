@@ -17,6 +17,14 @@ KeyValue = tuple[bytes, bytes]
 KeyValueOp = tuple[bytes, bytes, str]
 
 
+def _run_incremental_compaction(db_path: Path, *, prefix_bytes: int | None, overwrite_checkpoint: bool) -> None:
+    from utilities.compact_incremental import compact_incremental
+    compact_incremental(
+        str(db_path),
+        prefix_bytes=prefix_bytes,
+        overwrite_checkpoint=overwrite_checkpoint,
+    )
+
 def batch_for_merge(
         pairs: Iterable[KeyValue],
         target_bytes: int = 64 * 1024 * 1024,  # 64 MB
@@ -24,14 +32,6 @@ def batch_for_merge(
 ) -> Iterable[list[KeyValueOp]]:
     """
     Yield batches of (key, value, 'merge') operations.
-
-    Args:
-        pairs: Iterable of (key, value) pairs
-        target_bytes: Target size per batch in bytes
-        max_items: Maximum items per batch
-
-    Yields:
-        Batches of merge operations ready for database writes
     """
     batch: list[KeyValueOp] = []
     current_size = 0
@@ -83,7 +83,8 @@ def shard_reader_worker(shard_paths: list[Path], queue: mp.Queue, read_profile: 
         for shard_dir in shard_paths:
             batch = []
             batch_count = 0
-            with open_db(shard_dir, mode="ro", profile=read_profile) as src:
+            # True read-only open (no LOCK)
+            with open_db(shard_dir, mode="r", profile=read_profile) as src:
                 for key, value in scan_all(src):
                     batch.append((key, value or b""))
 
@@ -127,26 +128,47 @@ def ingest_shards_streaming(
         diag_every_batches: int = 50,
         diag_every_seconds: float = 5.0,
         delete_after_ingest: bool = False,
-        num_readers: int = 8,  # Number of parallel reader processes
-        enable_compact: bool = True,  # Make compaction optional
+        num_readers: int = 8,
+        post_compact: bool = True,
+        overwrite_checkpoint: bool = False,
+        skip_if_exists: bool = True,
 ) -> tuple[int, int]:
     """
     Merge per-shard RocksDBs into a single destination database with parallel reading.
 
-    Args:
-        dst_db_path: Path to the destination database
-        shards_root: Root directory containing shard databases
-        read_profile: Profile for reading source databases
-        write_profile: Profile for writing to destination database
-        batch_bytes: Target bytes per batch
-        batch_items: Maximum items per batch
-        disable_wal: Whether to disable write-ahead logging
-        diag_every_batches: Print diagnostics every N batches
-        diag_every_seconds: Print diagnostics every N seconds
-        delete_after_ingest: Delete shards after successful ingestion
-        num_readers: Number of parallel reader processes
-        enable_compact: Whether to perform final compaction (can be slow on large DBs)
+    Returns:
+        Tuple of (total_items, total_bytes)
     """
+    dst_db_path = Path(dst_db_path)
+    shards_root = Path(shards_root)
+
+    # Check if we should skip ingestion
+    if skip_if_exists and dst_db_path.exists():
+        print("Destination DB already exists - skipping ingestion")
+
+        # Get stats from existing DB (short-lived read-only handle)
+        try:
+            with open_db(dst_db_path, mode="r") as db:
+                prop = db.get_property("rocksdb.estimate-num-keys")
+                total_items = int(prop) if prop else 0
+                prop = db.get_property("rocksdb.total-sst-files-size")
+                total_bytes = int(prop) if prop else 0
+        except Exception:
+            total_items = 0
+            total_bytes = 0
+
+        # Still run compaction if requested
+        if post_compact:
+            print("Running post-ingestion compaction...")
+            _run_incremental_compaction(
+                dst_db_path,
+                prefix_bytes=None,
+                overwrite_checkpoint=overwrite_checkpoint
+            )
+
+        return total_items, total_bytes
+
+    # Normal ingestion path
     print_phase_banner()
 
     # Find all shard directories
@@ -162,7 +184,7 @@ def ingest_shards_streaming(
 
     # Create queue for (shard_name, batch_of_items) tuples
     ctx = mp.get_context("spawn")
-    queue = ctx.Queue(maxsize=50)  # Much smaller queue since we're sending batches
+    queue = ctx.Queue(maxsize=50)  # Smaller queue since we send batches
 
     # Start reader processes
     readers = []
@@ -192,18 +214,17 @@ def ingest_shards_streaming(
     batch = []
     batch_size = 0
 
-    with open_db(dst_db_path, mode="rw", profile=write_profile) as dst:
+    Path(dst_db_path).parent.mkdir(parents=True, exist_ok=True)
+    with open_db(dst_db_path, mode="rw", profile=write_profile, create_if_missing=True) as dst:
         last_diag_time = time.perf_counter()
 
         # Process batches from queue until all shards complete
         while len(completed_shards) < total_shards:
             try:
-                # Get message from queue with timeout
-                message = queue.get(timeout=1.0)
+                message = queue.get(timeout=1.0)  # (shard_name, type, n, data)
                 shard_name, msg_type = message[0], message[1]
 
                 if msg_type == "SHARD_COMPLETE":
-                    # Shard finished reading - track total batches
                     total_batches_for_shard = message[2]
                     if shard_name not in shard_progress:
                         shard_progress[shard_name] = {'total_batches': 0, 'ingested_batches': 0}
@@ -214,13 +235,11 @@ def ingest_shards_streaming(
                         completed_shards.add(shard_name)
                         stats = shard_stats[shard_name]
 
-                        # Build status message
                         status_msg = (
                             f"  {shard_name}: {stats['items']:,} items "
                             f"({stats['bytes'] / 1_000_000:.1f} MB)"
                         )
 
-                        # Add deletion status if enabled
                         if delete_after_ingest:
                             deletion_status = delete_shard_safely(shard_paths_map[shard_name], shard_name)
                             status_msg += f" {deletion_status}"
@@ -229,24 +248,18 @@ def ingest_shards_streaming(
                     continue
 
                 elif msg_type == "BATCH":
-                    # Process a batch of data
                     batch_num, batch_data = message[2], message[3]
 
-                    # Initialize tracking if needed
                     if shard_name not in shard_progress:
                         shard_progress[shard_name] = {'total_batches': 0, 'ingested_batches': 0}
 
-                    # Process each item in the batch
                     for key, value in batch_data:
-                        # Add to write batch
                         batch.append((key, value, "merge"))
                         batch_size += len(key) + len(value) + 16
 
-                        # Update shard stats
                         shard_stats[shard_name]['items'] += 1
                         shard_stats[shard_name]['bytes'] += len(key) + len(value)
 
-                        # Write batch if full
                         if batch_size >= batch_bytes or len(batch) >= batch_items:
                             try:
                                 with dst.write_batch(disable_wal=disable_wal, sync=False) as wb:
@@ -256,20 +269,17 @@ def ingest_shards_streaming(
                                 print(f"[ingest][ERROR] Commit failed: {e}", flush=True)
                                 raise
 
-                            # Update counters
                             total_batches += 1
                             total_items += len(batch)
                             total_bytes += batch_size
 
-                            # Reset batch
                             batch = []
                             batch_size = 0
 
-                    # Mark this batch as successfully ingested
                     shard_progress[shard_name]['ingested_batches'] += 1
 
             except Empty:
-                # Queue timeout - check if we're done
+                # No message yet; loop again
                 continue
 
         # Write final partial batch
@@ -288,18 +298,26 @@ def ingest_shards_streaming(
         for p in readers:
             p.join()
 
-        # Finalize the database
-        _finalize_database(dst, enable_compact)
+        # Final flush while DB is still open
+        _flush_database(dst)
 
-    # Note: Shards are deleted during processing if delete_after_ingest=True
-    # No need for cleanup here since it's done immediately after reading each shard
+    # ---- DB handle is closed here; LOCK released ----
+
+    # Optional post-ingest compaction (open a fresh handle inside compact_incremental)
+    if post_compact:
+        print("Running post-ingestion compaction...")
+        _run_incremental_compaction(
+            dst_db_path,
+            prefix_bytes=None,
+            overwrite_checkpoint=overwrite_checkpoint
+        )
 
     return total_items, total_bytes
 
 
-def _finalize_database(db, enable_compact: bool = True) -> None:
-    """Finalize the database by flushing and optionally compacting."""
-    print(f"\nPhase 3: Finalizing...")
+def _flush_database(db) -> None:
+    """Flush memtables/WAL to SSTs (no compaction here)."""
+    print(f"\nPhase 3: Finalizing (flush)...")
     print("═" * 100)
 
     try:
@@ -307,12 +325,3 @@ def _finalize_database(db, enable_compact: bool = True) -> None:
         db.finalize_bulk()
     except Exception as e:
         print(f"[ingest] finalize_bulk not available or failed: {e}", flush=True)
-
-    if enable_compact:
-        try:
-            print("Compacting...", flush=True)
-            db.compact_all()
-        except Exception:
-            pass
-    else:
-        print("Skipping compaction (disabled)", flush=True)

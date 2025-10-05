@@ -66,8 +66,10 @@ class PipelineConfig:
     # Pipeline control
     mode: str = "resume"  # "restart", "resume", or "reprocess"
     force_cache_use: bool = True
-    enable_ingest: bool = False
-    enable_compact: bool = True
+    enable_ingest: bool = True
+    overwrite_checkpoint: bool = False
+    post_compact: bool = False
+    prefix_bytes: int = None
 
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None

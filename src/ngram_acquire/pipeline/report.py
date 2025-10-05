@@ -24,13 +24,14 @@ def format_run_summary(
         file_urls_to_use: Sequence[str],
         ngram_size: int,
         workers: int,
-        executor_name: str,
         start_time: datetime,
         ngram_type: str = "all",
-        overwrite: bool = True,
+        overwrite_db: bool = False,
+        overwrite_checkpoint: bool = False,
         files_to_skip: int = 0,
         write_batch_size: int = 0,
         post_compact: bool = False,
+        prefix_bytes: int = None,
         profile: str = "read:packed24",
 ) -> str:
     """
@@ -47,10 +48,12 @@ def format_run_summary(
         executor_name: "processes" or "threads"
         start_time: Pipeline start timestamp
         ngram_type: Filter type ("all", "tagged", etc.)
-        overwrite: Whether overwriting existing database
+        overwrite_db: Whether to overwrite existing database
+        overwrite_checkpoint: Whether to overwrite existing checkpoint
         files_to_skip: Number of already-processed files being skipped
         write_batch_size: Number of entries per batch write
         post_compact: Whether post-ingestion compaction is enabled
+        prefix_bytes: Prefix bytes for compaction ranges
         profile: RocksDB configuration profile name
 
     Returns:
@@ -63,22 +66,23 @@ def format_run_summary(
         "━" * 100,
         f"Start Time: {start_time:%Y-%m-%d %H:%M:%S}",
         "",
-        "Configuration",
+        "Download Configuration",
         "═" * 100,
-        f"Ngram repo:    {_abbrev(ngram_repo_url)}",
-        f"DB path:       {db_path}",
-        f"File range:    {start} to {end}",
-        f"Total files:   {len(file_urls_available)}",
-        f"Files to get:  {len(file_urls_to_use)}",
-        f"Skipping:      {files_to_skip}",
-        f"Batch size:    {write_batch_size:,}",
-        f"Ngram size:    {ngram_size}",
-        f"Ngram type:    {ngram_type}",
-        f"Overwrite:     {overwrite}",
-        f"DB Profile:    {profile}",
-        f"Compact:       {post_compact}",
-        "",
-        "Progress",
+        f"Ngram repo:           {_abbrev(ngram_repo_url)}",
+        f"DB path:              {db_path}",
+        f"File range:           {start} to {end}",
+        f"Total files:          {len(file_urls_available)}",
+        f"Files to get:         {len(file_urls_to_use)}",
+        f"Skipping:             {files_to_skip}",
+        f"Download workers:     {workers}",
+        f"Batch size:           {write_batch_size:,}",
+        f"Ngram size:           {ngram_size}",
+        f"Ngram type:           {ngram_type}",
+        f"Overwrite DB:         {overwrite_db}",
+        f"Overwrite checkpoint: {overwrite_checkpoint}",
+        f"DB Profile:           {profile}",
+        f"Compact:              {post_compact}",
+        "\nDownload Progress",
         "═" * 100,
     ]
 

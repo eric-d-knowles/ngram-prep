@@ -87,7 +87,7 @@ def reservoir_sampling(
     print("  " + "─" * 60)
 
     try:
-        with rs.open(db_path, mode="ro") as db:
+        with rs.open(db_path, mode="r") as db:
             iterator = db.iterator()
             iterator.seek(b"")
 

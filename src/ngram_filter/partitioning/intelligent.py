@@ -119,7 +119,7 @@ class WorkUnitCache:
         Returns:
             Database fingerprint with key count estimate
         """
-        with open_db(self.db_path, mode="ro") as db:
+        with open_db(self.db_path, mode="r") as db:
             total_records_str = db.get_property("rocksdb.estimate-num-keys")
             estimated_keys = (
                 int(total_records_str) if total_records_str else 0
@@ -292,12 +292,12 @@ class IntelligentPartitioner:
             Dictionary mapping prefixes to estimated counts
         """
         print(
-            f"  Sampling database at {self.sample_rate:.5f} rate "
+            f"Sampling database at {self.sample_rate:.5f} rate "
             f"(prefix_length={prefix_length})..."
         )
 
         # Get approximate target sample size
-        with open_db(self.src_db_path, mode="ro") as db:
+        with open_db(self.src_db_path, mode="r") as db:
             total_records_str = db.get_property("rocksdb.estimate-num-keys")
             total_records = int(total_records_str) if total_records_str else 0
 
@@ -306,14 +306,14 @@ class IntelligentPartitioner:
             else:
                 target_samples = DEFAULT_TARGET_SAMPLES
 
-        print(f"  Targeting {target_samples:,} samples using reservoir sampling\n")
+        print(f"Targeting {target_samples:,} samples using reservoir sampling\n")
 
         # Use reservoir sampling to get samples
         samples = reservoir_sampling(
             str(self.src_db_path),
             target_samples,
             total_records=total_records,
-            progress_interval=5,
+            progress_interval=10,
             return_keys=True
         )
 
@@ -330,7 +330,7 @@ class IntelligentPartitioner:
         }
 
         print(
-            f"  \nSampling complete: {len(samples):,} samples collected, "
+            f"\nSampling complete: {len(samples):,} samples collected, "
             f"{len(prefix_counts)} unique prefixes\n"
         )
         self.density_map = estimated_counts

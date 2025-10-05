@@ -111,7 +111,13 @@ def process_files(
     # Determine total for progress bar
     total = len(urls) if hasattr(urls, "__len__") else None
 
-    with tqdm(total=total, desc="Processing Files", unit="files", colour="blue") as pbar:
+    with tqdm(
+        total=total,
+        desc = "Files Processed:",
+        unit = "files",
+        ncols = 100,
+        bar_format = '{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
+    ) as pbar:
         # Configure executor
         kwargs = {"max_workers": workers}
         if issubclass(executor_class, ProcessPoolExecutor):

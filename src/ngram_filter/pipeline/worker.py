@@ -163,7 +163,7 @@ def _process_work_unit(
     # Process the work unit's key range
     with open_db(
             src_db_path,
-            mode="ro",
+            mode="r",
             profile=pipeline_config.writer_read_profile
     ) as src_db:
         with open_db(

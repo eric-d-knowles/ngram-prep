@@ -19,7 +19,7 @@ def count_db_items(db_path, long progress_interval = 10_000_000):
     print("=" * 65)
 
     try:
-        with rs.open(db_path, mode="ro") as db:
+        with rs.open(db_path, mode="r") as db:
             start_time = time.perf_counter()
             iterator = db.iterator()
             iterator.seek(b"")
