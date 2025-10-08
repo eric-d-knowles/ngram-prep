@@ -313,13 +313,13 @@ class IntelligentPartitioner:
             str(self.src_db_path),
             target_samples,
             total_records=total_records,
-            progress_interval=10,
-            return_keys=True
+            progress_interval=1,
+            return_values=False
         )
 
         # Build prefix counts from samples
         prefix_counts = {}
-        for key_bytes, _ in samples:
+        for key_bytes in samples:
             prefix = key_bytes[:prefix_length]
             prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
 
