@@ -23,7 +23,7 @@ class SplitMonitorConfig:
     check_interval: float = 0.5
     """Time between checks (seconds)"""
 
-    starvation_threshold: int = 3
+    starvation_threshold: int = 1
     """Number of consecutive checks below threshold before splitting"""
 
 
@@ -83,32 +83,55 @@ def split_monitor(
         try:
             progress = work_tracker.get_progress()
 
-            # Workers are starving if we don't have enough pending buffer
-            # Maintain pending >= min(num_workers, processing) to ensure workers never idle
-            # This is proactive: we create work BEFORE workers go idle
-            has_work = progress.processing > 0 or progress.pending > 0
-            target_pending = min(num_workers, max(progress.processing, 1))
-            is_starving = progress.pending < target_pending
+            # Count starving workers: total workers not currently processing anything
+            # Use active_workers (distinct claimed_by count) instead of progress.processing
+            # because multiple units can be processing but some workers may be idle
+            starving_workers = num_workers - progress.active_workers
 
-            if has_work and is_starving:
+            # Only act if there's work in the system and workers are idle
+            has_work = progress.processing > 0 or progress.pending > 0
+            workers_need_work = has_work and starving_workers > 0 and progress.pending < starving_workers
+
+            if workers_need_work:
                 starvation_checks += 1
             else:
                 starvation_checks = 0
 
             # Split after persistent starvation
             if starvation_checks >= config.starvation_threshold:
-                unit_id = work_tracker.get_any_splittable_unit()
+                # Split enough processing units to feed all starving workers
+                # Each split creates 2 child units, so we need fewer splits than starving workers
+                num_to_split = (starving_workers + 1) // 2
 
-                if unit_id:
+                splits_done = 0
+                attempted_units = set()  # Track units we've already tried to split
+
+                # Keep trying until we get enough splits or run out of candidates
+                max_attempts = num_to_split * 10  # Reasonable upper bound
+                attempts = 0
+
+                while splits_done < num_to_split and attempts < max_attempts:
+                    attempts += 1
+                    unit_id = work_tracker.get_any_splittable_unit()
+
+                    if not unit_id or unit_id in attempted_units:
+                        # No more units or already tried this one
+                        break
+
+                    attempted_units.add(unit_id)
+
                     try:
                         work_tracker.split_work_unit(unit_id)
-                        starvation_checks = 0
+                        splits_done += 1
 
                         # Note: Parent worker will detect the split status and clean up
                         # its own output after finishing (see worker.py lines 100-104)
                     except ValueError as e:
-                        # Can't split further - accept some idle workers
-                        pass
+                        # Can't split this unit further - try next one
+                        continue
+
+                if splits_done > 0:
+                    starvation_checks = 0
 
             time.sleep(config.check_interval)
 

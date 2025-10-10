@@ -227,7 +227,7 @@ class WorkTracker:
         Get current progress statistics.
 
         Returns:
-            WorkProgress with current counts
+            WorkProgress with current counts and active worker count
         """
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.execute(
@@ -241,6 +241,16 @@ class WorkTracker:
             counts = {row[0]: row[1] for row in cursor}
             total = sum(counts.values())
 
+            # Count distinct workers actively processing units
+            cursor = conn.execute(
+                """
+                SELECT COUNT(DISTINCT claimed_by)
+                FROM work_units
+                WHERE status = 'processing' AND claimed_by IS NOT NULL
+                """
+            )
+            active_workers = cursor.fetchone()[0]
+
             return WorkProgress(
                 total=total,
                 pending=counts.get('pending', 0),
@@ -248,6 +258,7 @@ class WorkTracker:
                 completed=counts.get('completed', 0),
                 failed=counts.get('failed', 0),
                 split=counts.get('split', 0),
+                active_workers=active_workers,
             )
 
     def clear_all_work_units(self) -> None:
@@ -379,7 +390,8 @@ class WorkTracker:
     def get_any_splittable_unit(self) -> Optional[str]:
         """Get any pending or processing work unit that can be split."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            # Prefer processing units (likely larger), then original units
+            # Prefer processing units (actively being worked on, likely larger)
+            # No preference for parent vs child - split whatever needs splitting
             cursor = conn.execute(
                 """
                 SELECT unit_id
@@ -387,7 +399,6 @@ class WorkTracker:
                 WHERE status IN ('processing', 'pending')
                 ORDER BY
                     CASE status WHEN 'processing' THEN 0 ELSE 1 END,
-                    CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END,
                     RANDOM()
                     LIMIT 1
                 """
