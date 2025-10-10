@@ -28,18 +28,13 @@ class BuildExt(build_ext):
 
 ext_modules = [
     Extension(
-        name="utilities.count_items",
-        sources=["src/utilities/count_items.pyx"],
+        name="ngram_prep.utilities.count_items",
+        sources=["src/ngram_prep/utilities/count_items.pyx"],
         include_dirs=[np.get_include()],
     ),
     Extension(
-        name="utilities.reservoir_sampler",
-        sources=["src//utilities/reservoir_sampler.pyx"],
-        include_dirs=[np.get_include()],
-    ),
-    Extension(
-        name="ngram_filter.filters.core_cy",
-        sources=["src/ngram_filter/filters/core_cy.pyx"],
+        name="ngram_prep.ngram_filter.filters.core_cy",
+        sources=["src/ngram_prep/ngram_filter/filters/core_cy.pyx"],
         include_dirs=[np.get_include()],
     ),
 ]

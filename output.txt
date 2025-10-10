@@ -1,0 +1,557 @@
+N-GRAM FILTER PIPELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Configuration
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Pipeline
+Run mode:               restart
+Ingest after filtering: False
+
+Workers
+Num Workers:        32
+Initial work units: 32
+Dynamic splitting:  Enabled
+Profiles:           read=read:packed24, write=write:packed24
+Buffer:             100,000 items, 128.00 MB
+
+Files
+Source: /vast/edk202/NLP_corpora/Google_Books/20200217/eng/1gram_files/1grams.db
+Destination: /vast/edk202/NLP_corpora/Google_Books/20200217/eng/1gram_files/1grams_processed.db
+Input whitelist: None
+Output whitelist: ...ks/20200217/eng/1gram_files/1grams_processed.db/whitelist.txt (top 40,000 keys)
+
+Phase 1: Creating work units...
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Clean restart - creating new work units
+Created 32 uniform work units (byte-range partitioning)
+Dynamic splitting will handle load balancing at runtime
+
+Phase 2: Processing 32 work units with 32 workers...
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+    recs scanned     recs written     items kept       throughput       elapsed
+   ───────────────────────────────────────────────────────────────────────────────
+Worker 31 waiting for work (retry 1/10): processing=22, pending=0
+Worker 12 waiting for work (retry 1/10): processing=22, pending=0
+Worker 1 waiting for work (retry 1/10): processing=22, pending=0
+Worker 22 waiting for work (retry 1/10): processing=21, pending=0
+Worker 8 waiting for work (retry 1/10): processing=20, pending=0
+Worker 10 waiting for work (retry 1/10): processing=20, pending=0
+Worker 23 waiting for work (retry 1/10): processing=20, pending=0
+Worker 30 waiting for work (retry 1/10): processing=20, pending=0
+Worker 15 waiting for work (retry 1/10): processing=20, pending=0
+[split monitor] Split unit_0006: processing=20, pending=0, target=20
+Worker 0 waiting for work (retry 1/10): processing=20, pending=0
+Worker 31 waiting for work (retry 2/10): processing=20, pending=0
+Worker 12 waiting for work (retry 2/10): processing=20, pending=0
+Worker 1 waiting for work (retry 2/10): processing=20, pending=0
+Worker 22 waiting for work (retry 2/10): processing=20, pending=0
+Worker 28 waiting for work (retry 1/10): processing=20, pending=0
+Worker 10 waiting for work (retry 2/10): processing=20, pending=0
+Worker 8 waiting for work (retry 2/10): processing=20, pending=0
+Worker 23 waiting for work (retry 2/10): processing=20, pending=0
+Worker 30 waiting for work (retry 2/10): processing=20, pending=0
+Worker 15 waiting for work (retry 2/10): processing=20, pending=0
+Worker 0 waiting for work (retry 2/10): processing=20, pending=0
+Worker 31 waiting for work (retry 3/10): processing=20, pending=0
+Worker 12 waiting for work (retry 3/10): processing=20, pending=0
+Worker 1 waiting for work (retry 3/10): processing=20, pending=0
+Worker 22 waiting for work (retry 3/10): processing=20, pending=0
+Worker 28 waiting for work (retry 2/10): processing=20, pending=0
+Worker 10 waiting for work (retry 3/10): processing=20, pending=0
+Worker 8 waiting for work (retry 3/10): processing=20, pending=0
+Worker 23 waiting for work (retry 3/10): processing=20, pending=0
+Worker 30 waiting for work (retry 3/10): processing=20, pending=0
+Worker 15 waiting for work (retry 3/10): processing=20, pending=0
+Worker 2 waiting for work (retry 1/10): processing=19, pending=0
+Worker 0 waiting for work (retry 3/10): processing=19, pending=0
+Worker 31 waiting for work (retry 4/10): processing=19, pending=0
+Worker 12 waiting for work (retry 4/10): processing=19, pending=0
+Worker 1 waiting for work (retry 4/10): processing=19, pending=0
+Worker 22 waiting for work (retry 4/10): processing=19, pending=0
+Worker 28 waiting for work (retry 3/10): processing=19, pending=0
+Worker 10 waiting for work (retry 4/10): processing=19, pending=0
+Worker 8 waiting for work (retry 4/10): processing=19, pending=0
+Worker 23 waiting for work (retry 4/10): processing=19, pending=0
+Worker 30 waiting for work (retry 4/10): processing=19, pending=0
+Worker 15 waiting for work (retry 4/10): processing=19, pending=0
+[split monitor] Split unit_0013: processing=19, pending=0, target=19
+Worker 31 waiting for work (retry 5/10): processing=20, pending=0
+Worker 12 waiting for work (retry 5/10): processing=20, pending=0
+Worker 1 waiting for work (retry 5/10): processing=20, pending=0
+Worker 22 waiting for work (retry 5/10): processing=20, pending=0
+Worker 28 waiting for work (retry 4/10): processing=20, pending=0
+Worker 10 waiting for work (retry 5/10): processing=20, pending=0
+Worker 8 waiting for work (retry 5/10): processing=20, pending=0
+Worker 23 waiting for work (retry 5/10): processing=19, pending=0
+Worker 15 waiting for work (retry 5/10): processing=18, pending=0
+Worker 13 waiting for work (retry 1/10): processing=18, pending=0
+Worker 14 waiting for work (retry 1/10): processing=18, pending=0
+Worker 30 waiting for work (retry 5/10): processing=18, pending=0
+Worker 18 waiting for work (retry 1/10): processing=17, pending=0
+Worker 31 waiting for work (retry 6/10): processing=17, pending=0
+Worker 14 waiting for work (retry 2/10): processing=16, pending=0
+Worker 22 waiting for work (retry 6/10): processing=15, pending=0
+Worker 5 waiting for work (retry 1/10): processing=15, pending=0
+Worker 13 waiting for work (retry 2/10): processing=14, pending=0
+Worker 17 waiting for work (retry 1/10): processing=14, pending=0
+Worker 8 waiting for work (retry 6/10): processing=14, pending=0
+Worker 18 waiting for work (retry 2/10): processing=14, pending=0
+[split monitor] Split unit_0012: processing=15, pending=0, target=15
+Worker 31 waiting for work (retry 7/10): processing=14, pending=0
+Worker 20 waiting for work (retry 1/10): processing=14, pending=0
+Worker 14 waiting for work (retry 3/10): processing=14, pending=0
+Worker 12 waiting for work (retry 6/10): processing=14, pending=0
+Worker 22 waiting for work (retry 7/10): processing=14, pending=0
+Worker 5 waiting for work (retry 2/10): processing=14, pending=0
+Worker 27 waiting for work (retry 1/10): processing=14, pending=0
+Worker 13 waiting for work (retry 3/10): processing=14, pending=0
+Worker 17 waiting for work (retry 2/10): processing=14, pending=0
+Worker 8 waiting for work (retry 7/10): processing=14, pending=0
+Worker 18 waiting for work (retry 3/10): processing=14, pending=0
+Worker 1 waiting for work (retry 6/10): processing=14, pending=0
+Worker 10 waiting for work (retry 6/10): processing=14, pending=0
+Worker 31 waiting for work (retry 8/10): processing=14, pending=0
+Worker 20 waiting for work (retry 2/10): processing=14, pending=0
+Worker 14 waiting for work (retry 4/10): processing=14, pending=0
+Worker 23 waiting for work (retry 6/10): processing=14, pending=0
+Worker 12 waiting for work (retry 7/10): processing=14, pending=0
+Worker 22 waiting for work (retry 8/10): processing=14, pending=0
+Worker 5 waiting for work (retry 3/10): processing=14, pending=0
+Worker 28 waiting for work (retry 5/10): processing=14, pending=0
+Worker 10 waiting for work (retry 7/10): processing=14, pending=0
+Worker 8 waiting for work (retry 8/10): processing=14, pending=0
+Worker 31 waiting for work (retry 9/10): processing=14, pending=0
+Worker 1 waiting for work (retry 7/10): processing=14, pending=0
+Worker 20 waiting for work (retry 3/10): processing=14, pending=0
+Worker 14 waiting for work (retry 5/10): processing=14, pending=0
+Worker 9 waiting for work (retry 1/10): processing=13, pending=0
+Worker 23 waiting for work (retry 7/10): processing=13, pending=0
+Worker 5 waiting for work (retry 4/10): processing=13, pending=0
+Worker 22 waiting for work (retry 9/10): processing=13, pending=0
+Worker 13 waiting for work (retry 4/10): processing=13, pending=0
+[split monitor] Split unit_0009: processing=13, pending=0, target=13
+Worker 28 waiting for work (retry 6/10): processing=13, pending=0
+Worker 10 waiting for work (retry 8/10): processing=13, pending=0
+Worker 8 waiting for work (retry 9/10): processing=13, pending=0
+Worker 31 waiting for work (retry 10/10): processing=13, pending=0
+Worker 1 waiting for work (retry 8/10): processing=13, pending=0
+Worker 20 waiting for work (retry 4/10): processing=13, pending=0
+Worker 14 waiting for work (retry 6/10): processing=13, pending=0
+Worker 17 waiting for work (retry 3/10): processing=13, pending=0
+Worker 9 waiting for work (retry 2/10): processing=13, pending=0
+Worker 27 waiting for work (retry 2/10): processing=13, pending=0
+Worker 23 waiting for work (retry 8/10): processing=13, pending=0
+Worker 5 waiting for work (retry 5/10): processing=13, pending=0
+Worker 18 waiting for work (retry 4/10): processing=13, pending=0
+Worker 22 waiting for work (retry 10/10): processing=13, pending=0
+Worker 13 waiting for work (retry 5/10): processing=13, pending=0
+Worker 28 waiting for work (retry 7/10): processing=13, pending=0
+Worker 10 waiting for work (retry 9/10): processing=13, pending=0
+Worker 8 waiting for work (retry 10/10): processing=13, pending=0
+Worker 31 exiting: processing=13, pending=0, retries exhausted=True
+Worker 1 waiting for work (retry 9/10): processing=13, pending=0
+Worker 20 waiting for work (retry 5/10): processing=13, pending=0
+Worker 14 waiting for work (retry 7/10): processing=13, pending=0
+Worker 17 waiting for work (retry 4/10): processing=13, pending=0
+Worker 9 waiting for work (retry 3/10): processing=13, pending=0
+Worker 27 waiting for work (retry 3/10): processing=13, pending=0
+Worker 23 waiting for work (retry 9/10): processing=13, pending=0
+Worker 5 waiting for work (retry 6/10): processing=13, pending=0
+Worker 18 waiting for work (retry 5/10): processing=13, pending=0
+Worker 22 exiting: processing=13, pending=0, retries exhausted=True
+Worker 13 waiting for work (retry 6/10): processing=13, pending=0
+Worker 28 waiting for work (retry 8/10): processing=13, pending=0
+Worker 10 waiting for work (retry 10/10): processing=13, pending=0
+Worker 8 exiting: processing=13, pending=0, retries exhausted=True
+Worker 1 waiting for work (retry 10/10): processing=13, pending=0
+Worker 20 waiting for work (retry 6/10): processing=13, pending=0
+Worker 14 waiting for work (retry 8/10): processing=13, pending=0
+Worker 17 waiting for work (retry 5/10): processing=13, pending=0
+Worker 9 waiting for work (retry 4/10): processing=13, pending=0
+Worker 27 waiting for work (retry 4/10): processing=13, pending=0
+Worker 23 waiting for work (retry 10/10): processing=13, pending=0
+Worker 5 waiting for work (retry 7/10): processing=13, pending=0
+Worker 18 waiting for work (retry 6/10): processing=13, pending=0
+Worker 13 waiting for work (retry 7/10): processing=13, pending=0
+[split monitor] Split unit_0008: processing=13, pending=0, target=13
+Worker 1 exiting: processing=14, pending=0, retries exhausted=True
+Worker 20 waiting for work (retry 7/10): processing=14, pending=0
+Worker 14 waiting for work (retry 9/10): processing=14, pending=0
+Worker 17 waiting for work (retry 6/10): processing=14, pending=0
+Worker 9 waiting for work (retry 5/10): processing=14, pending=0
+Worker 27 waiting for work (retry 5/10): processing=14, pending=0
+Worker 23 exiting: processing=14, pending=0, retries exhausted=True
+Worker 5 waiting for work (retry 8/10): processing=14, pending=0
+Worker 18 waiting for work (retry 7/10): processing=14, pending=0
+Worker 13 waiting for work (retry 8/10): processing=14, pending=0
+Worker 20 waiting for work (retry 8/10): processing=14, pending=0
+Worker 14 waiting for work (retry 10/10): processing=14, pending=0
+Worker 17 waiting for work (retry 7/10): processing=14, pending=0
+Worker 27 waiting for work (retry 6/10): processing=14, pending=0
+Worker 9 waiting for work (retry 6/10): processing=14, pending=0
+Worker 5 waiting for work (retry 9/10): processing=14, pending=0
+Worker 18 waiting for work (retry 8/10): processing=14, pending=0
+Worker 13 waiting for work (retry 9/10): processing=14, pending=0
+Worker 20 waiting for work (retry 9/10): processing=14, pending=0
+Worker 14 exiting: processing=14, pending=0, retries exhausted=True
+Worker 17 waiting for work (retry 8/10): processing=14, pending=0
+Worker 27 waiting for work (retry 7/10): processing=14, pending=0
+Worker 9 waiting for work (retry 7/10): processing=14, pending=0
+Worker 5 waiting for work (retry 10/10): processing=14, pending=0
+Worker 18 waiting for work (retry 9/10): processing=14, pending=0
+[split monitor] Split unit_0007: processing=14, pending=0, target=14
+Worker 26 waiting for work (retry 1/10): processing=14, pending=0
+Worker 17 waiting for work (retry 9/10): processing=14, pending=0
+Worker 27 waiting for work (retry 8/10): processing=14, pending=0
+Worker 9 waiting for work (retry 8/10): processing=14, pending=0
+Worker 5 exiting: processing=14, pending=0, retries exhausted=True
+Worker 18 waiting for work (retry 10/10): processing=14, pending=0
+Worker 20 waiting for work (retry 1/10): processing=13, pending=0
+Worker 26 waiting for work (retry 2/10): processing=13, pending=0
+Worker 17 waiting for work (retry 10/10): processing=13, pending=0
+Worker 27 waiting for work (retry 9/10): processing=13, pending=0
+Worker 9 waiting for work (retry 9/10): processing=13, pending=0
+Worker 18 exiting: processing=13, pending=0, retries exhausted=True
+Worker 20 waiting for work (retry 2/10): processing=13, pending=0
+Worker 26 waiting for work (retry 3/10): processing=13, pending=0
+Worker 17 exiting: processing=13, pending=0, retries exhausted=True
+Worker 27 waiting for work (retry 10/10): processing=13, pending=0
+Worker 9 waiting for work (retry 10/10): processing=13, pending=0
+[split monitor] Split unit_0010: processing=13, pending=0, target=13
+Worker 27 exiting: processing=14, pending=0, retries exhausted=True
+Worker 9 exiting: processing=14, pending=0, retries exhausted=True
+[split monitor] Split unit_0014: processing=14, pending=0, target=14
+[split monitor] Split unit_0009_L: processing=13, pending=2, target=13
+Worker 3 discarding split unit unit_0007: scanned=1,181,104
+[split monitor] Split unit_0007_L: processing=13, pending=3, target=13
+[split monitor] Split unit_0010_R: processing=12, pending=5, target=12
+[split monitor] Split unit_0006_L: processing=11, pending=7, target=11
+[split monitor] Split unit_0012_R: processing=10, pending=9, target=10
+Worker 13 discarding split unit unit_0007_L: scanned=1,164,633
+[split monitor] Split unit_0010_L: processing=10, pending=9, target=10
+[split monitor] Split unit_0006_L_L: processing=9, pending=8, target=9
+Worker 19 discarding split unit unit_0009_L: scanned=2,180,104
+[split monitor] Cannot split unit_0006_L_L_R: Unit unit_0006_L_L_R cannot be split further
+    17,516,552       0                48%              290.1k/s         1m00s         
+Worker 15 discarding split unit unit_0012_R: scanned=2,439,594
+[split monitor] Split unit_0008_L: processing=10, pending=6, target=10
+Worker 26 discarding split unit unit_0010_R: scanned=1,860,631
+[split monitor] Split unit_0012_L: processing=10, pending=7, target=10
+Worker 13 discarding split unit unit_0006_L_L: scanned=3,367,908
+[split monitor] Split unit_0010_L_L: processing=10, pending=7, target=10
+[split monitor] Split unit_0008_L_L: processing=9, pending=8, target=9
+[split monitor] Split unit_0006_L_R: processing=8, pending=7, target=8
+Worker 30 discarding split unit unit_0012_L: scanned=2,924,731
+Worker 7 discarding split unit unit_0006_L_R: scanned=2,743,497
+[split monitor] Split unit_0010_R_L: processing=9, pending=6, target=9
+Worker 4 discarding split unit unit_0006_L: scanned=6,111,405
+Worker 2 discarding split unit unit_0010_L_L: scanned=1,163,961
+[split monitor] Cannot split unit_0006_L_L_R: Unit unit_0006_L_L_R cannot be split further
+[split monitor] Cannot split unit_0010_R_L_R: Unit unit_0010_R_L_R cannot be split further
+[split monitor] Split unit_0010_L_R: processing=10, pending=6, target=10
+Worker 25 discarding split unit unit_0013: scanned=4,111,915
+Worker 26 discarding split unit unit_0008_L_L: scanned=1,104,138
+[split monitor] Split unit_0010_R_R: processing=11, pending=6, target=11
+Worker 13 discarding split unit unit_0010_R_L: scanned=1,046,060
+[split monitor] Cannot split unit_0010_R_R_R: Unit unit_0010_R_R_R cannot be split further
+Worker 28 discarding split unit unit_0008_L: scanned=3,380,483
+[split monitor] Cannot split unit_0010_L_R_R: Unit unit_0010_L_R_R cannot be split further
+Worker 20 discarding split unit unit_0010_L: scanned=3,330,290
+[split monitor] Cannot split unit_0010_R_L_L: Unit unit_0010_R_L_L cannot be split further
+Worker 7 discarding split unit unit_0010_R_R: scanned=814,571
+[split monitor] Cannot split unit_0008_L_L_R: Unit unit_0008_L_L_R cannot be split further
+[split monitor] Cannot split unit_0010_R_R_L: Unit unit_0010_R_R_L cannot be split further
+[split monitor] Cannot split unit_0008_L_L_R: Unit unit_0008_L_L_R cannot be split further
+[split monitor] Cannot split unit_0010_R_L_L: Unit unit_0010_R_L_L cannot be split further
+[split monitor] Split unit_0012_R_R: processing=14, pending=0, target=14
+[split monitor] Split unit_0012_L_L: processing=13, pending=0, target=13
+[split monitor] Cannot split unit_0010_R_R_R: Unit unit_0010_R_R_R cannot be split further
+[split monitor] Split unit_0008_L_R: processing=12, pending=0, target=12
+[split monitor] Cannot split unit_0012_R_R_R: Unit unit_0012_R_R_R cannot be split further
+[split monitor] Cannot split unit_0012_R_R_L: Unit unit_0012_R_R_L cannot be split further
+Worker 21 discarding split unit unit_0009: scanned=4,825,491
+[split monitor] Split unit_0012_R_L: processing=12, pending=0, target=12
+[split monitor] Split unit_0014_L: processing=11, pending=2, target=11
+[split monitor] Cannot split unit_0010_L_R_L: Unit unit_0010_L_R_L cannot be split further
+[split monitor] Cannot split unit_0012_L_L_R: Unit unit_0012_L_L_R cannot be split further
+[split monitor] Cannot split unit_0012_R_R_L: Unit unit_0012_R_R_L cannot be split further
+[split monitor] Cannot split unit_0012_R_L_R: Unit unit_0012_R_L_R cannot be split further
+[split monitor] Cannot split unit_0012_R_L_L: Unit unit_0012_R_L_L cannot be split further
+[split monitor] Split unit_0014_R: processing=10, pending=1, target=10
+Worker 19 discarding split unit unit_0008_L_R: scanned=2,276,345
+Worker 15 discarding split unit unit_0010_L_R: scanned=2,166,329
+[split monitor] Split unit_0014_R_L: processing=11, pending=1, target=11
+[split monitor] Cannot split unit_0008_L_R_L: Unit unit_0008_L_R_L cannot be split further
+[split monitor] Cannot split unit_0012_L_L_R: Unit unit_0012_L_L_R cannot be split further
+[split monitor] Cannot split unit_0014_R_L_L: Unit unit_0014_R_L_L cannot be split further
+[split monitor] Split unit_0012_L_R: processing=10, pending=2, target=10
+Worker 6 discarding split unit unit_0010: scanned=5,190,921
+Worker 29 discarding split unit unit_0012: scanned=5,364,325
+[split monitor] Split unit_0014_L_R: processing=10, pending=3, target=10
+Worker 2 discarding split unit unit_0012_R_R: scanned=962,646
+[split monitor] Cannot split unit_0012_R_L_L: Unit unit_0012_R_L_L cannot be split further
+[split monitor] Cannot split unit_0012_L_L_R: Unit unit_0012_L_L_R cannot be split further
+Worker 24 discarding split unit unit_0014: scanned=5,200,096
+[split monitor] Cannot split unit_0014_L_R_L: Unit unit_0014_L_R_L cannot be split further
+Worker 12 discarding split unit unit_0012_L_L: scanned=1,144,953
+[split monitor] Cannot split unit_0012_R_L_L: Unit unit_0012_R_L_L cannot be split further
+[split monitor] Cannot split unit_0014_R_L_L: Unit unit_0014_R_L_L cannot be split further
+[split monitor] Cannot split unit_0012_R_L_R: Unit unit_0012_R_L_R cannot be split further
+[split monitor] Cannot split unit_0014_R_L_R: Unit unit_0014_R_L_R cannot be split further
+[split monitor] Split unit_0014_L_L: processing=13, pending=1, target=13
+[split monitor] Cannot split unit_0012_R_L_R: Unit unit_0012_R_L_R cannot be split further
+Worker 11 discarding split unit unit_0006: scanned=9,037,945
+[split monitor] Cannot split unit_0014_L_R_L: Unit unit_0014_L_R_L cannot be split further
+    105,230,994      0                55%              874.2k/s         2m00s         
+[split monitor] Cannot split unit_0012_R_L_R: Unit unit_0012_R_L_R cannot be split further
+Worker 10 waiting for work (retry 1/10): processing=12, pending=0
+[split monitor] Split unit_0014_R_R: processing=12, pending=0, target=12
+[split monitor] Cannot split unit_0014_L_R_L: Unit unit_0014_L_R_L cannot be split further
+Worker 12 waiting for work (retry 1/10): processing=11, pending=0
+[split monitor] Cannot split unit_0014_R_L_L: Unit unit_0014_R_L_L cannot be split further
+Worker 13 waiting for work (retry 1/10): processing=10, pending=0
+Worker 12 waiting for work (retry 2/10): processing=9, pending=0
+Worker 6 waiting for work (retry 1/10): processing=9, pending=0
+[split monitor] Cannot split unit_0014_R_R_R: Unit unit_0014_R_R_R cannot be split further
+Worker 26 waiting for work (retry 1/10): processing=8, pending=0
+Worker 13 waiting for work (retry 2/10): processing=8, pending=0
+Worker 12 waiting for work (retry 3/10): processing=8, pending=0
+Worker 6 waiting for work (retry 2/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 26 waiting for work (retry 2/10): processing=8, pending=0
+Worker 13 waiting for work (retry 3/10): processing=8, pending=0
+Worker 12 waiting for work (retry 4/10): processing=8, pending=0
+Worker 6 waiting for work (retry 3/10): processing=8, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 16 discarding split unit unit_0008: scanned=5,859,166
+Worker 16 waiting for work (retry 1/10): processing=8, pending=0
+Worker 26 waiting for work (retry 3/10): processing=8, pending=0
+Worker 13 waiting for work (retry 4/10): processing=8, pending=0
+Worker 12 waiting for work (retry 5/10): processing=8, pending=0
+Worker 6 waiting for work (retry 4/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_R_R_R: Unit unit_0014_R_R_R cannot be split further
+Worker 16 waiting for work (retry 2/10): processing=8, pending=0
+Worker 26 waiting for work (retry 4/10): processing=8, pending=0
+Worker 13 waiting for work (retry 5/10): processing=8, pending=0
+Worker 28 discarding split unit unit_0012_R_L: scanned=1,476,948
+Worker 12 waiting for work (retry 6/10): processing=8, pending=0
+Worker 6 waiting for work (retry 5/10): processing=8, pending=0
+Worker 28 waiting for work (retry 1/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_R_R_R: Unit unit_0014_R_R_R cannot be split further
+Worker 16 waiting for work (retry 3/10): processing=8, pending=0
+Worker 26 waiting for work (retry 5/10): processing=8, pending=0
+Worker 13 waiting for work (retry 6/10): processing=8, pending=0
+Worker 12 waiting for work (retry 7/10): processing=8, pending=0
+Worker 6 waiting for work (retry 6/10): processing=8, pending=0
+Worker 28 waiting for work (retry 2/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_L_R_L: Unit unit_0014_L_R_L cannot be split further
+Worker 16 waiting for work (retry 4/10): processing=8, pending=0
+Worker 26 waiting for work (retry 6/10): processing=8, pending=0
+Worker 13 waiting for work (retry 7/10): processing=8, pending=0
+Worker 12 waiting for work (retry 8/10): processing=8, pending=0
+Worker 6 waiting for work (retry 7/10): processing=8, pending=0
+Worker 28 waiting for work (retry 3/10): processing=8, pending=0
+[split monitor] Cannot split unit_0008_L_R_R: Unit unit_0008_L_R_R cannot be split further
+Worker 16 waiting for work (retry 5/10): processing=8, pending=0
+Worker 26 waiting for work (retry 7/10): processing=8, pending=0
+Worker 13 waiting for work (retry 8/10): processing=8, pending=0
+Worker 12 waiting for work (retry 9/10): processing=8, pending=0
+Worker 6 waiting for work (retry 8/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_R_L_L: Unit unit_0014_R_L_L cannot be split further
+Worker 28 waiting for work (retry 4/10): processing=8, pending=0
+Worker 16 waiting for work (retry 6/10): processing=8, pending=0
+Worker 26 waiting for work (retry 8/10): processing=8, pending=0
+Worker 13 waiting for work (retry 9/10): processing=8, pending=0
+Worker 12 waiting for work (retry 10/10): processing=8, pending=0
+Worker 6 waiting for work (retry 9/10): processing=8, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 28 waiting for work (retry 5/10): processing=7, pending=0
+Worker 16 waiting for work (retry 7/10): processing=7, pending=0
+Worker 10 waiting for work (retry 1/10): processing=7, pending=0
+Worker 13 waiting for work (retry 10/10): processing=7, pending=0
+Worker 26 waiting for work (retry 9/10): processing=7, pending=0
+Worker 12 exiting: processing=7, pending=0, retries exhausted=True
+Worker 6 waiting for work (retry 10/10): processing=7, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 28 waiting for work (retry 6/10): processing=7, pending=0
+Worker 16 waiting for work (retry 8/10): processing=7, pending=0
+Worker 10 waiting for work (retry 2/10): processing=7, pending=0
+Worker 13 exiting: processing=7, pending=0, retries exhausted=True
+Worker 26 waiting for work (retry 10/10): processing=7, pending=0
+Worker 0 waiting for work (retry 1/10): processing=6, pending=0
+Worker 6 exiting: processing=6, pending=0, retries exhausted=True
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 28 waiting for work (retry 7/10): processing=6, pending=0
+Worker 16 waiting for work (retry 9/10): processing=6, pending=0
+Worker 10 waiting for work (retry 3/10): processing=5, pending=0
+Worker 21 waiting for work (retry 1/10): processing=5, pending=0
+Worker 26 exiting: processing=5, pending=0, retries exhausted=True
+Worker 0 waiting for work (retry 2/10): processing=5, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 28 waiting for work (retry 8/10): processing=5, pending=0
+Worker 16 waiting for work (retry 10/10): processing=5, pending=0
+Worker 10 waiting for work (retry 4/10): processing=5, pending=0
+Worker 21 waiting for work (retry 2/10): processing=5, pending=0
+Worker 0 waiting for work (retry 3/10): processing=5, pending=0
+[split monitor] Cannot split unit_0014_R_R_R: Unit unit_0014_R_R_R cannot be split further
+Worker 28 waiting for work (retry 9/10): processing=5, pending=0
+Worker 16 exiting: processing=5, pending=0, retries exhausted=True
+Worker 10 waiting for work (retry 5/10): processing=5, pending=0
+Worker 21 waiting for work (retry 3/10): processing=5, pending=0
+Worker 0 waiting for work (retry 4/10): processing=5, pending=0
+[split monitor] Cannot split unit_0014_R_R_R: Unit unit_0014_R_R_R cannot be split further
+Worker 28 waiting for work (retry 10/10): processing=5, pending=0
+Worker 10 waiting for work (retry 6/10): processing=5, pending=0
+Worker 21 waiting for work (retry 4/10): processing=5, pending=0
+Worker 0 waiting for work (retry 5/10): processing=5, pending=0
+Worker 11 waiting for work (retry 1/10): processing=4, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 28 exiting: processing=4, pending=0, retries exhausted=True
+Worker 2 waiting for work (retry 1/10): processing=3, pending=0
+Worker 10 waiting for work (retry 7/10): processing=3, pending=0
+Worker 21 waiting for work (retry 5/10): processing=3, pending=0
+Worker 3 discarding split unit unit_0012_L_R: scanned=1,779,778
+Worker 0 waiting for work (retry 6/10): processing=3, pending=0
+Worker 3 waiting for work (retry 1/10): processing=3, pending=0
+Worker 25 discarding split unit unit_0014_L_L: scanned=1,258,060
+Worker 25 waiting for work (retry 1/10): processing=3, pending=0
+Worker 11 waiting for work (retry 2/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 2 waiting for work (retry 2/10): processing=3, pending=0
+Worker 10 waiting for work (retry 8/10): processing=3, pending=0
+Worker 21 waiting for work (retry 6/10): processing=3, pending=0
+Worker 0 waiting for work (retry 7/10): processing=3, pending=0
+Worker 3 waiting for work (retry 2/10): processing=3, pending=0
+Worker 25 waiting for work (retry 2/10): processing=3, pending=0
+Worker 11 waiting for work (retry 3/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 2 waiting for work (retry 3/10): processing=3, pending=0
+Worker 10 waiting for work (retry 9/10): processing=3, pending=0
+Worker 21 waiting for work (retry 7/10): processing=3, pending=0
+Worker 0 waiting for work (retry 8/10): processing=3, pending=0
+Worker 3 waiting for work (retry 3/10): processing=3, pending=0
+Worker 25 waiting for work (retry 3/10): processing=3, pending=0
+Worker 11 waiting for work (retry 4/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 2 waiting for work (retry 4/10): processing=3, pending=0
+Worker 10 waiting for work (retry 10/10): processing=3, pending=0
+Worker 21 waiting for work (retry 8/10): processing=3, pending=0
+Worker 0 waiting for work (retry 9/10): processing=3, pending=0
+Worker 3 waiting for work (retry 4/10): processing=3, pending=0
+Worker 25 waiting for work (retry 4/10): processing=3, pending=0
+Worker 7 discarding split unit unit_0014_R: scanned=1,915,287
+Worker 11 waiting for work (retry 5/10): processing=3, pending=0
+Worker 7 waiting for work (retry 1/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 2 waiting for work (retry 5/10): processing=3, pending=0
+Worker 10 exiting: processing=3, pending=0, retries exhausted=True
+Worker 21 waiting for work (retry 9/10): processing=3, pending=0
+Worker 0 waiting for work (retry 10/10): processing=3, pending=0
+Worker 3 waiting for work (retry 5/10): processing=3, pending=0
+Worker 25 waiting for work (retry 5/10): processing=3, pending=0
+Worker 11 waiting for work (retry 6/10): processing=3, pending=0
+Worker 7 waiting for work (retry 2/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 2 waiting for work (retry 6/10): processing=3, pending=0
+Worker 21 waiting for work (retry 10/10): processing=3, pending=0
+Worker 0 exiting: processing=3, pending=0, retries exhausted=True
+Worker 3 waiting for work (retry 6/10): processing=3, pending=0
+Worker 25 waiting for work (retry 6/10): processing=3, pending=0
+Worker 11 waiting for work (retry 7/10): processing=3, pending=0
+Worker 7 waiting for work (retry 3/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 2 waiting for work (retry 7/10): processing=3, pending=0
+Worker 21 exiting: processing=3, pending=0, retries exhausted=True
+Worker 3 waiting for work (retry 7/10): processing=3, pending=0
+Worker 25 waiting for work (retry 7/10): processing=3, pending=0
+Worker 11 waiting for work (retry 8/10): processing=3, pending=0
+Worker 7 waiting for work (retry 4/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 2 waiting for work (retry 8/10): processing=3, pending=0
+Worker 3 waiting for work (retry 8/10): processing=3, pending=0
+Worker 25 waiting for work (retry 8/10): processing=3, pending=0
+Worker 11 waiting for work (retry 9/10): processing=3, pending=0
+Worker 7 waiting for work (retry 5/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 2 waiting for work (retry 9/10): processing=3, pending=0
+Worker 3 waiting for work (retry 9/10): processing=3, pending=0
+Worker 25 waiting for work (retry 9/10): processing=3, pending=0
+Worker 11 waiting for work (retry 10/10): processing=3, pending=0
+Worker 7 waiting for work (retry 6/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 2 waiting for work (retry 10/10): processing=3, pending=0
+Worker 3 waiting for work (retry 10/10): processing=3, pending=0
+Worker 25 waiting for work (retry 10/10): processing=3, pending=0
+Worker 11 exiting: processing=3, pending=0, retries exhausted=True
+Worker 7 waiting for work (retry 7/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 15 discarding split unit unit_0014_R_L: scanned=1,193,148
+Worker 2 exiting: processing=3, pending=0, retries exhausted=True
+Worker 15 waiting for work (retry 1/10): processing=3, pending=0
+Worker 3 exiting: processing=3, pending=0, retries exhausted=True
+Worker 25 exiting: processing=3, pending=0, retries exhausted=True
+Worker 7 waiting for work (retry 8/10): processing=3, pending=0
+Worker 30 discarding split unit unit_0014_R_R: scanned=722,139
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 30 waiting for work (retry 1/10): processing=3, pending=0
+Worker 15 waiting for work (retry 2/10): processing=3, pending=0
+Worker 7 waiting for work (retry 9/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 30 waiting for work (retry 2/10): processing=3, pending=0
+Worker 15 waiting for work (retry 3/10): processing=3, pending=0
+Worker 7 waiting for work (retry 10/10): processing=3, pending=0
+Worker 30 waiting for work (retry 3/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 15 waiting for work (retry 4/10): processing=3, pending=0
+Worker 7 exiting: processing=3, pending=0, retries exhausted=True
+Worker 30 waiting for work (retry 4/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 15 waiting for work (retry 5/10): processing=3, pending=0
+Worker 30 waiting for work (retry 5/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 15 waiting for work (retry 6/10): processing=3, pending=0
+Worker 30 waiting for work (retry 6/10): processing=3, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 15 waiting for work (retry 7/10): processing=3, pending=0
+Worker 30 waiting for work (retry 7/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 15 waiting for work (retry 8/10): processing=3, pending=0
+Worker 30 waiting for work (retry 8/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 15 waiting for work (retry 9/10): processing=3, pending=0
+Worker 30 waiting for work (retry 9/10): processing=3, pending=0
+[split monitor] Cannot split unit_0012_L_R_R: Unit unit_0012_L_R_R cannot be split further
+Worker 15 waiting for work (retry 10/10): processing=3, pending=0
+Worker 29 waiting for work (retry 1/10): processing=2, pending=0
+Worker 30 waiting for work (retry 10/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 15 exiting: processing=2, pending=0, retries exhausted=True
+Worker 29 waiting for work (retry 2/10): processing=2, pending=0
+Worker 30 exiting: processing=2, pending=0, retries exhausted=True
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 29 waiting for work (retry 3/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 29 waiting for work (retry 4/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 29 waiting for work (retry 5/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 29 waiting for work (retry 6/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 29 waiting for work (retry 7/10): processing=2, pending=0
+Worker 19 discarding split unit unit_0014_L_R: scanned=2,026,749
+Worker 19 waiting for work (retry 1/10): processing=2, pending=0
+[split monitor] Cannot split unit_0014_L_R_R: Unit unit_0014_L_R_R cannot be split further
+Worker 24 waiting for work (retry 1/10): processing=1, pending=0
+Worker 29 waiting for work (retry 8/10): processing=1, pending=0
+Worker 19 waiting for work (retry 2/10): processing=1, pending=0
+[split monitor] Cannot split unit_0014_L_L_L: Unit unit_0014_L_L_L cannot be split further
+Worker 24 waiting for work (retry 2/10): processing=1, pending=0
+Worker 4 exiting: processing=0, pending=0, retries exhausted=False
+Worker 29 exiting: processing=0, pending=0, retries exhausted=False
+Worker 19 exiting: processing=0, pending=0, retries exhausted=False
+Worker 24 exiting: processing=0, pending=0, retries exhausted=False
+Worker 20 discarding split unit unit_0014_L: scanned=3,284,809
+Worker 20 exiting: processing=0, pending=0, retries exhausted=False
+   ──────────────────────────────────── final ────────────────────────────────────
+    136,393,402      0                60%              855.8k/s         2m39s         
