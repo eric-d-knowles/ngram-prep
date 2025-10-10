@@ -39,7 +39,8 @@ class WorkTracker:
                              claimed_by TEXT,
                              claimed_at REAL,
                              completed_at REAL,
-                             parent_id TEXT
+                             parent_id TEXT,
+                             current_position BLOB
                          )
                          """)
             conn.execute("""
@@ -108,7 +109,7 @@ class WorkTracker:
                             ORDER BY unit_id
                             LIMIT 1
                             )
-                            RETURNING unit_id, start_key, end_key, parent_id
+                            RETURNING unit_id, start_key, end_key, parent_id, current_position
                         """,
                         (worker_id, time.time())
                     )
@@ -120,6 +121,7 @@ class WorkTracker:
                             start_key=row[1],
                             end_key=row[2],
                             parent_id=row[3],
+                            current_position=row[4],
                         )
                     return None  # No work available
 
@@ -130,6 +132,36 @@ class WorkTracker:
                     raise
 
             return None  # All retries exhausted
+
+    def checkpoint_position(self, unit_id: str, position: bytes, max_retries: int = 5) -> None:
+        """
+        Update the current scan position for a work unit.
+
+        Args:
+            unit_id: ID of work unit
+            position: Current scan position (key)
+            max_retries: Maximum number of retry attempts for database locks
+        """
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                with sqlite3.connect(str(self.db_path)) as conn:
+                    conn.execute(
+                        """
+                        UPDATE work_units
+                        SET current_position = ?
+                        WHERE unit_id = ?
+                        """,
+                        (position, unit_id)
+                    )
+                    conn.commit()
+                return
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                    continue
+                raise
 
     def complete_work_unit(self, unit_id: str, max_retries: int = 5) -> None:
         """
@@ -380,26 +412,6 @@ class WorkTracker:
             )
             row = cursor.fetchone()
             return row[0] if row else None
-
-    def get_orphaned_unit_ids(self) -> list[str]:
-        """
-        Get list of unit IDs that have been split or failed.
-
-        These units may have partial outputs that should be cleaned up.
-        The caller is responsible for determining output paths and cleanup strategy.
-
-        Returns:
-            List of unit IDs with status 'split' or 'failed'
-        """
-        with sqlite3.connect(str(self.db_path)) as conn:
-            cursor = conn.execute(
-                """
-                SELECT unit_id
-                FROM work_units
-                WHERE status IN ('split', 'failed')
-                """
-            )
-            return [row[0] for row in cursor]
 
     def get_failed_unit_ids(self) -> list[str]:
         """

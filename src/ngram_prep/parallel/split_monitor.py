@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
+from setproctitle import setproctitle
+
 from ngram_prep.parallel.work_tracker import WorkTracker
 
 __all__ = ["split_monitor", "SplitMonitorConfig"]
@@ -23,9 +25,6 @@ class SplitMonitorConfig:
 
     starvation_threshold: int = 3
     """Number of consecutive checks below threshold before splitting"""
-
-    cleanup_interval: int = 60
-    """Number of checks between orphaned shard cleanup (~30 seconds at 0.5s interval)"""
 
 
 def split_monitor(
@@ -48,24 +47,21 @@ def split_monitor(
     - Workers are considered "starving" when processing units < total workers
     - Splitting only occurs after STARVATION_THRESHOLD consecutive starved checks
     - This prevents excessive splitting while ensuring good load balance
-    - Optionally cleans up orphaned outputs from split/failed units if output_manager provided
+    - Workers detect splits and clean up their own partial outputs
 
     Args:
         work_tracker_path: Path to work tracker database
         num_workers: Total number of worker processes
         stop_event: Event to signal monitor to stop
-        output_manager: Optional output manager for cleaning up orphaned outputs
+        output_manager: Optional output manager (currently unused, kept for compatibility)
         message_queue: Optional queue for sending status messages
         config: Optional configuration (uses defaults if None)
 
     Example:
-        >>> from ngram_prep.parallel import SimpleOutputManager
         >>> stop_event = mp.Event()
-        >>> output_mgr = SimpleOutputManager(output_dir)
         >>> monitor_proc = mp.Process(
         ...     target=split_monitor,
-        ...     args=(tracker_path, 8, stop_event),
-        ...     kwargs={'output_manager': output_mgr}
+        ...     args=(tracker_path, 8, stop_event)
         ... )
         >>> monitor_proc.start()
         >>> # ... workers run ...
@@ -75,11 +71,13 @@ def split_monitor(
     if config is None:
         config = SplitMonitorConfig()
 
+    # Set process title for monitoring
+    setproctitle("ngf:split-monitor")
+
     work_tracker = WorkTracker(work_tracker_path)
 
     # Track consecutive checks below threshold
     starvation_checks = 0
-    cleanup_counter = 0
 
     while not stop_event.is_set():
         try:
@@ -105,25 +103,12 @@ def split_monitor(
                     try:
                         work_tracker.split_work_unit(unit_id)
                         starvation_checks = 0
+
+                        # Note: Parent worker will detect the split status and clean up
+                        # its own output after finishing (see worker.py lines 100-104)
                     except ValueError as e:
                         # Can't split further - accept some idle workers
                         pass
-
-            # Periodic cleanup of orphaned outputs (only failed, not split)
-            # Split units are cleaned up by workers themselves
-            cleanup_counter += 1
-            if cleanup_counter >= config.cleanup_interval and output_manager:
-                orphaned_ids = work_tracker.get_failed_unit_ids()
-                if hasattr(output_manager, 'cleanup_orphaned_outputs'):
-                    output_manager.cleanup_orphaned_outputs(orphaned_ids)
-                else:
-                    # Fallback for custom output managers
-                    for unit_id in orphaned_ids:
-                        try:
-                            output_manager.cleanup_partial_output(unit_id)
-                        except:
-                            pass  # Still in use or already deleted
-                cleanup_counter = 0
 
             time.sleep(config.check_interval)
 
