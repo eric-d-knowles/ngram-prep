@@ -3,11 +3,54 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import List, Optional
 
 from ngram_prep.parallel.types import WorkUnit
 
-__all__ = ["create_uniform_work_units", "find_midpoint_key"]
+__all__ = ["create_uniform_work_units", "find_midpoint_key", "make_unit_id"]
+
+
+def make_unit_id(start_key: Optional[bytes], end_key: Optional[bytes]) -> str:
+    """
+    Create a short, readable unit ID from key boundaries.
+
+    Uses short hex prefixes for human readability plus hash for uniqueness.
+    Format: unit_<start_prefix>_<end_prefix>_<hash6>
+
+    Args:
+        start_key: Start boundary (None for beginning)
+        end_key: End boundary (None for end)
+
+    Returns:
+        Compact unit ID like "unit_20_40_a1b2c3"
+
+    Examples:
+        >>> make_unit_id(None, b'\\x20')
+        'unit__20_...'
+        >>> make_unit_id(b'\\x20', b'\\x40')
+        'unit_20_40_...'
+    """
+    # Use first 2 bytes (4 hex chars) for human readability
+    if start_key is None:
+        start_prefix = ""
+    else:
+        start_prefix = start_key[:2].hex() if len(start_key) >= 2 else start_key.hex()
+
+    if end_key is None:
+        end_prefix = ""
+    else:
+        end_prefix = end_key[:2].hex() if len(end_key) >= 2 else end_key.hex()
+
+    # Add hash for uniqueness (6 hex chars = 24 bits should be plenty)
+    # Hash the full keys to ensure uniqueness
+    h = hashlib.sha256()
+    h.update(start_key if start_key else b'')
+    h.update(b'|')  # Separator
+    h.update(end_key if end_key else b'')
+    hash_suffix = h.hexdigest()[:6]
+
+    return f"unit_{start_prefix}_{end_prefix}_{hash_suffix}"
 
 
 def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
@@ -78,10 +121,8 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
         # Last unit ends at None (end of keyspace)
         end_key = None if i == num_units - 1 else bytes([end_val])
 
-        # Create unit_id with start/end hash encoding
-        start_hash = start_key.hex() if start_key else ""
-        end_hash = end_key.hex() if end_key else ""
-        unit_id = f"unit_{start_hash}_{end_hash}"
+        # Create compact unit_id
+        unit_id = make_unit_id(start_key, end_key)
 
         work_units.append(
             WorkUnit(unit_id=unit_id, start_key=start_key, end_key=end_key)

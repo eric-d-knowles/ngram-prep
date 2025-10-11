@@ -28,7 +28,7 @@ class WorkTracker:
 
     def _init_database(self) -> None:
         """Initialize the tracking database schema."""
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             conn.execute("""
                          CREATE TABLE IF NOT EXISTS work_units
                          (
@@ -64,7 +64,7 @@ class WorkTracker:
         Args:
             work_units: List of work units to add
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             for unit in work_units:
                 # Handle both old WorkUnit (without parent_id) and new (with parent_id)
                 parent_id = getattr(unit, 'parent_id', None)
@@ -101,7 +101,7 @@ class WorkTracker:
         """
         import time
 
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             for attempt in range(max_retries):
                 try:
                     cursor = conn.execute(
@@ -154,7 +154,7 @@ class WorkTracker:
 
         for attempt in range(max_retries):
             try:
-                with sqlite3.connect(str(self.db_path)) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
                     conn.execute(
                         """
                         UPDATE work_units
@@ -175,24 +175,52 @@ class WorkTracker:
         """
         Mark a work unit as completed.
 
+        Only updates if the unit is currently in 'processing' state, to prevent
+        race conditions with split operations.
+
         Args:
             unit_id: ID of completed work unit
             max_retries: Maximum number of retry attempts for database locks
+
+        Raises:
+            ValueError: If unit is not in processing state (may have been split)
         """
         import time
 
         for attempt in range(max_retries):
             try:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    conn.execute(
+                with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
+                    cursor = conn.execute(
                         """
                         UPDATE work_units
                         SET status       = 'completed',
                             completed_at = ?
-                        WHERE unit_id = ?
+                        WHERE unit_id = ? AND status = 'processing'
                         """,
                         (time.time(), unit_id)
                     )
+
+                    if cursor.rowcount == 0:
+                        # Check if unit was split or is in another state
+                        cursor = conn.execute(
+                            "SELECT status FROM work_units WHERE unit_id = ?",
+                            (unit_id,)
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            current_status = row[0]
+                            if current_status == 'completed':
+                                # Already completed (by split with progress) - this is OK
+                                conn.commit()
+                                return
+                            else:
+                                raise ValueError(
+                                    f"Cannot complete unit {unit_id}: "
+                                    f"status is '{current_status}' (expected 'processing')"
+                                )
+                        else:
+                            raise ValueError(f"Unit {unit_id} not found")
+
                     conn.commit()
                 return
             except sqlite3.OperationalError as e:
@@ -213,7 +241,7 @@ class WorkTracker:
 
         for attempt in range(max_retries):
             try:
-                with sqlite3.connect(str(self.db_path)) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
                     conn.execute(
                         """
                         UPDATE work_units
@@ -240,11 +268,30 @@ class WorkTracker:
         Returns:
             WorkProgress with current counts and active worker count
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
+            # Count units that represent active/actual work:
+            # - Leaf units (units not split): all statuses
+            # - Parent units with status='completed' (split with progress preserved)
+            # Excludes: Parent units with status='split' (split without progress, work discarded)
             cursor = conn.execute(
                 """
                 SELECT status, COUNT(*) as count
                 FROM work_units
+                WHERE (
+                    -- Include leaf units (not yet split)
+                    unit_id NOT IN (
+                        SELECT DISTINCT parent_id
+                        FROM work_units
+                        WHERE parent_id IS NOT NULL
+                    )
+                    OR
+                    -- Include parent units that completed with progress saved
+                    (status = 'completed' AND unit_id IN (
+                        SELECT DISTINCT parent_id
+                        FROM work_units
+                        WHERE parent_id IS NOT NULL
+                    ))
+                )
                 GROUP BY status
                 """
             )
@@ -274,13 +321,25 @@ class WorkTracker:
             row = cursor.fetchone()
             starving_workers = int(row[0]) if row else 0
 
+            # Count total splits by counting distinct parent units
+            # This includes both splits with progress (parent='completed')
+            # and splits without progress (parent='split')
+            cursor = conn.execute(
+                """
+                SELECT COUNT(DISTINCT parent_id)
+                FROM work_units
+                WHERE parent_id IS NOT NULL
+                """
+            )
+            total_splits = cursor.fetchone()[0]
+
             return WorkProgress(
                 total=total,
                 pending=counts.get('pending', 0),
                 processing=counts.get('processing', 0),
                 completed=counts.get('completed', 0),
                 failed=counts.get('failed', 0),
-                split=counts.get('split', 0),
+                split=total_splits,  # Total number of split operations performed
                 active_workers=active_workers,
                 idle_workers=idle_workers,
                 starving_workers=starving_workers,
@@ -288,7 +347,7 @@ class WorkTracker:
 
     def clear_all_work_units(self) -> None:
         """Clear all work units from the tracker."""
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             conn.execute("DELETE FROM work_units")
             conn.commit()
 
@@ -301,7 +360,7 @@ class WorkTracker:
         Returns:
             Number of units reset
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             # First, mark any processing units that have children as split
             # (these were split but the status update didn't complete before crash)
             conn.execute(
@@ -331,25 +390,44 @@ class WorkTracker:
             conn.commit()
             return cursor.rowcount
 
-    def split_work_unit(self, unit_id: str) -> tuple[WorkUnit, WorkUnit]:
+    def split_work_unit(self, unit_id: str, max_retries: int = 5) -> tuple[WorkUnit] | tuple[WorkUnit, WorkUnit]:
         """
-        Split a work unit into two halves.
+        Split a work unit, preserving any partial progress.
 
-        NOTE: If the unit is currently being processed, the worker will fail
-        gracefully when trying to complete it (status changed to 'split').
-        Any partial outputs from the parent unit should be cleaned up by the caller
-        after the split completes.
+        If the parent unit has a current_position (partial progress), we save that
+        work and create only ONE child unit for the remaining range. Otherwise,
+        we split the full range into two child units.
+
+        NOTE: When a unit is split during processing, the parent's partial output
+        is preserved as a complete shard. The parent worker should NOT clean up
+        its output when detecting a split.
 
         Args:
             unit_id: ID of unit to split
+            max_retries: Maximum number of retry attempts for database locks
 
         Returns:
-            Tuple of (left_unit, right_unit)
+            Tuple of child WorkUnit(s) - either (remaining_unit,) or (left_unit, right_unit)
 
         Raises:
             ValueError: If unit cannot be split
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                return self._split_work_unit_impl(unit_id)
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                    continue
+                raise
+
+    def _split_work_unit_impl(self, unit_id: str) -> tuple[WorkUnit] | tuple[WorkUnit, WorkUnit]:
+        """Implementation of split_work_unit (wrapped with retry logic)."""
+        import time
+
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             conn.row_factory = sqlite3.Row
 
             cursor = conn.execute(
@@ -366,8 +444,70 @@ class WorkTracker:
 
             start_key = row['start_key']
             end_key = row['end_key']
+            current_position = row['current_position']
 
-            # Find midpoint key using partitioning module
+            # If unit has made progress, preserve it and split only the remaining range
+            if current_position is not None and current_position != start_key:
+                # Parent has processed [start_key, current_position] inclusive
+                # Child must start AFTER current_position to avoid duplicates
+                # Since range_scan uses inclusive lower bound, we need next_key(current_position)
+
+                # Verify we can actually split here
+                if current_position == end_key:
+                    raise ValueError(
+                        f"Unit {unit_id} has already completed its range "
+                        f"(current_position == end_key)"
+                    )
+
+                # Compute next key after current_position by appending \x00
+                # This ensures child starts strictly after parent's last processed key
+                # Example: if current_position = b"abc", child starts at b"abc\x00"
+                child_start_key = current_position + b'\x00'
+
+                # Verify child range is non-empty
+                if end_key is not None and child_start_key >= end_key:
+                    raise ValueError(
+                        f"Unit {unit_id} cannot be split: "
+                        f"next key after current_position would exceed end_key"
+                    )
+
+                # Create child unit for remaining work
+                from ngram_prep.parallel.partitioning import make_unit_id
+                child_id = make_unit_id(child_start_key, end_key)
+
+                # Mark original unit as completed (it processed [start_key, current_position])
+                # Only update if still in processing/pending state to avoid race conditions
+                cursor = conn.execute(
+                    """
+                    UPDATE work_units
+                    SET status = 'completed', completed_at = ?
+                    WHERE unit_id = ? AND status IN ('processing', 'pending')
+                    """,
+                    (time.time(), unit_id)
+                )
+
+                if cursor.rowcount == 0:
+                    # Unit was already completed or in another state - can't split
+                    raise ValueError(
+                        f"Unit {unit_id} status changed during split (may have been completed by worker)"
+                    )
+
+                # Insert child unit for remaining range (child_start_key, end_key)
+                conn.execute(
+                    """
+                    INSERT INTO work_units
+                        (unit_id, start_key, end_key, status, parent_id)
+                    VALUES (?, ?, ?, 'pending', ?)
+                    """,
+                    (child_id, child_start_key, end_key, unit_id)
+                )
+
+                conn.commit()
+
+                # Return single child unit
+                return (WorkUnit(child_id, child_start_key, end_key, parent_id=unit_id),)
+
+            # No progress yet - split the full range into two halves
             from ngram_prep.parallel.partitioning import find_midpoint_key
             midpoint = find_midpoint_key(start_key, end_key)
 
@@ -388,18 +528,27 @@ class WorkTracker:
                     f"midpoint {mid_hex} equals boundary (start={start_hex}, end={end_hex})"
                 )
 
-            # Create two new units with start/end hash encoding
-            start_hash = start_key.hex() if start_key else ""
-            mid_hash = midpoint.hex() if midpoint else ""
-            end_hash = end_key.hex() if end_key else ""
-            left_id = f"unit_{start_hash}_{mid_hash}"
-            right_id = f"unit_{mid_hash}_{end_hash}"
+            # Create two new units with compact IDs
+            from ngram_prep.parallel.partitioning import make_unit_id
+            left_id = make_unit_id(start_key, midpoint)
+            right_id = make_unit_id(midpoint, end_key)
 
             # Mark original unit as split
-            conn.execute(
-                "UPDATE work_units SET status = 'split' WHERE unit_id = ?",
+            # Only update if still in processing/pending state to avoid race conditions
+            cursor = conn.execute(
+                """
+                UPDATE work_units
+                SET status = 'split'
+                WHERE unit_id = ? AND status IN ('processing', 'pending')
+                """,
                 (unit_id,)
             )
+
+            if cursor.rowcount == 0:
+                # Unit was already completed or in another state - can't split
+                raise ValueError(
+                    f"Unit {unit_id} status changed during split (may have been completed by worker)"
+                )
 
             # Insert new units as pending
             conn.execute(
@@ -422,7 +571,7 @@ class WorkTracker:
 
             conn.commit()
 
-        # NOTE: Caller is responsible for handling any partial outputs from the parent unit
+        # NOTE: Parent output should be cleaned up only if no progress was saved
 
         return (
             WorkUnit(left_id, start_key, midpoint, parent_id=unit_id),
@@ -431,7 +580,7 @@ class WorkTracker:
 
     def get_any_splittable_unit(self) -> Optional[str]:
         """Get any pending or processing work unit that can be split."""
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             # Prefer processing units (actively being worked on, likely larger)
             # No preference for parent vs child - split whatever needs splitting
             cursor = conn.execute(
@@ -457,7 +606,7 @@ class WorkTracker:
         Returns:
             List of unit IDs in priority order (only processing units)
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             cursor = conn.execute(
                 """
                 SELECT unit_id
@@ -478,7 +627,7 @@ class WorkTracker:
         Returns:
             Status string or None if unit not found
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             cursor = conn.execute(
                 "SELECT status FROM work_units WHERE unit_id = ?",
                 (unit_id,)
@@ -495,7 +644,7 @@ class WorkTracker:
         Returns:
             List of unit IDs with status 'failed'
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             cursor = conn.execute(
                 """
                 SELECT unit_id
@@ -505,22 +654,35 @@ class WorkTracker:
             )
             return [row[0] for row in cursor]
 
-    def set_starving_workers(self, count: int) -> None:
+    def set_starving_workers(self, count: int, max_retries: int = 5) -> None:
         """
         Set the current count of starving workers.
 
         Args:
             count: Number of workers currently starving (idle for >= starvation_threshold checks)
+            max_retries: Maximum number of retry attempts for database locks
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO metadata (key, value)
-                VALUES ('starving_workers', ?)
-                """,
-                (str(count),)
-            )
-            conn.commit()
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO metadata (key, value)
+                        VALUES ('starving_workers', ?)
+                        """,
+                        (str(count),)
+                    )
+                    conn.commit()
+                return
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.01 * (2 ** attempt))  # Shorter backoff for metadata updates
+                    continue
+                # If all retries fail, just log and continue - this is non-critical
+                if attempt == max_retries - 1:
+                    return  # Silently fail - stale count is acceptable
 
     def get_starving_workers(self) -> int:
         """
@@ -529,7 +691,7 @@ class WorkTracker:
         Returns:
             Number of workers currently starving, or 0 if not set
         """
-        with sqlite3.connect(str(self.db_path)) as conn:
+        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             cursor = conn.execute(
                 """
                 SELECT value FROM metadata WHERE key = 'starving_workers'
