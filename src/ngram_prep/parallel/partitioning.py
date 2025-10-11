@@ -39,9 +39,13 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
         >>> # First unit covers beginning of keyspace
         >>> units[0].start_key is None
         True
+        >>> units[0].unit_id
+        'unit__20'
         >>> # Last unit covers end of keyspace
         >>> units[-1].end_key is None
         True
+        >>> units[-1].unit_id
+        'unit_e0_'
 
     Note:
         - Uses single-byte boundaries for simplicity (divides 0x00-0xFF range)
@@ -54,7 +58,7 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
 
     if num_units == 1:
         # Single unit covers entire keyspace
-        return [WorkUnit(unit_id="unit_0000", start_key=None, end_key=None)]
+        return [WorkUnit(unit_id="unit__", start_key=None, end_key=None)]
 
     work_units = []
 
@@ -63,8 +67,6 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
     step = 256 / num_units
 
     for i in range(num_units):
-        unit_id = f"unit_{i:04d}"
-
         # Calculate boundary values
         start_val = int(i * step)
         end_val = int((i + 1) * step)
@@ -75,6 +77,11 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
 
         # Last unit ends at None (end of keyspace)
         end_key = None if i == num_units - 1 else bytes([end_val])
+
+        # Create unit_id with start/end hash encoding
+        start_hash = start_key.hex() if start_key else ""
+        end_hash = end_key.hex() if end_key else ""
+        unit_id = f"unit_{start_hash}_{end_hash}"
 
         work_units.append(
             WorkUnit(unit_id=unit_id, start_key=start_key, end_key=end_key)
@@ -97,10 +104,10 @@ def format_work_units_summary(work_units: List[WorkUnit]) -> str:
         >>> units = create_uniform_work_units(4)
         >>> print(format_work_units_summary(units))
         Created 4 uniform work units:
-          Unit 0: <start> → 0x40
-          Unit 1: 0x40 → 0x80
-          Unit 2: 0x80 → 0xc0
-          Unit 3: 0xc0 → <end>
+          unit__40: <start> → 40
+          unit_40_80: 40 → 80
+          unit_80_c0: 80 → c0
+          unit_c0_: c0 → <end>
     """
     lines = [f"Created {len(work_units)} uniform work units:"]
 
@@ -159,10 +166,24 @@ def _midpoint_between_keys(start: bytes, end: bytes) -> Optional[bytes]:
     mid_int = (start_int + end_int) // 2
 
     if mid_int == start_int:
-        return None  # Too close to split
+        # Keys are adjacent at current precision - extend by one byte to split finer
+        # e.g., split between b'\x50' and b'\x51' at b'\x50\x80'
+        # This allows splitting units even when they span adjacent byte values
+        extended_start = start_padded + b'\x00'
+        extended_end = end_padded + b'\x00'
 
-    # Convert back to bytes
-    mid_bytes = mid_int.to_bytes(max_len, 'big')
+        start_int_ext = int.from_bytes(extended_start, 'big')
+        end_int_ext = int.from_bytes(extended_end, 'big')
+
+        mid_int_ext = (start_int_ext + end_int_ext) // 2
+
+        if mid_int_ext == start_int_ext:
+            return None  # Still too close even with extension
+
+        mid_bytes = mid_int_ext.to_bytes(max_len + 1, 'big')
+    else:
+        # Convert back to bytes
+        mid_bytes = mid_int.to_bytes(max_len, 'big')
 
     # Trim trailing zeros
     mid_bytes = mid_bytes.rstrip(b'\x00')

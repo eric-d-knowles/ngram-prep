@@ -47,6 +47,14 @@ class WorkTracker:
                          CREATE INDEX IF NOT EXISTS idx_status
                              ON work_units(status)
                          """)
+            # Metadata table for split monitor state
+            conn.execute("""
+                         CREATE TABLE IF NOT EXISTS metadata
+                         (
+                             key TEXT PRIMARY KEY,
+                             value TEXT
+                         )
+                         """)
             conn.commit()
 
     def add_work_units(self, work_units: List[WorkUnit]) -> None:
@@ -222,9 +230,12 @@ class WorkTracker:
                     continue
                 raise
 
-    def get_progress(self) -> WorkProgress:
+    def get_progress(self, num_workers: Optional[int] = None) -> WorkProgress:
         """
         Get current progress statistics.
+
+        Args:
+            num_workers: Total number of workers (optional, used to calculate idle_workers)
 
         Returns:
             WorkProgress with current counts and active worker count
@@ -251,6 +262,18 @@ class WorkTracker:
             )
             active_workers = cursor.fetchone()[0]
 
+            # Calculate idle workers if total worker count provided
+            idle_workers = (num_workers - active_workers) if num_workers is not None else 0
+
+            # Get starving worker count from metadata
+            cursor = conn.execute(
+                """
+                SELECT value FROM metadata WHERE key = 'starving_workers'
+                """
+            )
+            row = cursor.fetchone()
+            starving_workers = int(row[0]) if row else 0
+
             return WorkProgress(
                 total=total,
                 pending=counts.get('pending', 0),
@@ -259,6 +282,8 @@ class WorkTracker:
                 failed=counts.get('failed', 0),
                 split=counts.get('split', 0),
                 active_workers=active_workers,
+                idle_workers=idle_workers,
+                starving_workers=starving_workers,
             )
 
     def clear_all_work_units(self) -> None:
@@ -346,12 +371,29 @@ class WorkTracker:
             from ngram_prep.parallel.partitioning import find_midpoint_key
             midpoint = find_midpoint_key(start_key, end_key)
 
-            if midpoint is None or midpoint == start_key or midpoint == end_key:
-                raise ValueError(f"Unit {unit_id} cannot be split further")
+            if midpoint is None:
+                start_hex = start_key.hex() if start_key else "None"
+                end_hex = end_key.hex() if end_key else "None"
+                raise ValueError(
+                    f"Unit {unit_id} cannot be split further: "
+                    f"no midpoint between {start_hex} and {end_hex}"
+                )
 
-            # Create two new units
-            left_id = f"{unit_id}_L"
-            right_id = f"{unit_id}_R"
+            if midpoint == start_key or midpoint == end_key:
+                start_hex = start_key.hex() if start_key else "None"
+                end_hex = end_key.hex() if end_key else "None"
+                mid_hex = midpoint.hex() if midpoint else "None"
+                raise ValueError(
+                    f"Unit {unit_id} cannot be split further: "
+                    f"midpoint {mid_hex} equals boundary (start={start_hex}, end={end_hex})"
+                )
+
+            # Create two new units with start/end hash encoding
+            start_hash = start_key.hex() if start_key else ""
+            mid_hash = midpoint.hex() if midpoint else ""
+            end_hash = end_key.hex() if end_key else ""
+            left_id = f"unit_{start_hash}_{mid_hash}"
+            right_id = f"unit_{mid_hash}_{end_hash}"
 
             # Mark original unit as split
             conn.execute(
@@ -406,6 +448,26 @@ class WorkTracker:
             row = cursor.fetchone()
             return row[0] if row else None
 
+    def get_all_splittable_units(self, prefer_processing: bool = True) -> list[str]:
+        """Get all processing work units that might be splittable.
+
+        Args:
+            prefer_processing: Deprecated parameter kept for compatibility (always uses processing)
+
+        Returns:
+            List of unit IDs in priority order (only processing units)
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.execute(
+                """
+                SELECT unit_id
+                FROM work_units
+                WHERE status = 'processing'
+                ORDER BY unit_id
+                """
+            )
+            return [row[0] for row in cursor]
+
     def get_unit_status(self, unit_id: str) -> Optional[str]:
         """
         Get the current status of a work unit.
@@ -442,3 +504,36 @@ class WorkTracker:
                 """
             )
             return [row[0] for row in cursor]
+
+    def set_starving_workers(self, count: int) -> None:
+        """
+        Set the current count of starving workers.
+
+        Args:
+            count: Number of workers currently starving (idle for >= starvation_threshold checks)
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO metadata (key, value)
+                VALUES ('starving_workers', ?)
+                """,
+                (str(count),)
+            )
+            conn.commit()
+
+    def get_starving_workers(self) -> int:
+        """
+        Get the current count of starving workers.
+
+        Returns:
+            Number of workers currently starving, or 0 if not set
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.execute(
+                """
+                SELECT value FROM metadata WHERE key = 'starving_workers'
+                """
+            )
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
