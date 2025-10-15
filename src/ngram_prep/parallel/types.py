@@ -38,7 +38,7 @@ class WorkProgress:
     processing: int
     completed: int
     failed: int
-    saved: int = 0
+    saved: int = 0  # No longer used (inline ingestion)
     ingested: int = 0
     split: int = 0
     splitting: int = 0  # Number of units in 'split' status (awaiting worker finalization)

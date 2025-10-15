@@ -317,66 +317,11 @@ class WorkTracker:
                     continue
                 raise
 
-    def save_work_unit(self, unit_id: str, max_retries: int = 5) -> None:
-        """
-        Mark a work unit as saved (shard finalized and ready for ingest).
-
-        This should only be called after the unit has been marked as 'completed'.
-        Transitions from 'completed' to 'saved'.
-
-        Args:
-            unit_id: ID of work unit to mark as saved
-            max_retries: Maximum number of retry attempts for database locks
-
-        Raises:
-            ValueError: If unit is not in 'completed' state
-        """
-        import time
-
-        for attempt in range(max_retries):
-            try:
-                with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
-                    cursor = conn.execute(
-                        """
-                        UPDATE work_units
-                        SET status = 'saved'
-                        WHERE unit_id = ? AND status = 'completed'
-                        """,
-                        (unit_id,)
-                    )
-
-                    if cursor.rowcount == 0:
-                        # Check current status
-                        cursor = conn.execute(
-                            "SELECT status FROM work_units WHERE unit_id = ?",
-                            (unit_id,)
-                        )
-                        row = cursor.fetchone()
-                        if row:
-                            current_status = row[0]
-                            if current_status == 'saved':
-                                # Already saved - this is OK (idempotent)
-                                conn.commit()
-                                return
-                            else:
-                                raise ValueError(
-                                    f"Cannot save unit {unit_id}: "
-                                    f"status is '{current_status}' (expected 'completed')"
-                                )
-                        else:
-                            raise ValueError(f"Unit {unit_id} not found")
-
-                    conn.commit()
-                return
-            except sqlite3.OperationalError as e:
-                if "locked" in str(e) and attempt < max_retries - 1:
-                    time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
-                    continue
-                raise
-
     def ingest_work_unit(self, unit_id: str, max_retries: int = 5) -> None:
         """
         Mark a work unit as ingested (successfully added to destination DB).
+
+        Transitions directly from 'processing'/'split' to 'ingested'.
 
         Args:
             unit_id: ID of work unit to mark as ingested
@@ -387,14 +332,28 @@ class WorkTracker:
         for attempt in range(max_retries):
             try:
                 with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
-                    conn.execute(
+                    cursor = conn.execute(
                         """
                         UPDATE work_units
-                        SET status = 'ingested'
-                        WHERE unit_id = ?
+                        SET status = 'ingested',
+                            completed_at = ?
+                        WHERE unit_id = ? AND status IN ('processing', 'split')
                         """,
-                        (unit_id,)
+                        (time.time(), unit_id)
                     )
+
+                    if cursor.rowcount == 0:
+                        # Check if already ingested (idempotent)
+                        cursor = conn.execute(
+                            "SELECT status FROM work_units WHERE unit_id = ?",
+                            (unit_id,)
+                        )
+                        row = cursor.fetchone()
+                        if row and row[0] == 'ingested':
+                            conn.commit()
+                            return
+                        # Otherwise fall through to commit (unit may have been in unexpected state)
+
                     conn.commit()
                 return
             except sqlite3.OperationalError as e:
@@ -416,8 +375,7 @@ class WorkTracker:
         with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             # Count units that represent active/actual work:
             # - Leaf units (units not split): all statuses
-            # - Parent units with status='completed'/'saved'/'ingested' (split with progress preserved)
-            # Note: 'split' status units are transitioning and should be counted as processing
+            # - Parent units with status='completed'/'ingested'/'split' (split units still being processed)
             cursor = conn.execute(
                 """
                 SELECT status, COUNT(*) as count
@@ -430,9 +388,9 @@ class WorkTracker:
                         WHERE parent_id IS NOT NULL
                     )
                     OR
-                    -- Include parent units that finished with progress saved
-                    -- (status in 'completed', 'saved', 'ingested')
-                    (status IN ('completed', 'saved', 'ingested') AND unit_id IN (
+                    -- Include parent units that are still processing or finished
+                    -- (status in 'completed', 'ingested', 'split')
+                    (status IN ('completed', 'ingested', 'split') AND unit_id IN (
                         SELECT DISTINCT parent_id
                         FROM work_units
                         WHERE parent_id IS NOT NULL
@@ -443,6 +401,12 @@ class WorkTracker:
             )
 
             counts = {row[0]: row[1] for row in cursor}
+
+            # Map 'split' status to 'processing' for display purposes
+            # These units are still being actively processed by workers
+            if 'split' in counts:
+                counts['processing'] = counts.get('processing', 0) + counts['split']
+                del counts['split']
             
             # Count units in 'split' status separately (they're awaiting worker finalization)
             cursor = conn.execute(
@@ -455,11 +419,12 @@ class WorkTracker:
             total = sum(counts.values())
 
             # Count distinct workers actively processing units
+            # Include both 'processing' and 'split' status (split units are still being processed)
             cursor = conn.execute(
                 """
                 SELECT COUNT(DISTINCT claimed_by)
                 FROM work_units
-                WHERE status = 'processing' AND claimed_by IS NOT NULL
+                WHERE status IN ('processing', 'split') AND claimed_by IS NOT NULL
                 """
             )
             active_workers = cursor.fetchone()[0]
@@ -494,7 +459,7 @@ class WorkTracker:
                 processing=counts.get('processing', 0),
                 completed=counts.get('completed', 0),
                 failed=counts.get('failed', 0),
-                saved=counts.get('saved', 0),
+                saved=0,  # No longer used: inline ingestion
                 ingested=counts.get('ingested', 0),
                 split=total_splits,  # Total number of split operations performed
                 splitting=splitting_count,  # Number of units currently in 'split' status
@@ -521,7 +486,7 @@ class WorkTracker:
         """
         with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
             # First, mark any processing units that have children as completed
-            # (these were split but the worker didn't finish marking them saved before crash)
+            # (these were split but the worker didn't finish marking them ingested before crash)
             conn.execute(
                 """
                 UPDATE work_units
@@ -670,7 +635,7 @@ class WorkTracker:
         current_position is already flushed to disk.
 
         The worker will detect the status change, exit its scan loop early, and
-        finalize the shard (mark as 'saved').
+        finalize the shard (mark as 'ingested').
 
         NOTE: When a unit is split during processing, the parent's partial output
         is preserved as a complete shard. The parent worker should NOT clean up
@@ -948,24 +913,6 @@ class WorkTracker:
                 FROM work_units
                 WHERE status = 'completed'
                 ORDER BY completed_at
-                """
-            )
-            return [row[0] for row in cursor]
-
-    def get_saved_unit_ids(self) -> list[str]:
-        """
-        Get list of saved unit IDs (shards finalized and saved).
-
-        Returns:
-            List of unit IDs with status 'saved'
-        """
-        with sqlite3.connect(str(self.db_path), timeout=10.0) as conn:
-            cursor = conn.execute(
-                """
-                SELECT unit_id
-                FROM work_units
-                WHERE status = 'saved'
-                ORDER BY unit_id
                 """
             )
             return [row[0] for row in cursor]
