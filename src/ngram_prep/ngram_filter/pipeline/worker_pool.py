@@ -9,7 +9,7 @@ from typing import Optional
 
 from setproctitle import setproctitle
 from ngram_prep.common_db.api import open_db, scan_all
-from ngram_prep.parallel import WorkTracker
+from ngram_prep.ngram_filter.tracking import WorkTracker
 
 from ..config import FilterConfig, PipelineConfig
 from .worker import worker_process, WorkerConfig

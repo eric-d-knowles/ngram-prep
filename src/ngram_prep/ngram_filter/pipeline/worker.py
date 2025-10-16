@@ -16,7 +16,7 @@ from ..filters.core_cy import METADATA_PREFIX
 from .progress import Counters, increment_counter
 from .write_buffer import WriteBuffer
 from ngram_prep.common_db.api import open_db, range_scan
-from ngram_prep.parallel import WorkTracker, WorkUnit, SimpleOutputManager
+from ngram_prep.ngram_filter.tracking import WorkTracker, WorkUnit, SimpleOutputManager
 
 __all__ = ["WorkerConfig", "worker_process"]
 
@@ -341,6 +341,11 @@ def _process_work_unit(
                 local_counters['written'] += num_written
             _finalize_output_database(dst_db)
 
+    # Mark unit as completed now that filtering is done
+    # This releases the worker from being counted as "active" in progress tracking
+    if work_tracker:
+        work_tracker.complete_work_unit(work_unit.unit_id)
+
     # Send completed shard to ingest writer queue
     # The writer will handle ingestion and mark as ingested
     if ingest_queue:
@@ -446,12 +451,9 @@ def _process_key_range(
                                 # This preserves our completed work and gives idle workers the remainder
                                 child = work_tracker.split_work_unit(work_unit.unit_id)
                                 if child:
-                                    # Reload work_unit to get updated end_key (now smaller)
-                                    reloaded = work_tracker.get_work_unit(work_unit.unit_id)
-                                    if reloaded:
-                                        work_unit = reloaded
-                                        end_key = work_unit.end_key
-                                        # Our range is now smaller - continue processing our portion
+                                    # Unit was split and marked completed - exit scan loop
+                                    # We've already flushed everything up to current_position
+                                    break
                             except (ValueError, Exception):
                                 # Split failed (e.g., no progress yet, or position too close to end)
                                 # This is fine - just continue processing
