@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import shutil
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +32,54 @@ def deletion_worker(deletion_queue: mp.Queue) -> None:
             pass  # Ignore deletion errors
 
 
+def prefetch_worker(
+        ingest_queue: mp.Queue,
+        prefetch_queue: mp.Queue,
+        ingest_read_profile: str,
+        num_filter_workers: int,
+) -> None:
+    """
+    Background thread that prefetches shard data ahead of the merger.
+
+    This overlaps disk I/O (opening and reading shards) with merge operations,
+    improving throughput by keeping the merger continuously fed with data.
+
+    Args:
+        ingest_queue: Queue receiving completed shards from workers
+        prefetch_queue: Queue to send prefetched data to merger
+        ingest_read_profile: RocksDB profile for reading shards
+        num_filter_workers: Number of workers (for counting sentinels)
+    """
+    sentinels_received = 0
+
+    while sentinels_received < num_filter_workers:
+        item = ingest_queue.get()
+
+        # Check for sentinel
+        if item is None:
+            sentinels_received += 1
+            # Pass sentinel to merger
+            prefetch_queue.put(None)
+            continue
+
+        unit_id, shard_path = item
+
+        # Prefetch all data from this shard
+        # Worker has already closed the shard, so safe to open read-only
+        try:
+            with open_db(shard_path, mode="r", profile=ingest_read_profile) as shard_db:
+                # Read all data into memory
+                prefetched_data = list(scan_all(shard_db))
+
+            # Send prefetched data to merger
+            prefetch_queue.put((unit_id, shard_path, prefetched_data))
+        except Exception as e:
+            # On error, pass through without data (merger will handle gracefully)
+            import traceback
+            traceback.print_exc()
+            prefetch_queue.put((unit_id, shard_path, []))
+
+
 def ingest_writer_process(
         dst_db_path: Path,
         work_tracker_path: Path,
@@ -43,6 +92,8 @@ def ingest_writer_process(
 
     This process is the ONLY process that opens the destination database for writing,
     eliminating lock contention.
+
+    Uses a prefetch thread to overlap shard reading with merge operations.
 
     Args:
         dst_db_path: Path to destination database
@@ -58,8 +109,10 @@ def ingest_writer_process(
         ingest_read_profile = getattr(pipeline_config, "ingest_read_profile", "read:packed24")
         ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
         ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
-        # Increased from 200k to 2M for better write batching and throughput
-        batch_size = getattr(pipeline_config, "ingest_batch_items", 2_000_000)
+        # Increased from 200k to 2M to 5M for better write batching and throughput
+        batch_size = getattr(pipeline_config, "ingest_batch_items", 5_000_000)
+        # Enable/disable prefetching
+        enable_prefetch = getattr(pipeline_config, "enable_prefetch", True)
 
         sentinels_received = 0
         # Batch tracker updates to reduce SQLite overhead
@@ -78,8 +131,25 @@ def ingest_writer_process(
         deletion_process = ctx.Process(target=deletion_worker, args=(deletion_queue,), daemon=True)
         deletion_process.start()
 
+        # Start prefetch thread if enabled
+        prefetch_thread = None
+        if enable_prefetch:
+            import queue as queue_module
+            # Use a bounded queue to limit memory usage (buffer 2-3 shards ahead)
+            prefetch_queue = queue_module.Queue(maxsize=3)
+            prefetch_thread = threading.Thread(
+                target=prefetch_worker,
+                args=(ingest_queue, prefetch_queue, ingest_read_profile, num_filter_workers),
+                daemon=True,
+                name="prefetch-thread"
+            )
+            prefetch_thread.start()
+        else:
+            prefetch_queue = None
+
         # Batch branch checking interval - check threshold every N items instead of every item
-        CHECK_INTERVAL = 50_000
+        CHECK_INTERVAL = 100_000
+        MERGE_BATCH_SIZE = 5000  # Batch size for merge_batch API calls
 
         with open_db(dst_db_path, mode="rw", profile=ingest_write_profile, create_if_missing=True) as dst_db:
             # Open write batch once and keep it open across multiple shards
@@ -90,30 +160,82 @@ def ingest_writer_process(
 
             while sentinels_received < num_filter_workers:
                 try:
-                    item = ingest_queue.get(timeout=1.0)
+                    # Get data from prefetch queue if enabled, otherwise from ingest queue
+                    if enable_prefetch:
+                        item = prefetch_queue.get(timeout=1.0)
+                    else:
+                        item = ingest_queue.get(timeout=1.0)
 
                     # Check for sentinel (None means a worker has finished)
                     if item is None:
                         sentinels_received += 1
                         continue
 
-                    unit_id, shard_path = item
+                    if enable_prefetch:
+                        # Prefetched data format: (unit_id, shard_path, prefetched_data)
+                        unit_id, shard_path, prefetched_data = item
+                    else:
+                        # Direct format: (unit_id, shard_path)
+                        unit_id, shard_path = item
+                        prefetched_data = None
 
-                    # Stream shard data directly into the persistent write batch
+                    # Stream shard data using batch merge API for reduced Python→C++ overhead
                     start_count = item_count
-                    with open_db(shard_path, mode="r", profile=ingest_read_profile) as shard_db:
-                        for key, value in scan_all(shard_db):
-                            wb.merge(key, value)
+                    merge_batch = []
+
+                    if enable_prefetch and prefetched_data is not None:
+                        # Use prefetched data (already in memory)
+                        for key, value in prefetched_data:
+                            merge_batch.append((key, value))
                             item_count += 1
 
-                            # Periodically check if batch should be flushed (reduces branch overhead)
+                            # Flush merge batch when it reaches threshold
+                            if len(merge_batch) >= MERGE_BATCH_SIZE:
+                                wb.merge_batch(merge_batch)
+                                merge_batch = []
+
+                            # Periodically check if write batch should be committed
                             if (item_count - start_count) % CHECK_INTERVAL == 0:
                                 if item_count >= batch_size:
+                                    # Flush any remaining merge batch before committing write batch
+                                    if merge_batch:
+                                        wb.merge_batch(merge_batch)
+                                        merge_batch = []
+
                                     wb.__exit__(None, None, None)
                                     wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
                                     wb.__enter__()
                                     item_count = 0
                                     start_count = 0
+                    else:
+                        # Fallback: read directly from shard (no prefetch or prefetch failed)
+                        with open_db(shard_path, mode="r", profile=ingest_read_profile) as shard_db:
+                            for key, value in scan_all(shard_db):
+                                merge_batch.append((key, value))
+                                item_count += 1
+
+                                # Flush merge batch when it reaches threshold
+                                if len(merge_batch) >= MERGE_BATCH_SIZE:
+                                    wb.merge_batch(merge_batch)
+                                    merge_batch = []
+
+                                # Periodically check if write batch should be committed
+                                if (item_count - start_count) % CHECK_INTERVAL == 0:
+                                    if item_count >= batch_size:
+                                        # Flush any remaining merge batch before committing write batch
+                                        if merge_batch:
+                                            wb.merge_batch(merge_batch)
+                                            merge_batch = []
+
+                                        wb.__exit__(None, None, None)
+                                        wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
+                                        wb.__enter__()
+                                        item_count = 0
+                                        start_count = 0
+
+                    # Flush any remaining items in merge batch
+                    if merge_batch:
+                        wb.merge_batch(merge_batch)
 
                     # Calculate shard items after loop completes
                     shard_items = item_count - start_count
@@ -143,8 +265,8 @@ def ingest_writer_process(
                         tracker_batch = []
 
                 except Exception as e:
-                    import queue
-                    if isinstance(e, queue.Empty):
+                    import queue as queue_module
+                    if isinstance(e, queue_module.Empty):
                         continue  # Normal timeout, keep waiting
                     # Error occurred during ingestion
                     import traceback
@@ -159,6 +281,10 @@ def ingest_writer_process(
                 for uid in tracker_batch:
                     work_tracker.ingest_work_unit(uid)
                 tracker_batch = []
+
+        # Wait for prefetch thread to finish
+        if prefetch_thread is not None:
+            prefetch_thread.join(timeout=5)
 
         # Signal deletion worker to stop and wait for it to finish
         deletion_queue.put(None)  # Sentinel
@@ -209,8 +335,8 @@ def run_worker_pool(
     ctx = mp.get_context("spawn")
 
     # Create ingest queue for coordinated writes
-    # Increased from 2x to 10x to prevent workers from blocking when ingest writer is busy
-    ingest_queue = ctx.Queue(maxsize=num_workers * 10)
+    # Increased from 2x to 10x to 20x to prevent workers from blocking when ingest writer is busy
+    ingest_queue = ctx.Queue(maxsize=num_workers * 20)
 
     # Start single ingest writer process
     writer_process = ctx.Process(
