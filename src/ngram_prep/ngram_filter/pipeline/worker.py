@@ -75,9 +75,11 @@ def worker_process(
         # Main work loop
         while True:
             work_unit = _claim_next_work_unit(worker_id, work_tracker, output_manager)
+
             if work_unit is None:
                 # Check if there's still any work in progress or pending
                 progress = work_tracker.get_progress()
+
                 if progress.processing > 0 or progress.pending > 0:
                     # Wait for more work to become available
                     import time
