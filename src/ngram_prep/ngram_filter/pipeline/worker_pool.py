@@ -73,12 +73,8 @@ def prefetch_worker(
 
             # Send prefetched data to merger
             prefetch_queue.put((unit_id, shard_path, prefetched_data))
-            print(f"[PREFETCH] Successfully prefetched unit {unit_id} ({len(prefetched_data)} items)")
         except Exception as e:
             # On error, pass through without data (merger will handle gracefully)
-            import traceback
-            print(f"[PREFETCH] FAILED to prefetch unit {unit_id} from {shard_path}: {e}")
-            traceback.print_exc()
             prefetch_queue.put((unit_id, shard_path, []))
 
 
@@ -151,10 +147,8 @@ def ingest_writer_process(
                 name="prefetch-thread"
             )
             prefetch_thread.start()
-            print(f"[PREFETCH] Prefetch thread STARTED (queue depth={prefetch_queue_depth})")
         else:
             prefetch_queue = None
-            print(f"[PREFETCH] Prefetch DISABLED")
 
         # Batch branch checking interval - check threshold every N items instead of every item
         CHECK_INTERVAL = 100_000
@@ -193,7 +187,6 @@ def ingest_writer_process(
                     merge_batch = []
 
                     if enable_prefetch and prefetched_data is not None and len(prefetched_data) > 0:
-                        print(f"[PREFETCH] Using prefetched data for unit {unit_id} ({len(prefetched_data)} items)")
                         prefetch_hits += 1
                         # Use prefetched data (already in memory)
                         for key, value in prefetched_data:
@@ -220,7 +213,6 @@ def ingest_writer_process(
                                     start_count = 0
                     else:
                         # Fallback: read directly from shard (no prefetch or prefetch failed)
-                        print(f"[PREFETCH] FALLBACK to direct read for unit {unit_id} (prefetch_enabled={enable_prefetch}, has_data={prefetched_data is not None and len(prefetched_data) > 0 if prefetched_data is not None else 'N/A'})")
                         prefetch_misses += 1
                         with open_db(shard_path, mode="r", profile=ingest_read_profile) as shard_db:
                             for key, value in scan_all(shard_db):
@@ -258,11 +250,6 @@ def ingest_writer_process(
                     total_items += shard_items
                     current_time = time_module.time()
                     if current_time - last_report >= 10.0:
-                        elapsed = current_time - last_report
-                        rate = total_items / elapsed
-                        total_shards_so_far = prefetch_hits + prefetch_misses
-                        hit_rate = (prefetch_hits / total_shards_so_far * 100) if total_shards_so_far > 0 else 0
-                        print(f"[PREFETCH] Stats: {shards_processed} shards, {total_items:,} items in {elapsed:.1f}s ({rate:,.0f} items/s) | Prefetch: {prefetch_hits} hits, {prefetch_misses} misses ({hit_rate:.1f}% hit rate)")
                         shards_processed = 0
                         total_items = 0
                         last_report = current_time
@@ -297,13 +284,7 @@ def ingest_writer_process(
                     work_tracker.ingest_work_unit(uid)
                 tracker_batch = []
 
-        # Print final prefetch statistics
-        total_shards = prefetch_hits + prefetch_misses
-        if total_shards > 0:
-            hit_rate = (prefetch_hits / total_shards * 100)
-            print(f"\n[PREFETCH] FINAL STATS: {prefetch_hits} hits / {prefetch_misses} misses / {total_shards} total ({hit_rate:.1f}% hit rate)")
-        else:
-            print(f"\n[PREFETCH] FINAL STATS: No shards processed")
+
 
         # Wait for prefetch thread to finish
         if prefetch_thread is not None:
