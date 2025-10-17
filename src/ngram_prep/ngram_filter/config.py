@@ -60,6 +60,8 @@ class PipelineConfig:
     ingest_write_profile: str = 'write:packed24'
     ingest_batch_items: int = 2_000_000
     ingest_disable_wal: bool = True
+    enable_prefetch: bool = True
+    prefetch_queue_depth: int = 5
 
     # Pipeline control
     mode: str = "resume"  # "restart", "resume", or "reprocess"
