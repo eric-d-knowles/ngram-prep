@@ -16,7 +16,7 @@ from ..filters.core_cy import METADATA_PREFIX
 from .progress import Counters, increment_counter
 from .write_buffer import WriteBuffer
 from ngram_prep.common_db.api import open_db, range_scan
-from ngram_prep.ngram_filter.tracking import WorkTracker, WorkUnit, SimpleOutputManager
+from ngram_prep.tracking import WorkTracker, WorkUnit, SimpleOutputManager
 
 __all__ = ["WorkerConfig", "worker_process"]
 
@@ -61,7 +61,10 @@ def worker_process(
         setproctitle(f"ngf:worker[{worker_id}]")
 
         # Initialize work tracker and processor
-        work_tracker = WorkTracker(work_tracker_path)
+        work_tracker = WorkTracker(
+            work_tracker_path,
+            claim_order=pipeline_config.work_unit_claim_order
+        )
         processor = _initialize_processor(worker_id, filter_config)
 
         if processor is None:
@@ -189,7 +192,7 @@ def _claim_next_work_unit(
 ) -> Optional[WorkUnit]:
     """Attempt to claim the next available work unit and clean up partial outputs."""
     try:
-        work_unit = work_tracker.claim_work_unit(f"worker-{worker_id}")
+        work_unit = work_tracker.claim_work_unit(f"worker-{worker_id}", max_retries=10)
 
         # Clean up partial output if it exists from a previous failed run
         if work_unit and output_manager.output_exists(work_unit.unit_id):
@@ -419,9 +422,9 @@ def _process_key_range(
         # Add to buffer and flush if needed
         should_flush = buffer.add(processed_key_bytes, value_bytes)
         if should_flush:
-            # Update checkpoint position
+            # Update checkpoint position (with more retries for high-worker scenarios)
             if work_tracker:
-                work_tracker.checkpoint_position(work_unit.unit_id, key)
+                work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=10)
 
             # Flush buffer to disk
             num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)

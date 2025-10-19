@@ -66,6 +66,7 @@ class PipelineConfig:
     # Pipeline control
     mode: str = "resume"  # "restart", "resume", or "reprocess"
     compact_after_ingest: bool = True
+    work_unit_claim_order: str = "sequential"  # "sequential" or "random"
 
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None

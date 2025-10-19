@@ -10,7 +10,7 @@ from typing import Optional
 
 from setproctitle import setproctitle
 from ngram_prep.common_db.api import open_db, scan_all
-from ngram_prep.ngram_filter.tracking import WorkTracker
+from ngram_prep.tracking import WorkTracker
 
 from ..config import FilterConfig, PipelineConfig
 from .worker import worker_process, WorkerConfig
@@ -103,7 +103,10 @@ def ingest_writer_process(
     try:
         setproctitle("ngf:ingest-writer")
 
-        work_tracker = WorkTracker(work_tracker_path)
+        work_tracker = WorkTracker(
+            work_tracker_path,
+            claim_order=pipeline_config.work_unit_claim_order
+        )
         ingest_read_profile = getattr(pipeline_config, "ingest_read_profile", "read:packed24")
         ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
         ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
@@ -270,9 +273,11 @@ def ingest_writer_process(
                     import queue as queue_module
                     if isinstance(e, queue_module.Empty):
                         continue  # Normal timeout, keep waiting
-                    # Error occurred during ingestion
+                    # Error occurred during ingestion - this is fatal
                     import traceback
+                    print(f"\n[FATAL] Ingestion error on shard {unit_id}: {e}", flush=True)
                     traceback.print_exc()
+                    raise  # Re-raise to fail the pipeline
 
             # Close the final write batch
             if wb is not None:
