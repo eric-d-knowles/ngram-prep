@@ -94,8 +94,8 @@ def worker_process(
             try:
                 # Check if range is empty first
                 if _is_range_empty(work_unit, src_db_path, pipeline_config):
-                    # Empty range - skip processing and splitting, just mark as ingested
-                    work_tracker.ingest_work_unit(work_unit.unit_id)
+                    # Empty range - skip processing and splitting, just mark as completed
+                    work_tracker.complete_work_unit(work_unit.unit_id)
                     continue
 
                 # Check if we should split this unit before processing (worker-driven splitting)

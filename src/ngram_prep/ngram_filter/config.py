@@ -54,14 +54,14 @@ class PipelineConfig:
     writer_write_profile: str = 'write:packed24'
     writer_disable_wal: bool = True
 
-    # Ingest writer configuration (single writer, no lock contention)
+    # Ingest configuration (parallel reads, sequential writes)
     # Note: Shards are always deleted after successful ingestion
     ingest_read_profile: str = 'read:packed24'
     ingest_write_profile: str = 'write:packed24'
     ingest_batch_items: int = 2_000_000
     ingest_disable_wal: bool = True
-    enable_prefetch: bool = True
-    prefetch_queue_depth: int = 5
+    ingest_num_readers: int = 4  # Number of parallel shard reader processes
+    ingest_queue_size: int = 8  # Max shards buffered in memory (controls memory usage)
 
     # Pipeline control
     mode: str = "resume"  # "restart", "resume", or "reprocess"
