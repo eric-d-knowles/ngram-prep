@@ -11,3 +11,6 @@ build/
 htmlcov/
 .vscode/
 .idea/
+
+# Singularity containers (built files go in /scratch/<netid>/containers/)
+*.sif

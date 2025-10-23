@@ -1,0 +1,67 @@
+Bootstrap: localimage
+From: /share/apps/images/cuda12.6.3-cudnn9.5.1-ubuntu22.04.5.sif
+
+%post
+    # Update package lists
+    apt-get update
+
+    # Install wget and other essentials
+    apt-get install -y wget git
+
+    # Install Miniforge (lightweight conda distribution)
+    wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh
+    bash /tmp/miniforge.sh -b -p /opt/miniforge
+    rm /tmp/miniforge.sh
+
+    # Initialize conda for bash
+    /opt/miniforge/bin/conda init bash
+
+    # Install Python packages via pip
+    /opt/miniforge/bin/pip install --no-cache-dir \
+        tensorflow[and-cuda] \
+        numpy \
+        pandas \
+        scipy \
+        scikit-learn \
+        matplotlib \
+        seaborn \
+        jupyter \
+        ipykernel \
+        notebook
+
+    # Install rocks-shim from GitHub
+    /opt/miniforge/bin/pip install --no-cache-dir \
+        git+https://github.com/eric-d-knowles/rocks-shim.git
+
+    # Clean up apt cache to reduce image size
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%environment
+    # Set up conda environment
+    export PATH=/opt/miniforge/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+%runscript
+    # Default action when container is run
+    exec /opt/miniforge/bin/python "$@"
+
+%labels
+    Author ngram-prep
+    Version 1.0
+    Description TensorFlow + CUDA environment for ngram-prep on NYU Torch cluster
+
+%help
+    This container provides a TensorFlow environment with CUDA support for the ngram-prep project.
+
+    Usage examples:
+    - Run Python script: singularity run container.sif script.py
+    - Interactive Python: singularity exec container.sif python
+    - Jupyter notebook: singularity exec container.sif jupyter notebook
+    - Shell access: singularity shell container.sif
+
+    The container includes:
+    - TensorFlow with CUDA 12.6.3 and cuDNN 9.5.1 support
+    - Scientific Python stack (numpy, pandas, scipy, scikit-learn)
+    - Jupyter notebook support
+    - rocks-shim package
