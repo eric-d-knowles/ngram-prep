@@ -33,7 +33,7 @@ echo -e "${YELLOW}This may take 10-20 minutes${NC}"
 
 OUTPUT_PATH="${CONTAINER_DIR}/${CONTAINER_NAME}"
 
-singularity build "$OUTPUT_PATH" "$DEF_FILE"
+env -u APPTAINER_BINDPATH -u SINGULARITY_BINDPATH singularity build --remote "$OUTPUT_PATH" "$DEF_FILE"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Container built successfully!${NC}"

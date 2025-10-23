@@ -1,5 +1,5 @@
-Bootstrap: localimage
-From: /share/apps/images/cuda12.6.3-cudnn9.5.1-ubuntu22.04.5.sif
+Bootstrap: docker
+From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
 
 %post
     # Update package lists
@@ -18,20 +18,16 @@ From: /share/apps/images/cuda12.6.3-cudnn9.5.1-ubuntu22.04.5.sif
 
     # Install Python packages via pip
     /opt/miniforge/bin/pip install --no-cache-dir \
-        tensorflow[and-cuda] \
         numpy \
         pandas \
         scipy \
         scikit-learn \
         matplotlib \
-        seaborn \
-        jupyter \
-        ipykernel \
-        notebook
+        seaborn
 
-    # Install rocks-shim from GitHub
+    # Install rocks-shim pre-built wheel from GitHub release
     /opt/miniforge/bin/pip install --no-cache-dir \
-        git+https://github.com/eric-d-knowles/rocks-shim.git
+        https://github.com/eric-d-knowles/rocks-shim/releases/download/v0.1.0/rocks_shim-0.1.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
 
     # Clean up apt cache to reduce image size
     apt-get clean
@@ -57,11 +53,9 @@ From: /share/apps/images/cuda12.6.3-cudnn9.5.1-ubuntu22.04.5.sif
     Usage examples:
     - Run Python script: singularity run container.sif script.py
     - Interactive Python: singularity exec container.sif python
-    - Jupyter notebook: singularity exec container.sif jupyter notebook
     - Shell access: singularity shell container.sif
 
     The container includes:
     - TensorFlow with CUDA 12.6.3 and cuDNN 9.5.1 support
     - Scientific Python stack (numpy, pandas, scipy, scikit-learn)
-    - Jupyter notebook support
     - rocks-shim package
