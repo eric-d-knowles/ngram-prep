@@ -16,29 +16,53 @@ from ..config import PipelineConfig
 from .worker import worker_process, WorkerConfig
 from .progress import Counters
 
-__all__ = ["run_worker_pool", "ingest_writer_process"]
+__all__ = ["run_worker_pool", "ingest_coordinator_process"]
 
 
-def deletion_worker(deletion_queue: mp.Queue) -> None:
-    """Background worker that deletes shard directories asynchronously."""
-    setproctitle("ngp:shard-cleanup")
-    while True:
-        shard_path = deletion_queue.get()
-        if shard_path is None:  # Sentinel to stop
-            break
-        try:
-            shutil.rmtree(shard_path)
-        except Exception:
-            pass  # Ignore deletion errors
+def read_shard_worker(
+    shard_path: Path,
+    unit_id: str,
+    read_profile: str,
+    result_queue: mp.Queue,
+) -> None:
+    """
+    Worker process that reads a shard into memory.
+
+    Args:
+        shard_path: Path to shard database
+        unit_id: Work unit ID
+        read_profile: RocksDB read profile
+        result_queue: Queue to put (unit_id, data) tuples
+    """
+    try:
+        setproctitle(f"ngp:ingest-reader[{unit_id}]")
+
+        if not shard_path.exists():
+            # Empty shard - send empty data
+            result_queue.put((unit_id, []))
+            return
+
+        # Read entire shard into memory
+        data = []
+        with open_db(shard_path, mode="r", profile=read_profile) as shard_db:
+            for key, value in scan_all(shard_db):
+                data.append((key, value))
+
+        result_queue.put((unit_id, data))
+
+    except Exception as e:
+        # On error, send empty data
+        print(f"Error reading shard {unit_id}: {e}")
+        result_queue.put((unit_id, []))
 
 
-def ingest_reader_process(
+def ingest_reader_process_DEPRECATED(
         reader_id: int,
         output_dir: Path,
         data_queue: mp.Queue,
         ingest_read_profile: str,
         work_tracker_path: Path,
-        stop_event: mp.Event,
+        stop_event: Optional[mp.Event],
 ) -> None:
     """
     Reader process that polls work tracker for completed units and loads them.
@@ -46,16 +70,17 @@ def ingest_reader_process(
     Uses disk-based "pre-queue": polls work tracker for completed-but-not-ingested units,
     loads shard from output_dir, sends data to writer.
 
-    No ingest_queue needed - reads directly from filesystem based on work tracker state!
+    For separate-stage ingestion (stop_event=None), reader stops when no completed
+    units are found after several checks. For concurrent ingestion, reader waits
+    for stop_event to be set by workers.
 
     Args:
         reader_id: Unique ID for this reader process
         output_dir: Directory containing completed shard DBs
-        data_queue: Queue to send (unit_id, shard_data_list) to writer
+        data_queue: Queue to send (unit_id, shard_path) to writer
         ingest_read_profile: RocksDB profile for reading
         work_tracker_path: Path to work tracker
-        deletion_queue: Queue for async shard deletion
-        stop_event: Event to signal shutdown when all work is done
+        stop_event: Optional event to signal shutdown (None for separate-stage mode)
     """
     import time
     from ngram_prep.tracking import WorkTracker
@@ -65,15 +90,32 @@ def ingest_reader_process(
         setproctitle(f"ngp:ingest-reader-{reader_id}")
         work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
 
-        while not stop_event.is_set():
+        consecutive_empty = 0
+        max_consecutive_empty = 10  # Stop after 10 consecutive empty checks (1 second)
+
+        while True:
+            # Check stop event if provided (concurrent ingestion mode)
+            if stop_event is not None and stop_event.is_set():
+                break
+
             # Atomically claim next completed unit (disk-based pre-queue!)
             # This transitions 'completed' → 'ingesting' atomically, preventing duplicate processing
             unit_id = work_tracker.claim_completed_unit_for_ingest()
 
             if unit_id is None:
-                # No work available - wait briefly and check again
+                # No work available
+                consecutive_empty += 1
+
+                # In separate-stage mode (stop_event=None), stop after consecutive empties
+                if stop_event is None and consecutive_empty >= max_consecutive_empty:
+                    break
+
+                # Wait briefly and check again
                 time.sleep(0.1)
                 continue
+
+            # Reset empty counter - we found work
+            consecutive_empty = 0
 
             shard_path = output_dir / f"{unit_id}.db"
 
@@ -103,172 +145,155 @@ def ingest_coordinator_process(
         work_tracker_path: Path,
         output_dir: Path,
         pipeline_config: PipelineConfig,
-        num_filter_workers: int,
         stop_event: Optional[mp.Event] = None,
 ) -> None:
     """
-    Coordinator that spawns readers (poll disk for completed shards) + single writer.
+    Ingest all completed shards with parallel reads and writes.
 
-    Uses disk-based pre-queue: readers poll work tracker for completed units,
-    eliminating the need for ingest_queue entirely. Workers write to disk,
-    readers pick up from disk, writer ingests.
+    Spawns multiple reader processes that read shards in parallel, then writes
+    results as they arrive (no ordering required - each shard contains disjoint
+    key ranges, so write order doesn't affect correctness).
+
+    This is more efficient than the filtering module which enforces deterministic
+    order for reproducibility of merge operations.
 
     Args:
         dst_db_path: Path to destination database
         work_tracker_path: Path to work tracker
         output_dir: Directory containing completed shard DBs
         pipeline_config: Pipeline configuration
-        num_filter_workers: Number of filter workers (for tracking completion)
+        stop_event: Unused (kept for API compatibility)
     """
-    try:
-        setproctitle("ngp:ingest-writer")
+    # Get configuration
+    ingest_read_profile = getattr(pipeline_config, "ingest_read_profile", "read:packed24")
+    ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
+    ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
+    batch_size = getattr(pipeline_config, "ingest_batch_items", 10_000_000)
+    num_readers = getattr(pipeline_config, "num_ingest_readers", 8)
+    queue_size = getattr(pipeline_config, "ingest_queue_depth", 50)
 
-        ingest_read_profile = getattr(pipeline_config, "ingest_read_profile", "read:packed24")
-        ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
-        ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
-        batch_size = getattr(pipeline_config, "ingest_batch_items", 10_000_000)
+    # Get all completed work units in deterministic order
+    work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
 
-        work_tracker = WorkTracker(
-            work_tracker_path,
-            claim_order=pipeline_config.work_unit_claim_order
+    import sqlite3
+    with sqlite3.connect(str(work_tracker_path), timeout=10.0) as conn:
+        cursor = conn.execute(
+            "SELECT unit_id FROM work_units WHERE status = 'completed' ORDER BY unit_id"
         )
+        completed_units = [row[0] for row in cursor.fetchall()]
 
-        # Start background deletion worker
-        ctx = mp.get_context("spawn")
-        deletion_queue = ctx.Queue()
-        deletion_process = ctx.Process(target=deletion_worker, args=(deletion_queue,), daemon=True)
-        deletion_process.start()
+    if not completed_units:
+        print("No completed shards to ingest")
+        return
 
-        # Use provided stop_event for coordinated shutdown
-        if stop_event is None:
-            stop_event = ctx.Event()
+    # Create result queue with limited size to control memory usage
+    ctx = mp.get_context("spawn")
+    result_queue = ctx.Queue(maxsize=queue_size)
 
-        # Start single reader process (polls work tracker, sends paths to writer)
-        queue_depth = getattr(pipeline_config, 'ingest_queue_depth', 50)
-        data_queue = ctx.Queue(maxsize=queue_depth)
-        reader_process = ctx.Process(
-            target=ingest_reader_process,
-            args=(0, output_dir, data_queue, ingest_read_profile, work_tracker_path, stop_event),
-            name=f"ngp:ingest-reader",
-            daemon=True
-        )
-        reader_process.start()
+    # Open destination DB once
+    dst_db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        num_reader_threads = getattr(pipeline_config, 'num_ingest_reader_threads', 4)
-
-        # Initialize work tracker to mark units as ingested after successful write
-        work_tracker = WorkTracker(
-            work_tracker_path,
-            claim_order=pipeline_config.work_unit_claim_order
-        )
-
-        # Thread worker function to read shard and return items
-        from concurrent.futures import ThreadPoolExecutor
-        import queue as queue_module
-
-        def read_shard_to_list(shard_path):
-            """Read entire shard and return list of (key, value) tuples."""
-            items = []
-            try:
-                with open_db(shard_path, mode="r", profile=ingest_read_profile) as shard_db:
-                    for key, value in scan_all(shard_db):
-                        items.append((key, value))
-                return items
-            except Exception as e:
-                print(f"[shard-reader] Error reading {shard_path}: {e}", flush=True)
-                return []
-
-        # Single writer with parallel shard readers
+    from tqdm import tqdm
+    with tqdm(
+        total=len(completed_units),
+        desc="Shards Ingested:",
+        unit="shards",
+        ncols=100,
+        bar_format='{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
+    ) as pbar:
         with open_db(dst_db_path, mode="rw", profile=ingest_write_profile, create_if_missing=True) as dst_db:
-            # Thread pool for parallel shard reading
-            executor = ThreadPoolExecutor(max_workers=num_reader_threads)
+            # Open write batch
+            wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
+            wb.__enter__()
+            batch_item_count = 0
 
-            # Track futures for units being read
-            pending_units = {}  # unit_id -> (Future, shard_path)
-            done_receiving = False
+            try:
+                # Process shards as they complete (no ordering required for pivot)
+                active_processes = []
 
-            # Main loop: keep thread pool saturated
-            while not done_receiving or pending_units:
-                # Step 1: Fill thread pool with work (up to num_reader_threads concurrent)
-                while len(pending_units) < num_reader_threads and not done_receiving:
-                    try:
-                        item = data_queue.get(timeout=0.01)
+                # Start initial batch of readers
+                for i in range(min(num_readers, len(completed_units))):
+                    unit_id = completed_units[i]
+                    shard_path = output_dir / f"{unit_id}.db"
 
-                        if item is None:
-                            done_receiving = True
-                            break
+                    p = ctx.Process(
+                        target=read_shard_worker,
+                        args=(shard_path, unit_id, ingest_read_profile, result_queue),
+                    )
+                    p.start()
+                    active_processes.append((i, p))
 
-                        unit_id, shard_path = item
-                        if shard_path is None:
-                            continue
+                next_to_launch_idx = min(num_readers, len(completed_units))
 
-                        # Submit to thread pool
-                        future = executor.submit(read_shard_to_list, shard_path)
-                        pending_units[unit_id] = (future, shard_path)
+                # Main loop: write results as they arrive (no ordering required)
+                shards_written = 0
+                while shards_written < len(completed_units):
+                    # Get next result from queue (write immediately, no buffering)
+                    unit_id, data = result_queue.get()
 
-                    except queue_module.Empty:
-                        break  # No more shards available right now
-
-                # Step 2: Check for completed reads
-                completed_units = []
-                for check_unit_id, (check_future, check_path) in list(pending_units.items()):
-                    if check_future.done():
-                        completed_units.append((check_unit_id, check_future, check_path))
-                        pending_units.pop(check_unit_id)
-
-                # Step 3: Write completed units to database (one commit per shard)
-                for comp_unit_id, comp_future, comp_path in completed_units:
-                    items = comp_future.result()  # Get items from future
-
-                    # Write all items from this shard in one batch
-                    with dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False) as wb:
-                        for key, value in items:
+                    # Write data immediately
+                    if data:  # Not empty
+                        for key, value in data:
                             wb.put(key, value)
+                            batch_item_count += 1
 
-                    # Mark unit as ingested and queue for deletion
-                    work_tracker.ingest_work_unit(comp_unit_id)
-                    deletion_queue.put(comp_path)
+                            # Commit batch periodically
+                            if batch_item_count >= batch_size:
+                                wb.__exit__(None, None, None)
+                                wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
+                                wb.__enter__()
+                                batch_item_count = 0
 
-                # Step 4: Small sleep to avoid busy-waiting when pending but nothing complete
-                if pending_units and not completed_units:
-                    import time
-                    time.sleep(0.01)
+                    # Mark as ingested and delete shard
+                    work_tracker.ingest_work_unit(unit_id)
+                    shard_path = output_dir / f"{unit_id}.db"
+                    if shard_path.exists():
+                        try:
+                            shutil.rmtree(shard_path)
+                        except Exception:
+                            pass
 
-            # Process any remaining pending units (one commit per shard)
-            for unit_id, (future, shard_path) in pending_units.items():
-                items = future.result()  # Wait for completion
+                    pbar.update(1)
+                    shards_written += 1
 
-                # Write all items from this shard in one batch
-                with dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False) as wb:
-                    for key, value in items:
-                        wb.put(key, value)
+                    # Launch next reader if available
+                    if next_to_launch_idx < len(completed_units):
+                        unit_id = completed_units[next_to_launch_idx]
+                        shard_path = output_dir / f"{unit_id}.db"
 
-                # Mark unit as ingested and queue for deletion
-                work_tracker.ingest_work_unit(unit_id)
-                deletion_queue.put(shard_path)
+                        p = ctx.Process(
+                            target=read_shard_worker,
+                            args=(shard_path, unit_id, ingest_read_profile, result_queue),
+                        )
+                        p.start()
+                        active_processes.append((next_to_launch_idx, p))
+                        next_to_launch_idx += 1
 
-            # Shutdown thread pool
-            executor.shutdown(wait=True)
+                # Wait for all reader processes to finish
+                for idx, p in active_processes:
+                    p.join(timeout=30)
+                    if p.is_alive():
+                        p.terminate()
+                        p.join()
 
-        # Wait for reader to finish
-        reader_process.join(timeout=5)
-        if reader_process.is_alive():
-            reader_process.terminate()
+                # Commit final batch
+                wb.__exit__(None, None, None)
 
-        # Stop deletion worker
-        deletion_queue.put(None)
-        deletion_process.join(timeout=30)
-        if deletion_process.is_alive():
-            deletion_process.terminate()
+            except Exception as e:
+                # Clean up on error
+                try:
+                    wb.__exit__(None, None, None)
+                except:
+                    pass
 
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        try:
-            deletion_queue.put(None)
-            deletion_process.join(timeout=5)
-        except:
-            pass
+                # Terminate all active processes
+                for _, p in active_processes:
+                    if p.is_alive():
+                        p.terminate()
+                        p.join()
+                raise
+
+    print()  # Newline after progress bar
 
 
 def run_worker_pool(
@@ -276,7 +301,6 @@ def run_worker_pool(
         src_db_path: Path,
         work_tracker_path: Path,
         output_dir: Path,
-        dst_db_path: Path,
         pipeline_config: PipelineConfig,
         worker_config: WorkerConfig,
         counters: Optional[Counters] = None,
@@ -289,7 +313,6 @@ def run_worker_pool(
         src_db_path: Path to source database
         work_tracker_path: Path to work tracker database
         output_dir: Directory for output databases
-        dst_db_path: Path to destination database
         pipeline_config: Pipeline configuration
         worker_config: Worker-specific configuration
         counters: Optional shared counters for progress tracking
@@ -298,29 +321,9 @@ def run_worker_pool(
         RuntimeError: If any worker processes fail
     """
     ctx = mp.get_context("spawn")
-
-    # Create stop event for coordinated shutdown
-    stop_event = ctx.Event()
-
-    # Start ingest coordinator (spawns multiple reader processes + writer)
-    # No ingest_queue needed - readers poll work tracker for completed units (disk-based pre-queue!)
-    writer_process = ctx.Process(
-        target=ingest_coordinator_process,
-        args=(
-            dst_db_path,
-            work_tracker_path,
-            output_dir,
-            pipeline_config,
-            num_workers,
-            stop_event,
-        ),
-        name="ngp:ingest-coord"
-    )
-    writer_process.start()
-
     processes = []
 
-    # Start all worker processes
+    # Start all worker processes (no concurrent ingestion)
     for worker_id in range(num_workers):
         process = ctx.Process(
             target=worker_process,
@@ -329,7 +332,6 @@ def run_worker_pool(
                 src_db_path,
                 work_tracker_path,
                 output_dir,
-                None,  # No ingest_queue - workers write to output_dir and mark as "completed"
                 pipeline_config,
                 worker_config,
                 counters,
@@ -342,17 +344,6 @@ def run_worker_pool(
     # Wait for all workers to complete
     for process in processes:
         process.join()
-
-    # Signal ingest coordinator that all workers are done
-    # Reader will finish processing remaining completed units, then stop
-    stop_event.set()
-
-    # Wait for writer to finish processing remaining units
-    writer_process.join(timeout=120)
-    if writer_process.is_alive():
-        # Ingest writer did not stop gracefully, terminating
-        writer_process.terminate()
-        writer_process.join(timeout=10)
 
     # Check for any failures
     failed_processes = [p for p in processes if p.exitcode != 0]

@@ -71,6 +71,7 @@ class PivotOrchestrator:
         # Execute pipeline phases
         self._create_work_units()
         self._process_work_units()
+        self._ingest_shards()
         self._finalize_database()
         self._compact_if_requested()
         self._validate_final_result()
@@ -157,11 +158,6 @@ class PivotOrchestrator:
             f"{progress.processing} processing, {progress.pending} pending"
         )
 
-        # Reset incomplete ingestions (units with shards still on disk)
-        reset_count = work_tracker.reset_incomplete_ingestions(self.temp_paths['output_dir'])
-        if reset_count > 0:
-            print(f"Recovered {reset_count} incomplete ingestion(s) for re-processing")
-
         # Reset processing units from interrupted run
         if progress.processing > 0:
             work_tracker.reset_all_processing_units()
@@ -184,13 +180,12 @@ class PivotOrchestrator:
         progress_reporter = self._setup_progress_monitoring()
 
         try:
-            # Run the worker pool (workers now do their own splitting and ingestion)
+            # Run the worker pool (workers write shards, no concurrent ingestion)
             run_worker_pool(
                 num_workers=num_workers,
                 src_db_path=self.temp_paths['src_db'],
                 work_tracker_path=self.temp_paths['work_tracker'],
                 output_dir=self.temp_paths['output_dir'],
-                dst_db_path=self.temp_paths['dst_db'],
                 pipeline_config=self.pipeline_config,
                 worker_config=self._create_worker_config(),
                 counters=(
@@ -205,6 +200,47 @@ class PivotOrchestrator:
         finally:
             # Stop progress reporter
             self._cleanup_progress_monitoring(progress_reporter)
+
+    def _ingest_shards(self) -> None:
+        """Ingest all shards with parallel reads and sequential writes."""
+        enable_ingest = getattr(self.pipeline_config, 'enable_ingest', True)
+        if not enable_ingest:
+            print("Skipping ingestion (enable_ingest=False)")
+            return
+
+        # Reset incomplete ingestions from previous interrupted run
+        # This recovers units stuck in 'ingesting' state (claimed but not written)
+        work_tracker = WorkTracker(
+            self.temp_paths['work_tracker'],
+            claim_order=self.pipeline_config.work_unit_claim_order
+        )
+        reset_count = work_tracker.reset_incomplete_ingestions(self.temp_paths['output_dir'])
+        if reset_count > 0:
+            print(f"Recovered {reset_count} incomplete ingestion(s) from previous run")
+
+        # Get shard count for header
+        import sqlite3
+        with sqlite3.connect(str(self.temp_paths['work_tracker']), timeout=10.0) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM work_units WHERE status = 'completed'")
+            num_shards = cursor.fetchone()[0]
+
+        if num_shards == 0:
+            print("No shards to ingest (all already ingested)")
+            return
+
+        num_readers = getattr(self.pipeline_config, "num_ingest_readers", 8)
+        queue_depth = getattr(self.pipeline_config, "ingest_queue_depth", 50)
+
+        print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} parallel readers...")
+
+        from .worker_pool import ingest_coordinator_process
+        ingest_coordinator_process(
+            dst_db_path=self.temp_paths['dst_db'],
+            work_tracker_path=self.temp_paths['work_tracker'],
+            output_dir=self.temp_paths['output_dir'],
+            pipeline_config=self.pipeline_config,
+            stop_event=None,  # Separate-stage mode - reader stops when no more units
+        )
 
     def _setup_progress_monitoring(self):
         """
@@ -262,8 +298,8 @@ class PivotOrchestrator:
             pass
 
     def _finalize_database(self) -> None:
-        """Finalize database after all workers have completed."""
-        print_phase_header(3, "Finalizing database...")
+        """Finalize database after ingestion."""
+        print_phase_header(4, "Finalizing database...")
 
         # Get stats from existing DB
         try:

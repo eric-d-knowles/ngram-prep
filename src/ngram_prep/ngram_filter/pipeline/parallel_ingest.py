@@ -61,10 +61,10 @@ def ingest_shards_parallel(
     queue_size: int = 8,
 ) -> tuple[int, int]:
     """
-    Ingest all completed shards with parallel reads and sequential writes.
+    Ingest all completed shards with parallel reads and writes.
 
-    Reads shards in parallel but writes them in deterministic order (sorted by unit_id).
-    This maintains determinism while improving performance.
+    Reads shards in parallel and writes them as they arrive (no ordering required).
+    Each shard contains independent data, so write order doesn't affect correctness.
 
     Args:
         output_dir: Directory containing shard DBs
@@ -83,13 +83,13 @@ def ingest_shards_parallel(
     ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
     batch_size = getattr(pipeline_config, "ingest_batch_items", 2_000_000)
 
-    # Get all completed work units in deterministic order
+    # Get all completed work units
     work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
 
     import sqlite3
     with sqlite3.connect(str(work_tracker_path), timeout=10.0) as conn:
         cursor = conn.execute(
-            "SELECT unit_id FROM work_units WHERE status = 'completed' ORDER BY unit_id"
+            "SELECT unit_id FROM work_units WHERE status = 'completed'"
         )
         completed_units = [row[0] for row in cursor.fetchall()]
 
@@ -123,9 +123,7 @@ def ingest_shards_parallel(
             batch_item_count = 0
 
             try:
-                # Process shards in order, spawning readers ahead of time
-                next_to_write_idx = 0
-                pending_data = {}  # unit_id -> data mapping for shards read ahead
+                # Process shards as they complete (no ordering required)
                 active_processes = []
 
                 # Start initial batch of readers
@@ -142,78 +140,38 @@ def ingest_shards_parallel(
 
                 next_to_launch_idx = min(num_readers, len(completed_units))
 
-                # Main loop: collect results and write in order
-                while next_to_write_idx < len(completed_units):
-                    # Get next result from queue
+                # Main loop: write results as they arrive
+                shards_written = 0
+                while shards_written < len(completed_units):
+                    # Get next result from queue (write immediately, no buffering)
                     unit_id, data = result_queue.get()
 
-                    # Check if this is the next one we need to write
-                    expected_unit_id = completed_units[next_to_write_idx]
+                    # Write data immediately
+                    if data:  # Not empty
+                        for key, value in data:
+                            wb.merge(key, value)
+                            batch_item_count += 1
+                            total_items += 1
+                            total_bytes += len(key) + len(value)
 
-                    if unit_id == expected_unit_id:
-                        # This is the next one - write it immediately
-                        if data:  # Not empty
-                            for key, value in data:
-                                wb.merge(key, value)
-                                batch_item_count += 1
-                                total_items += 1
-                                total_bytes += len(key) + len(value)
+                            # Commit batch periodically
+                            if batch_item_count >= batch_size:
+                                wb.__exit__(None, None, None)
+                                wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
+                                wb.__enter__()
+                                batch_item_count = 0
 
-                                # Commit batch periodically
-                                if batch_item_count >= batch_size:
-                                    wb.__exit__(None, None, None)
-                                    wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
-                                    wb.__enter__()
-                                    batch_item_count = 0
+                    # Mark as ingested and delete shard
+                    work_tracker.ingest_work_unit(unit_id)
+                    shard_path = output_dir / f"{unit_id}.db"
+                    if shard_path.exists():
+                        try:
+                            shutil.rmtree(shard_path)
+                        except Exception:
+                            pass
 
-                        # Mark as ingested and delete shard
-                        work_tracker.ingest_work_unit(unit_id)
-                        shard_path = output_dir / f"{unit_id}.db"
-                        if shard_path.exists():
-                            try:
-                                shutil.rmtree(shard_path)
-                            except Exception:
-                                pass
-
-                        pbar.update(1)
-                        next_to_write_idx += 1
-
-                        # Check if we have buffered data to write
-                        while next_to_write_idx < len(completed_units):
-                            next_unit_id = completed_units[next_to_write_idx]
-                            if next_unit_id in pending_data:
-                                # Write buffered data
-                                buffered_data = pending_data.pop(next_unit_id)
-
-                                if buffered_data:
-                                    for key, value in buffered_data:
-                                        wb.merge(key, value)
-                                        batch_item_count += 1
-                                        total_items += 1
-                                        total_bytes += len(key) + len(value)
-
-                                        if batch_item_count >= batch_size:
-                                            wb.__exit__(None, None, None)
-                                            wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
-                                            wb.__enter__()
-                                            batch_item_count = 0
-
-                                work_tracker.ingest_work_unit(next_unit_id)
-                                shard_path = output_dir / f"{next_unit_id}.db"
-                                if shard_path.exists():
-                                    try:
-                                        shutil.rmtree(shard_path)
-                                    except Exception:
-                                        pass
-
-                                pbar.update(1)
-                                next_to_write_idx += 1
-                            else:
-                                break
-
-                    else:
-                        # This came out of order - buffer it
-                        pending_data[unit_id] = data
+                    pbar.update(1)
+                    shards_written += 1
 
                     # Launch next reader if available
                     if next_to_launch_idx < len(completed_units):

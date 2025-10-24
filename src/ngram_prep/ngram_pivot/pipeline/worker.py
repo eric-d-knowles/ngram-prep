@@ -35,7 +35,6 @@ def worker_process(
         src_db_path: Path,
         work_tracker_path: Path,
         output_dir: Path,
-        ingest_queue: Optional[mp.Queue],
         pipeline_config: PipelineConfig,
         worker_config: WorkerConfig,
         counters: Optional[Counters] = None,
@@ -48,7 +47,6 @@ def worker_process(
         src_db_path: Path to source database
         work_tracker_path: Path to work tracker database
         output_dir: Directory for output databases
-        ingest_queue: Queue to send completed shards to ingest writer
         pipeline_config: Configuration for DB operations
         worker_config: Worker-specific configuration
         counters: Optional shared counters for progress tracking
@@ -121,7 +119,6 @@ def worker_process(
                     work_unit,
                     src_db_path,
                     output_dir,
-                    ingest_queue,
                     worker_config,
                     pipeline_config,
                     local_counters,
@@ -229,7 +226,6 @@ def _process_work_unit(
         work_unit: WorkUnit,
         src_db_path: Path,
         output_dir: Path,
-        ingest_queue: Optional[mp.Queue],
         config: WorkerConfig,
         pipeline_config: PipelineConfig,
         local_counters: Optional[dict] = None,
@@ -240,7 +236,7 @@ def _process_work_unit(
 
     This function handles the core pivot work. It processes the entire range
     from start_key to end_key, flushing periodically and checkpointing progress.
-    After pivoting completes, the shard path is sent to the ingest writer queue.
+    After pivoting completes, the shard is written to disk and marked as completed.
 
     Worker-Driven Splitting:
         Workers may split their own units before processing starts if idle workers
@@ -251,7 +247,6 @@ def _process_work_unit(
         work_unit: The work unit to process
         src_db_path: Path to source database
         output_dir: Directory for output databases
-        ingest_queue: Queue to send completed shard to ingest writer
         config: Worker configuration
         pipeline_config: Pipeline configuration
         local_counters: Optional local counters for tracking work before commit
