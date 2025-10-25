@@ -208,10 +208,11 @@ def ingest_coordinator_process(
             batch_item_count = 0
 
             try:
-                # Process shards as they complete (no ordering required for pivot)
+                # Launch initial batch of readers (controlled by num_readers)
+                # Launch additional readers as data arrives from queue
                 active_processes = []
 
-                # Start initial batch of readers
+                # Start initial batch
                 for i in range(min(num_readers, len(completed_units))):
                     unit_id = completed_units[i]
                     shard_path = output_dir / f"{unit_id}.db"
@@ -221,12 +222,13 @@ def ingest_coordinator_process(
                         args=(shard_path, unit_id, ingest_read_profile, result_queue),
                     )
                     p.start()
-                    active_processes.append((i, p))
+                    active_processes.append(p)
 
                 next_to_launch_idx = min(num_readers, len(completed_units))
 
                 # Main loop: write results as they arrive (no ordering required)
                 shards_written = 0
+
                 while shards_written < len(completed_units):
                     # Get next result from queue (write immediately, no buffering)
                     unit_id, data = result_queue.get()
@@ -256,21 +258,22 @@ def ingest_coordinator_process(
                     pbar.update(1)
                     shards_written += 1
 
-                    # Launch next reader if available
+                    # Launch next reader immediately after receiving data (not after writing)
+                    # This ensures readers keep running while writer is busy
                     if next_to_launch_idx < len(completed_units):
-                        unit_id = completed_units[next_to_launch_idx]
-                        shard_path = output_dir / f"{unit_id}.db"
+                        next_unit_id = completed_units[next_to_launch_idx]
+                        next_shard_path = output_dir / f"{next_unit_id}.db"
 
                         p = ctx.Process(
                             target=read_shard_worker,
-                            args=(shard_path, unit_id, ingest_read_profile, result_queue),
+                            args=(next_shard_path, next_unit_id, ingest_read_profile, result_queue),
                         )
                         p.start()
-                        active_processes.append((next_to_launch_idx, p))
+                        active_processes.append(p)
                         next_to_launch_idx += 1
 
                 # Wait for all reader processes to finish
-                for idx, p in active_processes:
+                for p in active_processes:
                     p.join(timeout=30)
                     if p.is_alive():
                         p.terminate()

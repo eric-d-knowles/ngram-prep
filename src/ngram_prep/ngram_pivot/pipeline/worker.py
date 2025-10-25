@@ -312,6 +312,27 @@ def _process_work_unit(
     return was_split, (0, 0, 0)
 
 
+def _precompute_year_prefixes(min_year: int = 1400, max_year: int = 2021) -> dict:
+    """
+    Pre-compute year prefixes for common year range.
+
+    This eliminates struct.pack() overhead in the tight encoding loop for years
+    in the range [min_year, max_year). Outlier years will be cached dynamically.
+
+    Args:
+        min_year: Minimum year to pre-compute (inclusive)
+        max_year: Maximum year to pre-compute (exclusive)
+
+    Returns:
+        Dictionary mapping year -> 4-byte big-endian prefix
+    """
+    import struct
+    prefixes = {}
+    for year in range(min_year, max_year):
+        prefixes[year] = struct.pack('>I', year)
+    return prefixes
+
+
 def _process_key_range(
         work_unit: WorkUnit,
         src_db,
@@ -349,12 +370,9 @@ def _process_key_range(
     last_split_check_time = time.time()
     split_check_interval_s = getattr(pipeline_config, 'split_check_interval_s', 120)
 
-    # Flag to exit outer loop on split
-    split_occurred = False
-
-    # Batch processing: collect multiple n-grams before encoding
-    batch_items = []
-    batch_size = 100  # Process 100 n-grams at a time
+    # Pre-compute year prefixes for common range (1400-2020)
+    # Outlier years will be cached dynamically on first encounter
+    year_prefixes = _precompute_year_prefixes(min_year=1400, max_year=2021)
 
     for ngram_key, packed_value in range_scan(src_db, start_key, end_key):
         since_checkpoint['scanned'] += 1
@@ -364,37 +382,30 @@ def _process_key_range(
             year_records = decode_packed24_records(packed_value)
             since_checkpoint['decoded'] += len(year_records)
 
-            # Add to batch instead of immediately encoding
-            batch_items.append((ngram_key, year_records))
+            # Encode and buffer immediately (direct processing - no batch accumulation)
+            for year, occurrences, documents in year_records:
+                # Use pre-computed prefix (or cache outliers dynamically)
+                if year not in year_prefixes:
+                    # Outlier year outside 1400-2020 range - cache it
+                    year_prefixes[year] = encode_year_ngram_key(year, b"")
+                target_key = year_prefixes[year] + ngram_key
+                target_value = encode_year_stats(occurrences, documents)
+                buffer.add(target_key, target_value)
 
-            # Process batch when full or check for flush
-            if len(batch_items) >= batch_size:
-                # Encode entire batch at once
-                for ngram, year_recs in batch_items:
-                    for year, occurrences, documents in year_recs:
-                        target_key = encode_year_ngram_key(year, ngram)
-                        target_value = encode_year_stats(occurrences, documents)
-                        buffer.add(target_key, target_value)
+            # Check if buffer needs flushing (check after every ngram)
+            should_flush = len(buffer.items) >= config.buffer_size or buffer.current_bytes >= config.buffer_bytes
 
-                batch_items.clear()
-
-                # Check if buffer needs flushing (normal conditions)
-                should_flush = len(buffer.items) >= config.buffer_size or buffer.current_bytes >= config.buffer_bytes
-
-                # Also check if we should split - force early flush if split conditions met
-                should_split = False
-                if work_tracker and split_check_interval_s > 0 and not should_flush:
-                    current_time = time.time()
-                    if current_time - last_split_check_time >= split_check_interval_s:
-                        # Check if there are idle workers
-                        progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
-                        if progress.idle_workers > 0:
-                            # Force early flush so we can checkpoint and split
-                            should_flush = True
-                            should_split = True
-            else:
-                should_flush = False
-                should_split = False
+            # Also check if we should split - force early flush if split conditions met
+            should_split = False
+            if work_tracker and split_check_interval_s > 0 and not should_flush:
+                current_time = time.time()
+                if current_time - last_split_check_time >= split_check_interval_s:
+                    # Check if there are idle workers
+                    progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
+                    if progress.idle_workers > 0:
+                        # Force early flush so we can checkpoint and split
+                        should_flush = True
+                        should_split = True
 
             if should_flush:
                     # Update checkpoint position (with more retries for high-worker scenarios)
@@ -427,30 +438,16 @@ def _process_key_range(
                                 if child:
                                     # Unit was split and marked completed - exit scan loop
                                     # We've already flushed everything up to current_position
-                                    split_occurred = True
                                     break
                             except (ValueError, Exception):
                                 # Split failed (e.g., no progress yet, or position too close to end)
                                 # This is fine - just continue processing
                                 pass
 
-            # Check if split occurred in inner loop - need to break outer loop too
-            if split_occurred:
-                break
-
         except Exception as e:
             if pipeline_config.validate:
                 raise
             # Otherwise skip this record and continue
-
-    # Process any remaining batch items after loop ends
-    if batch_items:
-        for ngram, year_recs in batch_items:
-            for year, occurrences, documents in year_recs:
-                target_key = encode_year_ngram_key(year, ngram)
-                target_value = encode_year_stats(occurrences, documents)
-                buffer.add(target_key, target_value)
-        batch_items.clear()
 
     # Completed processing entire range
     # Commit any remaining counts from partial buffer and update counters
