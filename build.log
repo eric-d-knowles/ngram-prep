@@ -1,729 +1,0 @@
-INFO:    User not listed in /etc/subuid, trying root-mapped namespace
-INFO:    The %post section will be run under the fakeroot command
-WARNING: SINGULARITY_CACHEDIR and APPTAINER_CACHEDIR have different values, using the latter
-WARNING: No default remote in use, falling back to default keyserver: https://keys.openpgp.org
-INFO:    Starting build...
-INFO:    Verifying bootstrap image /share/apps/images/cuda13.0.1-cudnn9.13.0-ubuntu-24.04.3.sif
-INFO:    Extracting local image...
-ERROR:   unpackSIF failed: root filesystem extraction failed: extract command failed: WARNING: Skipping mount /etc/hosts [binds]: /etc/hosts doesn't exist in container
-WARNING: Skipping mount /etc/localtime [binds]: /etc/localtime doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/tmp [tmp]: /tmp doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/var/tmp [tmp]: /var/tmp doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/etc/resolv.conf [files]: /etc/resolv.conf doesn't exist in container
-WARNING: Error changing the container working directory. Using '/' instead: chdir /root: no such file or directory
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/gshadow, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/gshadow-, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/polkit-1/rules.d, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/shadow, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/shadow-, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/ssl/private/ssl-cert-snakeoil.key, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/ssl/private, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.bash_logout, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.bashrc, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.profile, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu, because Invalid argument
-Parallel unsquashfs: Using 128 processors
-329056 inodes (431867 blocks) to write
-
-[/                                                         ]   3435/760923   0%[-                                                         ]   8219/760923   1%[=\                                                        ]  15274/760923   2%
-set_attributes: failed to change uid and gids on /image/rootfs/run/dbus/containers, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/leases, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/links, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/lldp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/xpra, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/chage, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/expiry, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/ssh-agent, because Invalid argument
-[=|                                                        ]  24476/760923   3%[====/                                                     ]  64127/760923   8%[=======-                                                  ]  96374/760923  12%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/lib/dbus-1.0/dbus-daemon-launch-helper, because Invalid argument
-[========\                                                 ] 106975/760923  14%[========/                                                 ] 118001/760923  15%[=========-                                                ] 122005/760923  16%[==========\                                               ] 140116/760923  18%[============|                                             ] 162501/760923  21%[============-                                             ] 171501/760923  22%[=============\                                            ] 175817/760923  23%[=============/                                            ] 185116/760923  24%[==============-                                           ] 190692/760923  25%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/lib/x86_64-linux-gnu/utempter/utempter, because Invalid argument
-[===============\                                          ] 201593/760923  26%[===============|                                          ] 206333/760923  27%[================/                                         ] 214273/760923  28%[================\                                         ] 222153/760923  29%[=================/                                        ] 229839/760923  30%[=================\                                        ] 239175/760923  31%[==================/                                       ] 249069/760923  32%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/local/share/fonts, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/pam_extrausers_chkpwd, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/postdrop, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/postqueue, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/unix_chkpwd, because Invalid argument
-[====================-                                     ] 271744/760923  35%[=====================\                                    ] 287073/760923  37%[=======================|                                  ] 310606/760923  40%[=========================/                                ] 346687/760923  45%[============================/                             ] 375600/760923  49%[============================\                             ] 381419/760923  50%[==============================|                           ] 401567/760923  52%[================================/                         ] 438341/760923  57%[===================================-                      ] 477364/760923  62%[======================================\                   ] 513112/760923  67%[=========================================|                ] 552358/760923  72%[==========================================/               ] 566292/760923  74%[============================================-             ] 593814/760923  78%[===============================================\          ] 629163/760923  82%[=================================================|        ] 660713/760923  86%[===================================================/      ] 693512/760923  91%[======================================================-   ] 721729/760923  94%
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/apt/archives/partial, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat7, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/apt/lists/auxfiles, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/apt/lists/partial, because Invalid argument
-[========================================================\ ] 754677/760923  99%
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/libuuid, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/polkit-1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/postfix, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/local, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/apt/term.log, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/btmp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/journal, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/lastlog, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/unattended-upgrades, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/wtmp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/mail, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/active, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/bounce, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/corrupt, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/defer, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/deferred, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/flush, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/incoming, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/maildrop, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/private, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/public, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/saved, because Invalid argument
-[=========================================================\] 760923/760923 100%
-
-created 314367 files
-created 29764 directories
-created 14681 symlinks
-created 0 devices
-created 0 fifos
-created 0 sockets
-created 8 hardlinks
-: exit status 2
-FATAL:   While performing build: packer failed to pack: while unpacking local image: root filesystem extraction failed: extract command failed: WARNING: Skipping mount /etc/hosts [binds]: /etc/hosts doesn't exist in container
-WARNING: Skipping mount /etc/localtime [binds]: /etc/localtime doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/tmp [tmp]: /tmp doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/var/tmp [tmp]: /var/tmp doesn't exist in container
-WARNING: Skipping mount /share/apps/apptainer/1.4.3/x86_64/var/lib/apptainer/mnt/session/etc/resolv.conf [files]: /etc/resolv.conf doesn't exist in container
-WARNING: Error changing the container working directory. Using '/' instead: chdir /root: no such file or directory
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/gshadow, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/gshadow-, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/polkit-1/rules.d, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/shadow, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/shadow-, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/ssl/private/ssl-cert-snakeoil.key, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/etc/ssl/private, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.bash_logout, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.bashrc, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu/.profile, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/home/ubuntu, because Invalid argument
-Parallel unsquashfs: Using 128 processors
-329056 inodes (431867 blocks) to write
-
-[/                                                         ]   3435/760923   0%[-                                                         ]   8219/760923   1%[=\                                                        ]  15274/760923   2%
-set_attributes: failed to change uid and gids on /image/rootfs/run/dbus/containers, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/leases, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/links, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif/lldp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/systemd/netif, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/run/xpra, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/chage, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/expiry, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/bin/ssh-agent, because Invalid argument
-[=|                                                        ]  24476/760923   3%[====/                                                     ]  64127/760923   8%[=======-                                                  ]  96374/760923  12%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/lib/dbus-1.0/dbus-daemon-launch-helper, because Invalid argument
-[========\                                                 ] 106975/760923  14%[========/                                                 ] 118001/760923  15%[=========-                                                ] 122005/760923  16%[==========\                                               ] 140116/760923  18%[============|                                             ] 162501/760923  21%[============-                                             ] 171501/760923  22%[=============\                                            ] 175817/760923  23%[=============/                                            ] 185116/760923  24%[==============-                                           ] 190692/760923  25%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/lib/x86_64-linux-gnu/utempter/utempter, because Invalid argument
-[===============\                                          ] 201593/760923  26%[===============|                                          ] 206333/760923  27%[================/                                         ] 214273/760923  28%[================\                                         ] 222153/760923  29%[=================/                                        ] 229839/760923  30%[=================\                                        ] 239175/760923  31%[==================/                                       ] 249069/760923  32%
-set_attributes: failed to change uid and gids on /image/rootfs/usr/local/share/fonts, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/pam_extrausers_chkpwd, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/postdrop, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/postqueue, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/usr/sbin/unix_chkpwd, because Invalid argument
-[====================-                                     ] 271744/760923  35%[=====================\                                    ] 287073/760923  37%[=======================|                                  ] 310606/760923  40%[=========================/                                ] 346687/760923  45%[============================/                             ] 375600/760923  49%[============================\                             ] 381419/760923  50%[==============================|                           ] 401567/760923  52%[================================/                         ] 438341/760923  57%[===================================-                      ] 477364/760923  62%[======================================\                   ] 513112/760923  67%[=========================================|                ] 552358/760923  72%[==========================================/               ] 566292/760923  74%[============================================-             ] 593814/760923  78%[===============================================\          ] 629163/760923  82%[=================================================|        ] 660713/760923  86%[===================================================/      ] 693512/760923  91%[======================================================-   ] 721729/760923  94%
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/apt/archives/partial, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat7, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/cs, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/da, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/de, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/es, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/fr, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/hu, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/id, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/it, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ja, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ko, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/nl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/pt_BR, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/ru, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sl, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/sv, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/tr, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/uk, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat5, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/cat8, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_CN, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/CACHEDIR.TAG, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/cat1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW/index.db, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man/zh_TW, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/cache/man, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/apt/lists/auxfiles, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/apt/lists/partial, because Invalid argument
-[========================================================\ ] 754677/760923  99%
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/libuuid, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/polkit-1, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/lib/postfix, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/local, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/apt/term.log, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/btmp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/journal, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/lastlog, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/unattended-upgrades, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/log/wtmp, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/mail, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/active, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/bounce, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/corrupt, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/defer, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/deferred, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/flush, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/incoming, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/maildrop, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/private, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/public, because Invalid argument
-
-set_attributes: failed to change uid and gids on /image/rootfs/var/spool/postfix/saved, because Invalid argument
-[=========================================================\] 760923/760923 100%
-
-created 314367 files
-created 29764 directories
-created 14681 symlinks
-created 0 devices
-created 0 fifos
-created 0 sockets
-created 8 hardlinks
-: exit status 2

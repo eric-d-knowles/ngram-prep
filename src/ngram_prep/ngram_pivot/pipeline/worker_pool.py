@@ -19,125 +19,137 @@ from .progress import Counters
 __all__ = ["run_worker_pool", "ingest_coordinator_process"]
 
 
-def read_shard_worker(
-    shard_path: Path,
-    unit_id: str,
+def read_and_write_batch_process(
+    worker_id: int,
+    unit_queue: mp.Queue,
+    buffer_size: int,
+    output_dir: Path,
+    dst_db_path: Path,
     read_profile: str,
-    result_queue: mp.Queue,
-) -> None:
+    write_profile: str,
+    disable_wal: bool,
+    work_tracker_path: Path,
+    write_lock: mp.Lock,
+) -> int:
     """
-    Worker process that reads a shard into memory.
+    Process that loops: reads buffer_size shards, writes them, repeats.
+
+    Strategy:
+    1. Pull buffer_size unit IDs from shared queue
+    2. Read those shards into memory (PARALLEL across workers)
+    3. Acquire write lock (SERIAL)
+    4. Write batch
+    5. Release lock and repeat
+
+    This keeps workers continuously busy with bounded memory usage.
 
     Args:
-        shard_path: Path to shard database
-        unit_id: Work unit ID
+        worker_id: Worker process ID
+        unit_queue: Shared queue of unit IDs to process
+        buffer_size: Number of shards to buffer before writing
+        output_dir: Directory containing shard DBs
+        dst_db_path: Path to destination database
         read_profile: RocksDB read profile
-        result_queue: Queue to put (unit_id, data) tuples
+        write_profile: RocksDB write profile for writes
+        disable_wal: Disable WAL for writes
+        work_tracker_path: Path to work tracker database
+        write_lock: Multiprocessing lock for serializing writes
+
+    Returns:
+        Number of shards processed
     """
-    try:
-        setproctitle(f"ngp:ingest-reader[{unit_id}]")
-
-        if not shard_path.exists():
-            # Empty shard - send empty data
-            result_queue.put((unit_id, []))
-            return
-
-        # Read entire shard into memory
-        data = []
-        with open_db(shard_path, mode="r", profile=read_profile) as shard_db:
-            for key, value in scan_all(shard_db):
-                data.append((key, value))
-
-        result_queue.put((unit_id, data))
-
-    except Exception as e:
-        # On error, send empty data
-        print(f"Error reading shard {unit_id}: {e}")
-        result_queue.put((unit_id, []))
-
-
-def ingest_reader_process_DEPRECATED(
-        reader_id: int,
-        output_dir: Path,
-        data_queue: mp.Queue,
-        ingest_read_profile: str,
-        work_tracker_path: Path,
-        stop_event: Optional[mp.Event],
-) -> None:
-    """
-    Reader process that polls work tracker for completed units and loads them.
-
-    Uses disk-based "pre-queue": polls work tracker for completed-but-not-ingested units,
-    loads shard from output_dir, sends data to writer.
-
-    For separate-stage ingestion (stop_event=None), reader stops when no completed
-    units are found after several checks. For concurrent ingestion, reader waits
-    for stop_event to be set by workers.
-
-    Args:
-        reader_id: Unique ID for this reader process
-        output_dir: Directory containing completed shard DBs
-        data_queue: Queue to send (unit_id, shard_path) to writer
-        ingest_read_profile: RocksDB profile for reading
-        work_tracker_path: Path to work tracker
-        stop_event: Optional event to signal shutdown (None for separate-stage mode)
-    """
-    import time
-    from ngram_prep.tracking import WorkTracker
-    from ngram_prep.common_db import open_db, scan_all
+    import time as time_module
 
     try:
-        setproctitle(f"ngp:ingest-reader-{reader_id}")
+        setproctitle(f"ngp:ingest-worker-{worker_id}")
         work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
-
-        consecutive_empty = 0
-        max_consecutive_empty = 10  # Stop after 10 consecutive empty checks (1 second)
+        shards_processed = 0
 
         while True:
-            # Check stop event if provided (concurrent ingestion mode)
-            if stop_event is not None and stop_event.is_set():
-                break
+            # PHASE 1: Read buffer_size shards into memory
+            read_start = time_module.time()
+            batch_data = []  # List of (unit_id, shard_data) tuples
 
-            # Atomically claim next completed unit (disk-based pre-queue!)
-            # This transitions 'completed' → 'ingesting' atomically, preventing duplicate processing
-            unit_id = work_tracker.claim_completed_unit_for_ingest()
-
-            if unit_id is None:
-                # No work available
-                consecutive_empty += 1
-
-                # In separate-stage mode (stop_event=None), stop after consecutive empties
-                if stop_event is None and consecutive_empty >= max_consecutive_empty:
+            for _ in range(buffer_size):
+                try:
+                    unit_id = unit_queue.get(timeout=1.0)  # Wait up to 1 second for work
+                except Exception:
+                    # Queue empty after timeout - no more work available
                     break
 
-                # Wait briefly and check again
-                time.sleep(0.1)
-                continue
+                shard_path = output_dir / f"{unit_id}.db"
 
-            # Reset empty counter - we found work
-            consecutive_empty = 0
+                if not shard_path.exists():
+                    batch_data.append((unit_id, []))
+                    continue
 
-            shard_path = output_dir / f"{unit_id}.db"
+                # Read shard into memory
+                data = []
+                with open_db(shard_path, mode="r", profile=read_profile) as shard_db:
+                    for key, value in scan_all(shard_db):
+                        data.append((key, value))
 
-            # Send shard path to writer (no pickle overhead!)
-            # Writer will read directly - avoids memory pressure and serialization bottleneck
-            try:
-                # Send (unit_id, shard_path) - writer will queue for deletion after reading
-                data_queue.put((unit_id, shard_path))
+                batch_data.append((unit_id, data))
 
-            except Exception as e:
-                print(f"[reader-{reader_id}] Error reading {unit_id}: {e}", flush=True)
-                # Send empty to allow pipeline to continue
-                data_queue.put((unit_id, None))
+            # If no work retrieved, we're done
+            if not batch_data:
+                break
 
-        # Send sentinel when done
-        data_queue.put(None)
+            # read_time = time_module.time() - read_start
+            # total_items = sum(len(data) for _, data in batch_data)
+            # print(f"Worker {worker_id} read {len(batch_data)} shards ({total_items:,} items) in {read_time:.3f}s", flush=True)
+
+            # PHASE 2 & 3: Write batch and update tracker (SERIAL - acquire lock)
+            # lock_wait_start = time_module.time()
+            with write_lock:
+                # lock_wait_time = time_module.time() - lock_wait_start
+                # if lock_wait_time > 0.1:
+                #     print(f"Worker {worker_id} waited {lock_wait_time:.3f}s for write lock", flush=True)
+                # Write to destination DB
+                with open_db(dst_db_path, mode="rw", profile=write_profile, create_if_missing=True) as dst_db:
+                    wb = dst_db.write_batch(disable_wal=disable_wal, sync=False)
+                    wb.__enter__()
+
+                    try:
+                        for unit_id, data in batch_data:
+                            # Use put_batch to avoid Python per-item overhead
+                            # (~1.4x faster than individual put() calls)
+                            # put_start = time_module.time()
+                            wb.put_batch(data)
+                            # put_time = time_module.time() - put_start
+                            # print(f"Worker {worker_id} put_batch({len(data):,} items) in {put_time:.3f}s", flush=True)
+
+                            # Mark as ingested immediately after writing this shard
+                            # (still inside write lock to avoid SQLite contention)
+                            work_tracker.ingest_work_unit(unit_id)
+                            shard_path = output_dir / f"{unit_id}.db"
+                            if shard_path.exists():
+                                try:
+                                    shutil.rmtree(shard_path)
+                                except Exception:
+                                    pass
+
+                        # commit_start = time_module.time()
+                        wb.__exit__(None, None, None)
+                        # commit_time = time_module.time() - commit_start
+                        # print(f"Worker {worker_id} committed batch in {commit_time:.3f}s", flush=True)
+
+                    except Exception as e:
+                        try:
+                            wb.__exit__(None, None, None)
+                        except:
+                            pass
+                        raise
+
+            shards_processed += len(batch_data)
+
+        return shards_processed
 
     except Exception as e:
-        print(f"[reader-{reader_id}] Fatal error: {e}", flush=True)
+        print(f"Worker {worker_id} error: {e}", flush=True)
         import traceback
         traceback.print_exc()
-        raise
+        return shards_processed
 
 
 def ingest_coordinator_process(
@@ -148,14 +160,25 @@ def ingest_coordinator_process(
         stop_event: Optional[mp.Event] = None,
 ) -> None:
     """
-    Ingest all completed shards with parallel reads and writes.
+    Ingest all completed shards with N parallel worker processes.
 
-    Spawns multiple reader processes that read shards in parallel, then writes
-    results as they arrive (no ordering required - each shard contains disjoint
-    key ranges, so write order doesn't affect correctness).
+    Strategy:
+    - N worker processes (num_ingest_readers)
+    - Each worker reads buffer_shards into memory before writing
+    - Workers take turns acquiring write lock to dump their batch
+    - True parallelism during reads (no GIL), serial writes (no contention)
 
-    This is more efficient than the filtering module which enforces deterministic
-    order for reproducibility of merge operations.
+    Memory Usage:
+    - Each shard ~150MB average
+    - Total RAM = num_readers * buffer_shards * 150MB
+    - Example: 8 workers * 3 shards = 24 shards * 150MB = ~3.6GB RAM
+
+    Benefits:
+    - ✅ No queue serialization overhead (no pickle)
+    - ✅ True parallel reads across N workers (no Python GIL)
+    - ✅ Each worker buffers multiple shards for better I/O throughput
+    - ✅ Serial writes eliminate RocksDB lock contention
+    - ✅ Large batches minimize commit overhead
 
     Args:
         dst_db_path: Path to destination database
@@ -168,9 +191,8 @@ def ingest_coordinator_process(
     ingest_read_profile = getattr(pipeline_config, "ingest_read_profile", "read:packed24")
     ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
     ingest_disable_wal = getattr(pipeline_config, "ingest_disable_wal", True)
-    batch_size = getattr(pipeline_config, "ingest_batch_items", 10_000_000)
-    num_readers = getattr(pipeline_config, "num_ingest_readers", 8)
-    queue_size = getattr(pipeline_config, "ingest_queue_depth", 50)
+    num_workers = getattr(pipeline_config, "num_ingest_readers", 8)
+    buffer_shards = getattr(pipeline_config, "ingest_buffer_shards", 3)
 
     # Get all completed work units in deterministic order
     work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
@@ -186,14 +208,44 @@ def ingest_coordinator_process(
         print("No completed shards to ingest")
         return
 
-    # Create result queue with limited size to control memory usage
-    ctx = mp.get_context("spawn")
-    result_queue = ctx.Queue(maxsize=queue_size)
-
-    # Open destination DB once
+    # Create destination DB parent directory
     dst_db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Create multiprocessing context and shared queue
+    ctx = mp.get_context("spawn")
+    unit_queue = ctx.Queue()
+    write_lock = ctx.Lock()
+
+    # Populate queue with all unit IDs
+    for unit_id in completed_units:
+        unit_queue.put(unit_id)
+
     from tqdm import tqdm
+
+    # Start all workers
+    processes = []
+    for worker_id in range(num_workers):
+        process = ctx.Process(
+            target=read_and_write_batch_process,
+            args=(
+                worker_id,
+                unit_queue,
+                buffer_shards,
+                output_dir,
+                dst_db_path,
+                ingest_read_profile,
+                ingest_write_profile,
+                ingest_disable_wal,
+                work_tracker_path,
+                write_lock,
+            ),
+            name=f"ngp:ingest-worker-{worker_id}"
+        )
+        process.start()
+        processes.append((worker_id, process))
+
+    # Monitor progress
+    completed_units_set = set(completed_units)
     with tqdm(
         total=len(completed_units),
         desc="Shards Ingested:",
@@ -201,100 +253,37 @@ def ingest_coordinator_process(
         ncols=100,
         bar_format='{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
     ) as pbar:
-        with open_db(dst_db_path, mode="rw", profile=ingest_write_profile, create_if_missing=True) as dst_db:
-            # Open write batch
-            wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
-            wb.__enter__()
-            batch_item_count = 0
+        # Poll work tracker to update progress
+        processed_count = 0
+        import time
+        while processed_count < len(completed_units):
+            # Check how many of OUR units have been marked as ingested
+            import sqlite3
+            with sqlite3.connect(str(work_tracker_path), timeout=10.0, isolation_level=None) as conn:
+                # isolation_level=None enables autocommit and ensures we see latest commits
+                placeholders = ','.join('?' * len(completed_units))
+                cursor = conn.execute(
+                    f"SELECT COUNT(*) FROM work_units WHERE status = 'ingested' AND unit_id IN ({placeholders})",
+                    completed_units
+                )
+                current_count = cursor.fetchone()[0]
 
-            try:
-                # Launch initial batch of readers (controlled by num_readers)
-                # Launch additional readers as data arrives from queue
-                active_processes = []
+            if current_count > processed_count:
+                pbar.update(current_count - processed_count)
+                processed_count = current_count
 
-                # Start initial batch
-                for i in range(min(num_readers, len(completed_units))):
-                    unit_id = completed_units[i]
-                    shard_path = output_dir / f"{unit_id}.db"
+            # Check if all workers finished
+            all_done = all(not p.is_alive() for _, p in processes)
+            if all_done:
+                break
 
-                    p = ctx.Process(
-                        target=read_shard_worker,
-                        args=(shard_path, unit_id, ingest_read_profile, result_queue),
-                    )
-                    p.start()
-                    active_processes.append(p)
+            time.sleep(0.5)
 
-                next_to_launch_idx = min(num_readers, len(completed_units))
-
-                # Main loop: write results as they arrive (no ordering required)
-                shards_written = 0
-
-                while shards_written < len(completed_units):
-                    # Get next result from queue (write immediately, no buffering)
-                    unit_id, data = result_queue.get()
-
-                    # Write data immediately
-                    if data:  # Not empty
-                        for key, value in data:
-                            wb.put(key, value)
-                            batch_item_count += 1
-
-                            # Commit batch periodically
-                            if batch_item_count >= batch_size:
-                                wb.__exit__(None, None, None)
-                                wb = dst_db.write_batch(disable_wal=ingest_disable_wal, sync=False)
-                                wb.__enter__()
-                                batch_item_count = 0
-
-                    # Mark as ingested and delete shard
-                    work_tracker.ingest_work_unit(unit_id)
-                    shard_path = output_dir / f"{unit_id}.db"
-                    if shard_path.exists():
-                        try:
-                            shutil.rmtree(shard_path)
-                        except Exception:
-                            pass
-
-                    pbar.update(1)
-                    shards_written += 1
-
-                    # Launch next reader immediately after receiving data (not after writing)
-                    # This ensures readers keep running while writer is busy
-                    if next_to_launch_idx < len(completed_units):
-                        next_unit_id = completed_units[next_to_launch_idx]
-                        next_shard_path = output_dir / f"{next_unit_id}.db"
-
-                        p = ctx.Process(
-                            target=read_shard_worker,
-                            args=(next_shard_path, next_unit_id, ingest_read_profile, result_queue),
-                        )
-                        p.start()
-                        active_processes.append(p)
-                        next_to_launch_idx += 1
-
-                # Wait for all reader processes to finish
-                for p in active_processes:
-                    p.join(timeout=30)
-                    if p.is_alive():
-                        p.terminate()
-                        p.join()
-
-                # Commit final batch
-                wb.__exit__(None, None, None)
-
-            except Exception as e:
-                # Clean up on error
-                try:
-                    wb.__exit__(None, None, None)
-                except:
-                    pass
-
-                # Terminate all active processes
-                for _, p in active_processes:
-                    if p.is_alive():
-                        p.terminate()
-                        p.join()
-                raise
+        # Wait for all workers to complete
+        for worker_id, process in processes:
+            process.join()
+            if process.exitcode not in (0, None):
+                print(f"Warning: Worker {worker_id} exited with code {process.exitcode}", flush=True)
 
     print()  # Newline after progress bar
 

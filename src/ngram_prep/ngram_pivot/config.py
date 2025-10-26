@@ -37,11 +37,9 @@ class PipelineConfig:
     # Ingest configuration (runs as separate stage after workers complete)
     ingest_read_profile: str = 'read:packed24'
     ingest_write_profile: str = 'write:packed24'
-    ingest_batch_items: int = 10_000_000  # 10M for larger write batches on NVMe
     ingest_disable_wal: bool = True
-    num_ingest_readers: int = 8  # Number of parallel reader processes for ingestion
-    ingest_queue_depth: int = 50  # Queue depth between reader processes and writer
-    num_ingest_reader_threads: int = 16  # DEPRECATED: No longer used (parallel processes instead)
+    num_ingest_readers: int = 8  # Number of parallel reader/writer processes for ingestion
+    ingest_buffer_shards: int = 3  # Number of shards each worker reads and buffers before writing (higher = more parallel I/O)
 
     # Pipeline control
     mode: Literal["restart", "resume", "reprocess"] = "resume"

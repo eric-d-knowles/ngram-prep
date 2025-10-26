@@ -70,7 +70,6 @@ def print_pipeline_header(
         "─" * LINE_WIDTH,
         f"Worker buffer size:   {worker_config.buffer_size:,} items",
         f"Worker buffer bytes:  {format_bytes(worker_config.buffer_bytes)}",
-        f"Ingest batch size:    {pipeline_config.ingest_batch_items:,} items",
         "",
     ]
     print("\n".join(lines), flush=True)

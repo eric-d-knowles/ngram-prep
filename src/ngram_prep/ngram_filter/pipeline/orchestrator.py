@@ -215,7 +215,7 @@ class PipelineOrchestrator:
                 ),
             )
 
-            print(f"{'─' * 46} final {'─' * 46}")
+            print(f"{'─' * 45} final {'─' * 45}")
 
         finally:
             # Stop progress reporter

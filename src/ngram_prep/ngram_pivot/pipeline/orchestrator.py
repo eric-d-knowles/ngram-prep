@@ -195,7 +195,7 @@ class PivotOrchestrator:
                 ),
             )
 
-            print(f"{'─' * 46} final {'─' * 46}")
+            print(f"{'─' * 45} final {'─' * 44}")
 
         finally:
             # Stop progress reporter
@@ -229,9 +229,10 @@ class PivotOrchestrator:
             return
 
         num_readers = getattr(self.pipeline_config, "num_ingest_readers", 8)
-        queue_depth = getattr(self.pipeline_config, "ingest_queue_depth", 50)
+        buffer_shards = getattr(self.pipeline_config, "ingest_buffer_shards", 3)
+        total_buffered = num_readers * buffer_shards
 
-        print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} parallel readers...")
+        print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} workers (each buffers {buffer_shards} shards = {total_buffered} total in memory)...")
 
         from .worker_pool import ingest_coordinator_process
         ingest_coordinator_process(
