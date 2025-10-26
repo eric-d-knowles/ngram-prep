@@ -200,16 +200,14 @@ class ProgressFormatter:
         else:
             workers_str = "-"
 
-        # Format units info: show all stages pending→processing→completed→ingesting→ingested
+        # Format units info: show stages pending→processing→completed
+        # (ingestion is now inline, so ingesting/ingested stages are not shown)
         if work_progress:
             pending = work_progress.pending
             processing = work_progress.processing
             completed = work_progress.completed
-            ingesting = work_progress.ingesting
-            ingested = work_progress.ingested
 
-            # Show all stages: pending·processing·completed·ingesting·ingested
-            units_str = f"{pending}·{processing}·{completed}·{ingesting}·{ingested}"
+            units_str = f"{pending}·{processing}·{completed}"
         else:
             units_str = "-"
 
