@@ -28,7 +28,7 @@ def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_datas
     Set up evaluation paths and validate directories.
 
     Args:
-        model_dir (str): Directory containing trained .kv models
+        model_dir (str): Base directory for models (will be appended with models_{dir_suffix})
         dir_suffix (str): Suffix used during training (for output naming)
         eval_dir (str): Directory to save evaluation results CSV
         similarity_dataset (str): Path to similarity evaluation dataset
@@ -39,6 +39,9 @@ def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_datas
                or None if validation fails
     """
     start_time = datetime.now()
+
+    # Construct full model directory path
+    model_dir = os.path.join(model_dir, f"models_{dir_suffix}")
 
     # Validate model directory
     if not os.path.exists(model_dir):
@@ -335,8 +338,8 @@ def evaluate_models(
     Evaluate all Word2Vec models in a directory on similarity and analogy tasks.
 
     Args:
-        model_dir (str): Directory containing trained .kv model files.
-        dir_suffix (str): Suffix used during training (for naming output files).
+        model_dir (str): Base directory for models (will look in models_{dir_suffix} subdirectory).
+        dir_suffix (str): Suffix used during training (for constructing paths and naming output files).
         eval_dir (str): Directory to save evaluation results CSV.
         save_mode (str): 'append' to add to existing results, 'overwrite' to replace.
                         Default: 'append'.
@@ -349,9 +352,9 @@ def evaluate_models(
     Example:
         >>> from ngram_train.word2vec import evaluate_models
         >>> evaluate_models(
-        ...     model_dir='/path/to/models_20251027_135833',
-        ...     dir_suffix='20251027_135833',
-        ...     eval_dir='/path/to/evaluation_results',
+        ...     model_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng/5gram_files',
+        ...     dir_suffix='test',
+        ...     eval_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng/5gram_files',
         ...     save_mode='append',
         ...     workers=8
         ... )
