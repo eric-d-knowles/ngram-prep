@@ -27,6 +27,10 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
     /opt/miniforge/bin/conda install -y \
         python=3.11 \
         numpy \
+        scipy \
+        pandas \
+        matplotlib \
+        seaborn \
         Cython \
         ipykernel \
         jupyter_client \
