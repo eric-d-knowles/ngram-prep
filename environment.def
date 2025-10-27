@@ -34,7 +34,8 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
         notebook \
         nltk \
         setproctitle \
-        tqdm
+        tqdm \
+        gensim
 
     # Create NLTK data directory and download data
     mkdir -p /opt/miniforge/nltk_data
