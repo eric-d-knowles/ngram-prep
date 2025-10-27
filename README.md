@@ -2,13 +2,19 @@
 
 **Scalable tools to prepare Google Books Ngrams data for linguistic and cultural analysis**
 
-Process billions of n-grams from the Google Books corpus with parallel workflows designed for very large corpora. `ngram-prep` provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+Process n-grams from the Google Books corpus using multiple CPUs. Ideal for large corpora consisting of millions and billions of entries. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
 
 ## Capabilities
 
 - **Automated data acquisition:** Download and organize Google Books n-gram datasets (1-grams through 5-grams, multiple languages)
 - **Flexible text processing:** Apply linguistic transformations (lemmatization, stopword removal, case normalization)
-- **Temporal analysis support:** Reorganize data from n-gram→[(year, count, volumes), ...] to [year]+n-gram→(count, volumes) for efficient time-series queries
+- **Temporal analysis support:** Reorganize data to a format suitable for time-series analysis 
+  - FROM: `n-gram → (year1, count1, volumes1) (year2, count2, volumes2) ... (yearn, countn, volumesn)`
+  - TO:
+    - `[year1] n-gram → (count1, volumes1)`
+    - `[year2] n-gram → (count2, volumes2)`
+    - `...`
+    - `[year3] n-gram → (countn, volumesn)`
 - **High-throughput architecture:** Parallel processing with automatic load balancing, progress tracking, and resume capability
 - **Research-friendly storage:** Fast key-value database (RocksDB) with efficient compression for long-term storage
 
