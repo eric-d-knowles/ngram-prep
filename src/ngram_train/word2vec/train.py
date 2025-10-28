@@ -269,8 +269,7 @@ def train_models(
         "",
         "Data Options",
         "─" * LINE_WIDTH,
-        f"Allow <UNK>:          {allow_unk}",
-        f"Max <UNK> count:      {max_unk_count}",
+        f"UNK mode:             {unk_mode}",
         f"Load into memory:     {load_into_memory}",
         f"Shuffle:              {shuffle}",
         f"Workers per model:    {workers_per_model}",
@@ -328,9 +327,9 @@ def train_models(
     print("")
 
     # Simple aggregated progress bar showing completed models
-    with tqdm(total=len(tasks), desc="Training Models", unit=" models") as pbar:
-        with ProcessPoolExecutor(max_workers=max_parallel_models) as executor:
-            futures = [executor.submit(train_model, *task) for task in tasks]
+    with ProcessPoolExecutor(max_workers=max_parallel_models) as executor:
+        futures = [executor.submit(train_model, *task) for task in tasks]
+        with tqdm(total=len(tasks), desc="Training Models", unit=" models") as pbar:
             for future in as_completed(futures):
                 try:
                     future.result()

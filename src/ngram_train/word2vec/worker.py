@@ -106,7 +106,7 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             f"Processing year {year} with parameters: "
             f"vector_size={vector_size}, window={window}, "
             f"min_count={min_count}, sg={sg}, epochs={epochs}, "
-            f"allow_unk={allow_unk}, max_unk_count={max_unk_count}, "
+            f"unk_mode={unk_mode}, "
             f"load_into_memory={load_into_memory}, shuffle={shuffle}..."
         )
 
