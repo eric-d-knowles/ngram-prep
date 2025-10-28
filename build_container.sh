@@ -7,7 +7,7 @@ set -e  # Exit on error
 
 # Configuration
 NETID="edk202"
-CONTAINER_DIR="/scratch/${NETID}/containers"
+DEFAULT_CONTAINER_DIR="/scratch/${NETID}/containers"
 CONTAINER_NAME="ngram-prep.sif"
 DEF_FILE="environment.def"
 
@@ -16,6 +16,18 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Ask user for container directory
+echo -e "${YELLOW}Default container directory: ${DEFAULT_CONTAINER_DIR}${NC}"
+read -p "Press Enter to use default, or type a different path: " USER_INPUT
+
+if [ -z "$USER_INPUT" ]; then
+    CONTAINER_DIR="$DEFAULT_CONTAINER_DIR"
+    echo -e "${GREEN}Using default directory: ${CONTAINER_DIR}${NC}"
+else
+    CONTAINER_DIR="$USER_INPUT"
+    echo -e "${GREEN}Using custom directory: ${CONTAINER_DIR}${NC}"
+fi
 
 # Check if definition file exists
 if [ ! -f "$DEF_FILE" ]; then
