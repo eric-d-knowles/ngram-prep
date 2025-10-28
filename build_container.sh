@@ -45,9 +45,33 @@ echo -e "${YELLOW}This may take 10-20 minutes${NC}"
 
 OUTPUT_PATH="${CONTAINER_DIR}/${CONTAINER_NAME}"
 
-singularity build "$OUTPUT_PATH" "$DEF_FILE"
+# Try different build methods in order of preference
+BUILD_SUCCESS=false
 
-if [ $? -eq 0 ]; then
+# Method 1: Try standard build (works on Torch)
+echo -e "${YELLOW}Attempting standard build...${NC}"
+if singularity build "$OUTPUT_PATH" "$DEF_FILE" 2>&1 | tee /tmp/build_log.txt | grep -q "FATAL"; then
+    echo -e "${YELLOW}Standard build not available${NC}"
+else
+    if [ -f "$OUTPUT_PATH" ]; then
+        BUILD_SUCCESS=true
+        echo -e "${GREEN}✓ Standard build succeeded${NC}"
+    fi
+fi
+
+# Method 2: Try fakeroot (required on Greene)
+if [ "$BUILD_SUCCESS" = false ]; then
+    echo -e "${YELLOW}Trying fakeroot build...${NC}"
+    if singularity build --fakeroot "$OUTPUT_PATH" "$DEF_FILE"; then
+        BUILD_SUCCESS=true
+        echo -e "${GREEN}✓ Fakeroot build succeeded${NC}"
+    else
+        echo -e "${YELLOW}Fakeroot build failed${NC}"
+    fi
+fi
+
+# Check final status
+if [ "$BUILD_SUCCESS" = true ]; then
     echo -e "${GREEN}✓ Container built successfully!${NC}"
     echo -e "${GREEN}Location: ${OUTPUT_PATH}${NC}"
     echo ""
@@ -66,6 +90,8 @@ if [ $? -eq 0 ]; then
     echo ""
     echo -e "${YELLOW}Note: Use --nv flag to enable GPU support${NC}"
 else
-    echo -e "${RED}✗ Container build failed${NC}"
+    echo -e "${RED}✗ All build methods failed${NC}"
+    echo -e "${YELLOW}On Greene: Request fakeroot access from hpc@nyu.edu${NC}"
+    echo -e "${YELLOW}On Torch: Standard build should work${NC}"
     exit 1
 fi
