@@ -13,6 +13,7 @@ from multiprocessing import Pool
 
 import pandas as pd
 from gensim.test.utils import datapath
+from setproctitle import setproctitle
 from tqdm import tqdm
 
 from ngram_prep.utilities.display import truncate_path_to_fit
@@ -134,7 +135,8 @@ def _extract_model_metadata(file_name):
     return None
 
 
-def _evaluate_a_model(model_path, similarity_dataset, analogy_dataset, model_logger):
+def _evaluate_a_model(model_path, similarity_dataset, analogy_dataset, model_logger,
+                      run_similarity=True, run_analogy=True):
     """
     Run intrinsic evaluations on a Word2Vec model.
 
@@ -143,25 +145,29 @@ def _evaluate_a_model(model_path, similarity_dataset, analogy_dataset, model_log
         similarity_dataset (str): Path to similarity evaluation dataset
         analogy_dataset (str): Path to analogy evaluation dataset
         model_logger (logging.Logger): Logger for this specific model
+        run_similarity (bool): Whether to run similarity evaluation
+        run_analogy (bool): Whether to run analogy evaluation
 
     Returns:
-        dict: Dictionary with 'similarity_score' and 'analogy_score', or None on error
+        dict: Dictionary with 'similarity_score' and/or 'analogy_score', or None on error
     """
     model_logger.info(f"Loading model from: {model_path}")
 
     try:
         model = W2VModel(model_path)
+        results = {}
 
-        similarity_score = model.evaluate("similarity", similarity_dataset)
-        model_logger.info(f"Similarity Score (Spearman): {similarity_score}")
+        if run_similarity:
+            similarity_score = model.evaluate("similarity", similarity_dataset)
+            model_logger.info(f"Similarity Score (Spearman): {similarity_score}")
+            results["similarity_score"] = similarity_score
 
-        analogy_score = model.evaluate("analogy", analogy_dataset)
-        model_logger.info(f"Analogy Score: {analogy_score}")
+        if run_analogy:
+            analogy_score = model.evaluate("analogy", analogy_dataset)
+            model_logger.info(f"Analogy Score: {analogy_score}")
+            results["analogy_score"] = analogy_score
 
-        return {
-            "similarity_score": similarity_score,
-            "analogy_score": analogy_score
-        }
+        return results
     except Exception as e:
         model_logger.error(f"Error during evaluation: {e}")
         return None
@@ -172,12 +178,17 @@ def _evaluate_one_file(params):
     Helper to evaluate a single model file with its own log file.
 
     Args:
-        params (tuple): (file_name, model_dir, similarity_dataset, analogy_dataset, log_dir)
+        params (tuple): (file_name, model_dir, similarity_dataset, analogy_dataset, log_dir,
+                        run_similarity, run_analogy)
 
     Returns:
         dict or None: Evaluation results dictionary or None if evaluation failed
     """
-    (file_name, model_dir, similarity_dataset, analogy_dataset, log_dir) = params
+    # Set process title with nge: prefix
+    setproctitle("nge:evaluate_model")
+
+    (file_name, model_dir, similarity_dataset, analogy_dataset, log_dir,
+     run_similarity, run_analogy) = params
 
     metadata = _extract_model_metadata(file_name)
     if not metadata:
@@ -217,7 +228,9 @@ def _evaluate_one_file(params):
             model_path,
             similarity_dataset=similarity_dataset,
             analogy_dataset=analogy_dataset,
-            model_logger=model_logger
+            model_logger=model_logger,
+            run_similarity=run_similarity,
+            run_analogy=run_analogy
         )
         if not evaluation:
             model_logger.info("Evaluation returned None.")
@@ -232,9 +245,12 @@ def _evaluate_one_file(params):
             "min_count": int(min_count),
             "approach": approach,
             "epochs": int(epochs),
-            "similarity_score": evaluation["similarity_score"],
-            "analogy_score": evaluation["analogy_score"]
         }
+
+        if run_similarity:
+            result_dict["similarity_score"] = evaluation["similarity_score"]
+        if run_analogy:
+            result_dict["analogy_score"] = evaluation["analogy_score"]
         model_logger.info(f"Evaluation completed for {file_name}")
         return result_dict
 
@@ -255,7 +271,9 @@ def _evaluate_models_in_directory(
     save_mode,
     similarity_dataset,
     analogy_dataset,
-    workers
+    workers,
+    run_similarity=True,
+    run_analogy=True
 ):
     """
     Evaluate all Word2Vec models in a directory using multiprocessing.
@@ -268,6 +286,8 @@ def _evaluate_models_in_directory(
         similarity_dataset (str): Path to similarity evaluation dataset
         analogy_dataset (str): Path to analogy evaluation dataset
         workers (int): Number of parallel workers
+        run_similarity (bool): Whether to run similarity evaluation
+        run_analogy (bool): Whether to run analogy evaluation
     """
     # Identify which files haven't been evaluated yet
     if os.path.isfile(eval_file):
@@ -289,7 +309,8 @@ def _evaluate_models_in_directory(
 
     # Build list of parameter tuples for parallel processing
     param_list = [
-        (f, model_dir, similarity_dataset, analogy_dataset, log_dir)
+        (f, model_dir, similarity_dataset, analogy_dataset, log_dir,
+         run_similarity, run_analogy)
         for f in files_to_evaluate
     ]
 
@@ -332,7 +353,9 @@ def evaluate_models(
     save_mode='append',
     similarity_dataset=None,
     analogy_dataset=None,
-    workers=None
+    workers=None,
+    run_similarity=True,
+    run_analogy=True
 ):
     """
     Evaluate all Word2Vec models in a directory on similarity and analogy tasks.
@@ -348,6 +371,8 @@ def evaluate_models(
         analogy_dataset (str, optional): Path to analogy evaluation dataset.
                                         Defaults to gensim's questions-words.
         workers (int, optional): Number of parallel workers. Defaults to CPU count.
+        run_similarity (bool): Whether to run similarity evaluation. Default: True.
+        run_analogy (bool): Whether to run analogy evaluation. Default: True.
 
     Example:
         >>> from ngram_train.word2vec import evaluate_models
@@ -356,7 +381,9 @@ def evaluate_models(
         ...     dir_suffix='test',
         ...     eval_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng/5gram_files',
         ...     save_mode='append',
-        ...     workers=8
+        ...     workers=8,
+        ...     run_similarity=True,
+        ...     run_analogy=False  # Skip slow analogy evaluation
         ... )
     """
     if workers is None:
@@ -398,5 +425,7 @@ def evaluate_models(
         save_mode=save_mode,
         similarity_dataset=similarity_dataset,
         analogy_dataset=analogy_dataset,
-        workers=workers
+        workers=workers,
+        run_similarity=run_similarity,
+        run_analogy=run_analogy
     )

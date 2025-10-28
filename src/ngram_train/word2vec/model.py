@@ -28,29 +28,31 @@ def calculate_weight(freq, base=10):
     return max(1, floor(log(freq + 1, base)))
 
 
-def create_unk_filter(allow_unk=True, max_unk_count=None):
+def create_unk_filter(unk_mode='reject'):
     """
     Create a filter function for handling <UNK> tokens in ngrams.
 
     Args:
-        allow_unk (bool): Whether to allow ngrams with <UNK> tokens at all.
-        max_unk_count (int): Maximum number of <UNK> tokens per ngram (None = no limit).
+        unk_mode (str): How to handle <UNK> tokens. One of:
+            - 'reject': Discard entire n-gram if it contains any <UNK> (default)
+            - 'strip': Remove <UNK> tokens, keep if ≥2 tokens remain (handled in iterator)
+            - 'retain': Keep n-grams as-is, including <UNK> tokens
 
     Returns:
         callable or None: Filter function for stream_year_ngrams, or None if no filtering.
     """
-    if allow_unk and max_unk_count is None:
-        return None  # No filtering needed
-
-    def filter_fn(ngram_bytes):
-        if not allow_unk and b'<UNK>' in ngram_bytes:
-            return False  # Skip ngrams with any <UNK>
-        if max_unk_count is not None:
-            unk_count = ngram_bytes.count(b'<UNK>')
-            return unk_count <= max_unk_count
-        return True
-
-    return filter_fn
+    if unk_mode == 'reject':
+        def filter_fn(ngram_bytes):
+            return b'<UNK>' not in ngram_bytes
+        return filter_fn
+    elif unk_mode == 'strip':
+        # Strip mode filtering happens in the iterator, not here
+        # We need to pass all n-grams through so they can be processed
+        return None
+    elif unk_mode == 'retain':
+        return None  # No filtering
+    else:
+        raise ValueError(f"Invalid unk_mode: '{unk_mode}'. Must be 'reject', 'strip', or 'retain'.")
 
 
 class SentencesIterable:
@@ -60,8 +62,7 @@ class SentencesIterable:
     """
 
     def __init__(self, db_path, year, weight_by="freq", log_base=10,
-                 allow_unk=True, max_unk_count=None,
-                 load_into_memory=False, shuffle=False, random_seed=42):
+                 unk_mode='reject', load_into_memory=False, shuffle=False, random_seed=42):
         """
         Initialize the iterable.
 
@@ -70,8 +71,10 @@ class SentencesIterable:
             year (int): Year to load data for.
             weight_by (str): Weighting strategy ("freq", "doc_freq", or "none").
             log_base (int): Base for logarithmic weighting.
-            allow_unk (bool): Whether to allow ngrams with <UNK> tokens.
-            max_unk_count (int): Maximum number of <UNK> tokens per ngram.
+            unk_mode (str): How to handle <UNK> tokens. One of:
+                - 'reject': Discard entire n-gram if it contains any <UNK> (default)
+                - 'strip': Remove <UNK> tokens, keep if ≥2 tokens remain
+                - 'retain': Keep n-grams as-is, including <UNK> tokens
             load_into_memory (bool): If True, load all ngrams into memory.
                                     If False, stream from database each iteration.
             shuffle (bool): If True, shuffle ngrams before each epoch.
@@ -82,7 +85,8 @@ class SentencesIterable:
         self.year = year
         self.weight_by = weight_by
         self.log_base = log_base
-        self.ngram_filter = create_unk_filter(allow_unk, max_unk_count)
+        self.unk_mode = unk_mode
+        self.ngram_filter = create_unk_filter(unk_mode)
         self.load_into_memory = load_into_memory
         self.shuffle = shuffle
         self.random_seed = random_seed
@@ -115,6 +119,12 @@ class SentencesIterable:
         for ngram_bytes, occurrences, documents in ngram_stream:
             ngram_str = ngram_bytes.decode('utf-8', errors='replace')
             ngram_tokens = ngram_str.split()
+
+            # Handle strip mode: remove <UNK> tokens and check minimum length
+            if self.unk_mode == 'strip':
+                ngram_tokens = [token for token in ngram_tokens if token != '<UNK>']
+                if len(ngram_tokens) < 2:
+                    continue  # Skip unigrams and empty n-grams
 
             # Apply weighting strategy
             if self.weight_by == "freq":
@@ -174,6 +184,12 @@ class SentencesIterable:
                 ngram_str = ngram_bytes.decode('utf-8', errors='replace')
                 ngram_tokens = ngram_str.split()
 
+                # Handle strip mode: remove <UNK> tokens and check minimum length
+                if self.unk_mode == 'strip':
+                    ngram_tokens = [token for token in ngram_tokens if token != '<UNK>']
+                    if len(ngram_tokens) < 2:
+                        continue  # Skip unigrams and empty n-grams
+
                 # Apply weighting strategy
                 if self.weight_by == "freq":
                     weight = calculate_weight(occurrences, base=self.log_base)
@@ -215,8 +231,7 @@ def train_word2vec(
         sg,
         workers,
         epochs,
-        allow_unk=True,
-        max_unk_count=None,
+        unk_mode='reject',
         load_into_memory=False,
         shuffle=False,
         random_seed=42,
@@ -235,8 +250,10 @@ def train_word2vec(
         sg (int): Training algorithm (1=skip-gram, 0=CBOW).
         workers (int): Number of worker threads.
         epochs (int): Number of training epochs.
-        allow_unk (bool): Whether to allow ngrams with <UNK> tokens.
-        max_unk_count (int): Maximum number of <UNK> tokens per ngram.
+        unk_mode (str): How to handle <UNK> tokens. One of:
+            - 'reject': Discard entire n-gram if it contains any <UNK> (default)
+            - 'strip': Remove <UNK> tokens, keep if ≥2 tokens remain
+            - 'retain': Keep n-grams as-is, including <UNK> tokens
         load_into_memory (bool): If True, load ngrams into memory before training.
         shuffle (bool): If True, shuffle ngrams before each epoch (requires load_into_memory=True).
         random_seed (int): Random seed for shuffling.
@@ -245,8 +262,7 @@ def train_word2vec(
         gensim.models.Word2Vec: Trained Word2Vec model.
     """
     sentences = SentencesIterable(
-        db_path, year, weight_by=weight_by, log_base=10,
-        allow_unk=allow_unk, max_unk_count=max_unk_count,
+        db_path, year, weight_by=weight_by, log_base=10, unk_mode=unk_mode,
         load_into_memory=load_into_memory, shuffle=shuffle, random_seed=random_seed
     )
 

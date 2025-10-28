@@ -50,9 +50,8 @@ def configure_logging(log_dir, filename):
 
 
 def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
-                window, min_count, approach, epochs, workers, allow_unk=True,
-                max_unk_count=None, load_into_memory=False, shuffle=False,
-                random_seed=42):
+                window, min_count, approach, epochs, workers, unk_mode='reject',
+                load_into_memory=False, shuffle=False, random_seed=42):
     """
     Train a Word2Vec model for a specific year from RocksDB.
 
@@ -68,8 +67,10 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
         approach (str): Training approach ("skip-gram" or "CBOW").
         epochs (int): Number of training epochs.
         workers (int): Number of worker threads.
-        allow_unk (bool): Whether to allow ngrams with <UNK> tokens.
-        max_unk_count (int): Maximum number of <UNK> tokens per ngram.
+        unk_mode (str): How to handle <UNK> tokens. One of:
+            - 'reject': Discard entire n-gram if it contains any <UNK> (default)
+            - 'strip': Remove <UNK> tokens, keep if ≥2 tokens remain
+            - 'retain': Keep n-grams as-is, including <UNK> tokens
         load_into_memory (bool): If True, load ngrams into memory before training.
         shuffle (bool): If True, shuffle ngrams before each epoch.
         random_seed (int): Random seed for shuffling.
@@ -122,8 +123,7 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             sg=sg,
             epochs=epochs,
             workers=workers,
-            allow_unk=allow_unk,
-            max_unk_count=max_unk_count,
+            unk_mode=unk_mode,
             load_into_memory=load_into_memory,
             shuffle=shuffle,
             random_seed=random_seed
