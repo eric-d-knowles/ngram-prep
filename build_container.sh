@@ -59,15 +59,38 @@ else
     fi
 fi
 
-# Method 2: Try fakeroot (required on Greene)
+# Method 2: Try fakeroot (required on Greene with fakeroot access)
 if [ "$BUILD_SUCCESS" = false ]; then
     echo -e "${YELLOW}Trying fakeroot build...${NC}"
-    if singularity build --fakeroot "$OUTPUT_PATH" "$DEF_FILE"; then
+    if singularity build --fakeroot "$OUTPUT_PATH" "$DEF_FILE" 2>&1; then
         BUILD_SUCCESS=true
         echo -e "${GREEN}✓ Fakeroot build succeeded${NC}"
     else
         echo -e "${YELLOW}Fakeroot build failed${NC}"
     fi
+fi
+
+# Method 3: Try remote build (requires Sylabs account)
+if [ "$BUILD_SUCCESS" = false ]; then
+    echo -e "${YELLOW}Trying remote build via Sylabs Cloud...${NC}"
+    echo -e "${YELLOW}Note: This requires a Sylabs account and may take longer${NC}"
+    
+    # Save and unset bind path variables for remote build
+    OLD_SINGULARITY_BINDPATH="${SINGULARITY_BINDPATH}"
+    OLD_APPTAINER_BINDPATH="${APPTAINER_BINDPATH}"
+    unset SINGULARITY_BINDPATH
+    unset APPTAINER_BINDPATH
+    
+    if singularity build --remote "$OUTPUT_PATH" "$DEF_FILE"; then
+        BUILD_SUCCESS=true
+        echo -e "${GREEN}✓ Remote build succeeded${NC}"
+    else
+        echo -e "${RED}Remote build failed${NC}"
+    fi
+    
+    # Restore bind path variables
+    export SINGULARITY_BINDPATH="${OLD_SINGULARITY_BINDPATH}"
+    export APPTAINER_BINDPATH="${OLD_APPTAINER_BINDPATH}"
 fi
 
 # Check final status
@@ -91,7 +114,10 @@ if [ "$BUILD_SUCCESS" = true ]; then
     echo -e "${YELLOW}Note: Use --nv flag to enable GPU support${NC}"
 else
     echo -e "${RED}✗ All build methods failed${NC}"
-    echo -e "${YELLOW}On Greene: Request fakeroot access from hpc@nyu.edu${NC}"
-    echo -e "${YELLOW}On Torch: Standard build should work${NC}"
+    echo -e "${YELLOW}Options to fix:${NC}"
+    echo -e "${YELLOW}1. On Greene: Request fakeroot access from hpc@nyu.edu${NC}"
+    echo -e "${YELLOW}2. For remote build: Configure Sylabs token with 'singularity remote login'${NC}"
+    echo -e "${YELLOW}   Get token from: https://cloud.sylabs.io/auth/tokens${NC}"
+    echo -e "${YELLOW}3. On Torch: Standard build should work (when maintenance complete)${NC}"
     exit 1
 fi
