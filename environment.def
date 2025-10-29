@@ -2,29 +2,22 @@ Bootstrap: docker
 From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
 
 %setup
-    # Create directories in the container filesystem before mounting
     mkdir -p ${APPTAINER_ROOTFS}/scratch
     mkdir -p ${APPTAINER_ROOTFS}/home
     mkdir -p ${APPTAINER_ROOTFS}/share/apps
     mkdir -p ${APPTAINER_ROOTFS}/state/partition1
 
 %post
-    # Update package lists
     apt-get update
-
-    # Install wget and git
     apt-get install -y wget git
-
-    # Install Miniforge
+    
     wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh
     bash /tmp/miniforge.sh -b -p /opt/miniforge
     rm /tmp/miniforge.sh
-
-    # Initialize conda
+    
     /opt/miniforge/bin/conda init bash
-
-    # Install packages via conda
-    /opt/miniforge/bin/conda install -y \
+    
+    /opt/miniforge/bin/mamba install -y \
         python=3.11 \
         numpy \
         scipy \
@@ -36,35 +29,46 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
         jupyter_client \
         nbformat \
         notebook \
-        nltk \
+        stop-words \
+        spacy \
         setproctitle \
         tqdm \
         gensim
-
-    # Create NLTK data directory and download data
-    mkdir -p /opt/miniforge/nltk_data
-    /opt/miniforge/bin/python -c "import nltk; nltk.download('stopwords', download_dir='/opt/miniforge/nltk_data'); nltk.download('wordnet', download_dir='/opt/miniforge/nltk_data'); nltk.download('omw-1.4', download_dir='/opt/miniforge/nltk_data')"
-
-    # Install rocks-shim
+    
+    /opt/miniforge/bin/pip install simplemma
+    
+    /opt/miniforge/bin/python -m spacy download en_core_web_sm &
+    /opt/miniforge/bin/python -m spacy download zh_core_web_sm &
+    /opt/miniforge/bin/python -m spacy download fr_core_news_sm &
+    /opt/miniforge/bin/python -m spacy download de_core_news_sm &
+    /opt/miniforge/bin/python -m spacy download it_core_news_sm &
+    /opt/miniforge/bin/python -m spacy download ru_core_news_sm &
+    /opt/miniforge/bin/python -m spacy download es_core_news_sm &
+    wait
+    
+    /opt/miniforge/bin/python -c "import spacy; print('spaCy version:', spacy.__version__); print('Installed models:', sorted(spacy.util.get_installed_models()))"
+    /opt/miniforge/bin/python -c "from stop_words import AVAILABLE_LANGUAGES; print('Available stopword languages:', sorted(AVAILABLE_LANGUAGES))"
+    /opt/miniforge/bin/python -c "import simplemma; print('simplemma version:', simplemma.__version__)"
+    
     /opt/miniforge/bin/pip install --no-cache-dir \
         https://github.com/eric-d-knowles/rocks-shim/releases/download/v0.2.0/rocks_shim-0.2.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-
-    # Clean up
+    
     apt-get clean
     rm -rf /var/lib/apt/lists/*
 
 %environment
     export PATH=/opt/miniforge/bin:$PATH
     export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-    export NLTK_DATA=/opt/miniforge/nltk_data
 
 %runscript
     exec /opt/miniforge/bin/python "$@"
 
 %labels
     Author ngram-prep
-    Version 1.0
-    Description CUDA development environment for ngram-prep on NYU Torch cluster
+    Version 2.0
+    Description CUDA environment with spaCy and simplemma for Google Ngrams processing
 
 %help
-    Minimal Python environment with CUDA 12.6.2 support for ngram-prep development.
+    Python environment with CUDA 12.6.2 and multilingual lemmatization.
+    spaCy models: en, zh, fr, de, it, ru, es
+    simplemma: he (Hebrew) and fallback for other languages
