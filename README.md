@@ -1,8 +1,8 @@
 # ngram-prep
 
-**Scalable tools to prepare Google Books Ngrams data for linguistic and cultural analysis**
+**Scalable tools to prepare Google Books Ngrams data for linguistic and semantic analysis**
 
-Process n-grams from the Google Books corpus using multiple CPUs. Ideal for large corpora consisting of millions and billions of entries. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+Process n-grams from the Google Books corpus using multiple CPUs. Ideal for large corpora consisting of millions or billions of entries. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
 
 ## Capabilities
 

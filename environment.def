@@ -19,23 +19,23 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
     
     /opt/miniforge/bin/mamba install -y \
         python=3.11 \
-        numpy \
-        scipy \
-        pandas \
-        matplotlib \
-        seaborn \
-        Cython \
-        ipykernel \
-        jupyter_client \
-        nbformat \
-        notebook \
-        stop-words \
-        spacy \
-        setproctitle \
-        tqdm \
-        gensim
-    
-    /opt/miniforge/bin/pip install simplemma
+        "numpy>=1.20" \
+        "scipy>=1.7" \
+        "pandas>=1.3" \
+        "matplotlib>=3.5" \
+        "seaborn>=0.11" \
+        "Cython>=3.0" \
+        "ipykernel>=6.0" \
+        "jupyter_client>=7.0" \
+        "nbformat>=5.0" \
+        "notebook>=6.4" \
+        "stop-words>=2018.7.23" \
+        "spacy>=3.0" \
+        "setproctitle>=1.3" \
+        "tqdm>=4.64" \
+        "gensim>=4.0"
+
+    /opt/miniforge/bin/pip install "simplemma>=0.9" "spacy-lookups-data>=1.0"
     
     /opt/miniforge/bin/python -m spacy download en_core_web_sm &
     /opt/miniforge/bin/python -m spacy download zh_core_web_sm &

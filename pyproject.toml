@@ -32,7 +32,12 @@ classifiers = [
 dependencies = [
     "numpy>=1.20",
     "Cython>=3.0",
-    # Add other runtime dependencies here
+    "spacy>=3.0",
+    "spacy-lookups-data>=1.0.0",
+    "stop-words>=2018.7.23",
+    "setproctitle>=1.3.0",
+    "tqdm>=4.64.0",
+    "rocks-shim>=0.2.0",
 ]
 
 [project.urls]
@@ -41,21 +46,6 @@ Documentation = "https://github.com/yourusername/ngram-prep#readme"
 Repository = "https://github.com/yourusername/ngram-prep.git"
 "Bug Tracker" = "https://github.com/yourusername/ngram-prep/issues"
 Changelog = "https://github.com/yourusername/ngram-prep/blob/main/CHANGELOG.md"
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=6.0",
-    "pytest-cov",
-    "black",
-    "flake8",
-    "mypy",
-    "build",
-    "twine",
-]
-docs = [
-    "sphinx",
-    "sphinx-rtd-theme",
-]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

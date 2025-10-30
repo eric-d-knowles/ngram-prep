@@ -57,9 +57,24 @@ class SpacyLemmatizer:
 
         self.nlp = spacy.load(model, disable=["parser", "ner", "textcat"])
 
+        # Set up hybrid lemmatization: lookup + rule-based fallback
+        # We keep the original rule-based lemmatizer and add a lookup one
+
+        # Store reference to the original (rule-based) lemmatizer
+        self.rule_lemmatizer = self.nlp.get_pipe("lemmatizer")
+
+        # Remove it and add lookup-based lemmatizer as primary
+        self.nlp.remove_pipe("lemmatizer")
+        self.nlp.add_pipe("lemmatizer", name="lemmatizer_lookup", config={"mode": "lookup"})
+        self.nlp.initialize()
+
     def lemmatize(self, word: str, pos: str = "NOUN") -> str:
         """
         Lemmatize a single word given its POS tag.
+
+        Uses a hybrid approach:
+        1. Try lookup table first (avoids "other" → "oth" errors)
+        2. If word unchanged, fall back to rule-based lemmatization
 
         Args:
             word: The word to lemmatize
@@ -72,13 +87,23 @@ class SpacyLemmatizer:
         For better performance, consider using a caching wrapper or
         pre-lemmatizing a vocabulary.
         """
-        # Create a Doc with the word and set its POS tag
+        # Try lookup first
+        doc = Doc(self.nlp.vocab, words=[word])
+        doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
+        lookup_lemma = doc[0].lemma_
+
+        # If lookup found a lemma (changed from original), use it
+        if lookup_lemma != word:
+            return lookup_lemma
+
+        # Otherwise, fall back to rule-based lemmatization with POS tag
         doc = Doc(self.nlp.vocab, words=[word], pos=[pos])
-
-        # Run the lemmatizer on the doc
-        doc = self.nlp.get_pipe("lemmatizer")(doc)
-
-        # Return the lemma
+        # Set morphology to avoid incorrect suffix stripping on edge cases
+        if pos == "ADJ":
+            doc[0].set_morph("Degree=Pos")
+        elif pos == "VERB":
+            doc[0].set_morph("VerbForm=Inf")
+        doc = self.rule_lemmatizer(doc)
         return doc[0].lemma_
 
 
@@ -110,8 +135,22 @@ class CachedSpacyLemmatizer(SpacyLemmatizer):
 
     def _lemmatize_internal(self, word: str, pos: str) -> str:
         """Internal lemmatization (gets cached)."""
+        # Try lookup first
+        doc = Doc(self.nlp.vocab, words=[word])
+        doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
+        lookup_lemma = doc[0].lemma_
+
+        # If lookup found a lemma, use it
+        if lookup_lemma != word:
+            return lookup_lemma
+
+        # Fall back to rule-based with morphology
         doc = Doc(self.nlp.vocab, words=[word], pos=[pos])
-        doc = self.nlp.get_pipe("lemmatizer")(doc)
+        if pos == "ADJ":
+            doc[0].set_morph("Degree=Pos")
+        elif pos == "VERB":
+            doc[0].set_morph("VerbForm=Inf")
+        doc = self.rule_lemmatizer(doc)
         return doc[0].lemma_
 
     def lemmatize(self, word: str, pos: str = "NOUN") -> str:
