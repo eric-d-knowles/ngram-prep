@@ -15,7 +15,7 @@ class ProcessorProtocol(Protocol):
 
 def _to_bytes_set(s: Optional[Iterable[Any]]):
     """
-    Normalize an iterable of {str|bytes|bytearray} into a set[bytes] (ASCII).
+    Normalize an iterable of {str|bytes|bytearray} into a set[bytes] (UTF-8).
     Returns None if s is None. Empty iterables return an empty set.
     """
     if s is None:
@@ -30,7 +30,7 @@ def _to_bytes_set(s: Optional[Iterable[Any]]):
         if isinstance(w, (builtins.bytes, builtins.bytearray)):
             out.add(builtins.bytes(w))
         elif isinstance(w, str):
-            out.add(w.encode("ascii"))
+            out.add(w.encode("utf-8"))
         else:
             raise TypeError(f"Unsupported token type: {type(w).__name__} "
                             "(expected str|bytes|bytearray)")

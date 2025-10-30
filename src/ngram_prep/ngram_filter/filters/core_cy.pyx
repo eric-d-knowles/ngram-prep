@@ -15,15 +15,15 @@ cdef set TAGS_VALID_G = {
     b"NOUN", b"PROPN", b"VERB", b"ADJ", b"ADV",
     b"PRON", b"DET", b"ADP", b"NUM", b"CONJ", b"X", b"."
 }
-# Mapping subset for lemmatizer (WordNet codes)
+# Mapping Google Ngrams POS tags to spaCy POS tags for lemmatization
 cdef dict MAP_G_TO_WN = {
-    b"NOUN": "n",
-    b"VERB": "v",
-    b"ADJ":  "a",
-    b"ADV":  "r",
+    b"NOUN": "NOUN",
+    b"VERB": "VERB",
+    b"ADJ":  "ADJ",
+    b"ADV":  "ADV",
 }
 
-# ======================== low-level: ASCII alpha check ========================
+# ======================== low-level: alphabetic check ========================
 
 @cython.cfunc
 @cython.inline
@@ -31,6 +31,9 @@ cdef bint _is_ascii_alpha_bytes(const unsigned char[:] buf):
     """
     Return 1 if buf is non-empty and consists only of ASCII letters A–Z/a–z.
     Return 0 otherwise.
+
+    NOTE: This is used when tokens are ASCII-only. For UTF-8 tokens with
+    non-ASCII characters, use _is_unicode_alpha() instead.
     """
     cdef Py_ssize_t i, n = buf.shape[0]
     cdef unsigned char c
@@ -43,6 +46,21 @@ cdef bint _is_ascii_alpha_bytes(const unsigned char[:] buf):
         if not (65 <= c <= 90 or 97 <= c <= 122):
             return 0
     return 1
+
+
+@cython.cfunc
+@cython.inline
+cdef bint _is_unicode_alpha(str s):
+    """
+    Return 1 if string is non-empty and consists only of Unicode alphabetic characters.
+    Return 0 otherwise.
+
+    Accepts letters from any language (English, French, German, Chinese, etc.)
+    but rejects punctuation, numbers, and other non-alphabetic characters.
+    """
+    if not s:
+        return 0
+    return s.isalpha()
 
 
 # ======================== helpers ========================
@@ -116,7 +134,7 @@ cpdef bytes process_tokens(
     cdef bint is_unk
 
     # for lemma path
-    cdef object wn_pos      # None or 'n'/'v'/'a'/'r'
+    cdef object wn_pos      # None or spaCy POS tag ('NOUN'/'VERB'/'ADJ'/'ADV')
     cdef str tok_s
     cdef str pos_s
     cdef str lem_s
@@ -143,7 +161,7 @@ cpdef bytes process_tokens(
             tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag
             if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag
                 base_b = tok_b[:last_uscore]  # if it's a real POS tag, separate out the base token
-                wn_pos = MAP_G_TO_WN.get(tag_b, None)  # and convert the tag to a WordNet code
+                wn_pos = MAP_G_TO_WN.get(tag_b, None)  # and convert the tag to a spaCy POS tag
             else:  # if what's after the last underscore *isn't* a POS tag...
                 base_b = tok_b  # the base token is just the original token
         else:  # if there wasn't a last underscore...
@@ -154,9 +172,9 @@ cpdef bytes process_tokens(
             base_b = base_b.lower()
         if do_lemmas:
             tok_s = _decode_token(base_b)
-            pos_s = wn_pos if wn_pos is not None else "n"
+            pos_s = wn_pos if wn_pos is not None else "NOUN"
             res = lemma_gen.lemmatize(tok_s, pos=pos_s)
-            normalized_token = _encode_token(<str> res, do_alpha)
+            normalized_token = _encode_token(<str> res, False)
         else:
             normalized_token = base_b
 
@@ -171,11 +189,21 @@ cpdef bytes process_tokens(
         else:
             # Normal filtering path: apply all checks
             is_unk = 0
-            if do_alpha and not _is_ascii_alpha_bytes(normalized_token):
+            if do_alpha:
+                # Check if token is alphabetic (language-agnostic)
+                # Try fast ASCII check first, then Unicode check for non-ASCII
+                if not _is_ascii_alpha_bytes(normalized_token):
+                    # Contains non-ASCII bytes, decode and check with Unicode isalpha()
+                    try:
+                        tok_s = _decode_token(normalized_token)
+                        if not _is_unicode_alpha(tok_s):
+                            is_unk = 1
+                    except:
+                        # Decoding failed, mark as invalid
+                        is_unk = 1
+            if not is_unk and do_shorts and normalized_token.__len__() < min_len:
                 is_unk = 1
-            elif do_shorts and normalized_token.__len__() < min_len:
-                is_unk = 1
-            elif do_stops and normalized_token in stop_set:
+            elif not is_unk and do_stops and normalized_token in stop_set:
                 is_unk = 1
 
             if is_unk:

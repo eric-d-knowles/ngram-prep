@@ -10,7 +10,7 @@ from typing import Optional, Set, Dict, Any, Union
 @dataclass(frozen=True)
 class FilterConfig:
     lowercase: bool = True
-    alpha_only: bool = True
+    alpha_only: bool = True  # Filter out tokens with punctuation/numbers; accepts alphabetic chars from all languages
     filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
