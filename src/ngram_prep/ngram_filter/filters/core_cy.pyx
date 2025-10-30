@@ -18,9 +18,17 @@ cdef set TAGS_VALID_G = {
 # Mapping Google Ngrams POS tags to spaCy POS tags for lemmatization
 cdef dict MAP_G_TO_WN = {
     b"NOUN": "NOUN",
+    b"PROPN": "PROPN",
     b"VERB": "VERB",
     b"ADJ":  "ADJ",
     b"ADV":  "ADV",
+    b"PRON": "PRON",
+    b"DET": "DET",
+    b"ADP": "ADP",
+    b"NUM": "NUM",
+    b"CONJ": "CCONJ",
+    b"X": "X",
+    b".": "PUNCT",
 }
 
 # ======================== low-level: alphabetic check ========================
