@@ -16,6 +16,7 @@ from setproctitle import setproctitle
 from ..config import PipelineConfig, FilterConfig
 from ngram_prep.tracking import (
     create_uniform_work_units,
+    create_smart_work_units,
     WorkTracker,
     SimpleOutputManager,
 )
@@ -139,7 +140,10 @@ class PipelineOrchestrator:
         num_workers: int,
     ) -> None:
         """
-        Create uniform work units using byte-range partitioning.
+        Create work units using density-based or uniform partitioning.
+
+        For large databases, uses parallel sampling to create balanced partitions.
+        Falls back to uniform partitioning for small datasets.
 
         Args:
             work_tracker: WorkTracker instance
@@ -152,11 +156,40 @@ class PipelineOrchestrator:
             None
         ) or num_workers
 
-        # Create uniform work units (fast, no sampling needed)
-        work_units = create_uniform_work_units(num_work_units)
+        # Check if smart partitioning is enabled and appropriate
+        use_smart_partitioning = self.pipeline_config.use_smart_partitioning
 
-        print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
-        print(f"Dynamic splitting will handle load balancing at runtime")
+        # For very small unit counts, uniform is fine
+        if num_work_units < 4:
+            use_smart_partitioning = False
+
+        if use_smart_partitioning:
+            print(f"Sampling database to create {num_work_units} density-based work units...")
+
+            # Get sampling parameters from config
+            num_sampling_workers = self.pipeline_config.num_sampling_workers
+            if num_sampling_workers is None:
+                num_sampling_workers = min(num_work_units, 40)
+            samples_per_worker = self.pipeline_config.samples_per_worker
+
+            try:
+                work_units = create_smart_work_units(
+                    db_path=self.pipeline_config.src_db,
+                    num_units=num_work_units,
+                    num_sampling_workers=num_sampling_workers,
+                    samples_per_worker=samples_per_worker,
+                    read_profile=self.pipeline_config.writer_read_profile
+                )
+                print(f"Created {len(work_units)} balanced work units based on data density")
+            except Exception as e:
+                print(f"Smart partitioning failed: {e}")
+                print(f"Falling back to uniform partitioning...")
+                work_units = create_uniform_work_units(num_work_units)
+                print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
+        else:
+            # Create uniform work units (fast, no sampling needed)
+            work_units = create_uniform_work_units(num_work_units)
+            print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
 
         work_tracker.add_work_units(work_units)
 
@@ -436,6 +469,16 @@ class PipelineOrchestrator:
             "output_whitelist_top_n",
             None,
         )
+        spell_check = getattr(
+            self.pipeline_config,
+            "output_whitelist_spell_check",
+            False,
+        )
+        spell_check_language = getattr(
+            self.pipeline_config,
+            "output_whitelist_spell_check_language",
+            "en_US",
+        )
 
         print_phase_header(5, "Generating output whitelist...")
 
@@ -448,13 +491,18 @@ class PipelineOrchestrator:
         else:
             print("  Extracting all tokens")
 
+        if spell_check:
+            print(f"  Spell checking enabled ({spell_check_language})")
+
         start_time = time.perf_counter()
         final_path = write_whitelist(
             db_or_path=self.temp_paths['dst_db'],
             dest=output_whitelist_path,
             top=output_top_n,
             decode=True,
-            sep="\t"
+            sep="\t",
+            spell_check=spell_check,
+            spell_check_language=spell_check_language,
         )
         elapsed = time.perf_counter() - start_time
 
@@ -486,16 +534,6 @@ class PipelineOrchestrator:
             Configured WorkerConfig instance
         """
         return WorkerConfig(
-            buffer_size=getattr(
-                self.pipeline_config,
-                'max_items_per_bucket',
-                200_000,
-            ),
-            buffer_bytes=getattr(
-                self.pipeline_config,
-                'max_bytes_per_bucket',
-                256 * 1024 * 1024,
-            ),
             disable_wal=getattr(
                 self.pipeline_config,
                 'writer_disable_wal',

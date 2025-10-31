@@ -113,7 +113,7 @@ def snapshot_counters(counters: Counters) -> ProgressSnapshot:
 def print_phase_banner() -> None:
     """Print the pipeline phase banner and headers."""
     field_width = 16
-    fields = ["ngrams", "exp", "units", "splits", "rate", "elapsed"]
+    fields = ["ngrams", "exp", "units", "rate", "elapsed"]
     line = "─"
     print('\n' + ''.join(f"{field:^{field_width}}" for field in fields))
     print(''.join(f"{line*field_width:^{field_width}}" for field in fields))
@@ -211,13 +211,7 @@ class ProgressFormatter:
         else:
             units_str = "-"
 
-        # Format splits
-        if work_progress:
-            splits_str = str(work_progress.split)
-        else:
-            splits_str = "-"
-
-        fields = [ngrams_str, exp_str, units_str, splits_str, throughput_str, elapsed_str]
+        fields = [ngrams_str, exp_str, units_str, throughput_str, elapsed_str]
         field_width = 16
 
         return ''.join(f"{field:^{field_width}}" for field in fields)

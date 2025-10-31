@@ -25,8 +25,6 @@ __all__ = ["WorkerConfig", "worker_process"]
 class WorkerConfig:
     """Configuration for individual worker processes."""
 
-    buffer_size: int = 10_000  # Items to buffer before flushing
-    buffer_bytes: int = 8 * 1024 * 1024  # 8MB buffer limit
     disable_wal: bool = True  # Disable WAL for performance
     disable_compaction: bool = True  # Disable auto-compaction
 
@@ -98,31 +96,6 @@ def worker_process(
                     work_tracker.complete_work_unit(work_unit.unit_id)
                     continue
 
-                # Check if we should split this unit before processing (worker-driven splitting)
-                # Split if there are idle workers who could help with this work
-                progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
-
-                if progress.processing < pipeline_config.num_workers and progress.idle_workers > 0:
-                    # Only split if we haven't exceeded maximum split depth
-                    split_depth = _get_split_depth(work_unit, work_tracker)
-                    if split_depth >= pipeline_config.max_split_depth:
-                        # Don't split - already split too many times
-                        pass
-                    else:
-                        try:
-                            # Try to split - may fail if unit has no progress yet or is too small
-                            # This shrinks work_unit's end_key in DB and creates a child for the remainder
-                            child = work_tracker.split_current_unit(work_unit.unit_id)
-                            if child:
-                                # Reload work_unit to get the updated (shrunk) end_key
-                                work_unit = work_tracker.get_work_unit(work_unit.unit_id)
-                                if not work_unit:
-                                    # Unit disappeared (race condition) - skip to next iteration
-                                    continue
-                        except (ValueError, Exception) as e:
-                            # Split failed - that's OK, continue processing full unit
-                            pass
-
                 # Track local counters for this work unit
                 local_counters = {'scanned': 0, 'filtered': 0, 'enqueued': 0, 'written': 0}
 
@@ -135,7 +108,8 @@ def worker_process(
                     worker_config,
                     pipeline_config,
                     local_counters,
-                    work_tracker
+                    work_tracker,
+                    counters
                 )
 
                 # Commit counters for the work we completed
@@ -237,37 +211,6 @@ def _is_range_empty(work_unit: WorkUnit, src_db_path: Path, pipeline_config: Pip
         return False
 
 
-def _get_split_depth(work_unit: WorkUnit, work_tracker: WorkTracker) -> int:
-    """Calculate how many times this unit has been split (parent chain depth).
-
-    This traverses the parent chain to determine split depth, which prevents
-    infinite splitting by limiting how many times a unit can be recursively split.
-
-    Args:
-        work_unit: The work unit to check
-        work_tracker: Work tracker to look up parent chain
-
-    Returns:
-        Depth (0 = original unit, 1 = split once, 2 = split twice, etc.)
-    """
-    depth = 0
-    current_id = work_unit.parent_id
-
-    # Traverse parent chain
-    while current_id is not None:
-        depth += 1
-        parent = work_tracker.get_work_unit(current_id)
-        if not parent:
-            break  # Parent not found, stop traversal
-        current_id = parent.parent_id
-
-        # Safety limit to prevent infinite loops in case of circular parent references
-        if depth > 100:
-            break
-
-    return depth
-
-
 def _process_work_unit(
         work_unit: WorkUnit,
         src_db_path: Path,
@@ -278,6 +221,7 @@ def _process_work_unit(
         pipeline_config: PipelineConfig,
         local_counters: Optional[dict] = None,
         work_tracker: Optional[WorkTracker] = None,
+        counters: Optional[Counters] = None,
 ) -> tuple[bool, tuple[int, int, int]]:
     """
     Process a single work unit by filtering its key range.
@@ -312,7 +256,7 @@ def _process_work_unit(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Initialize write buffer
-    buffer = WriteBuffer(config.buffer_size, config.buffer_bytes)
+    buffer = WriteBuffer()
 
     # Process the work unit's key range
     was_split = False
@@ -331,12 +275,14 @@ def _process_work_unit(
                 work_unit,
                 src_db,
                 dst_db,
+                src_db_path,
                 processor,
                 buffer,
                 config,
                 pipeline_config,
                 local_counters,
-                work_tracker
+                work_tracker,
+                counters
             )
 
             # Final flush and finalization
@@ -346,8 +292,7 @@ def _process_work_unit(
                 local_counters['written'] += num_written
             _finalize_output_database(dst_db)
 
-    # Mark unit as completed now that filtering is done
-    # This releases the worker from being counted as "active" in progress tracking
+    # Mark unit as completed
     if work_tracker:
         work_tracker.complete_work_unit(work_unit.unit_id)
 
@@ -363,12 +308,14 @@ def _process_key_range(
         work_unit: WorkUnit,
         src_db,
         dst_db,
+        src_db_path: Path,
         processor,
         buffer: WriteBuffer,
         config: WorkerConfig,
         pipeline_config: PipelineConfig,
         local_counters: Optional[dict] = None,
         work_tracker: Optional[WorkTracker] = None,
+        counters: Optional[Counters] = None,
 ) -> tuple[bool, tuple[int, int, int]]:
     """
     Process all keys in the work unit's range.
@@ -376,13 +323,12 @@ def _process_key_range(
     This function scans the source database from start_key to end_key and writes
     filtered results to a buffer. It flushes periodically and checkpoints progress.
 
-    Periodic splitting: Every split_check_interval_s (default 120s), the worker checks
-    if there are idle workers. If so, it splits its remaining work at the current position,
-    creating a new pending unit for idle workers to claim.
+    Work units are split at claim-time (before processing starts) if idle workers exist.
+    This function simply processes the given range without any mid-processing splits.
 
     Returns:
         Tuple of (was_split, unused_tuple):
-        - was_split: Always False (splits no longer detected during processing)
+        - was_split: Always False (splitting now happens at claim time)
         - unused_tuple: Always (0, 0, 0) - kept for API compatibility
     """
     import time
@@ -396,9 +342,9 @@ def _process_key_range(
     # Track counts since last checkpoint (to avoid double-counting on splits)
     since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
-    # Track time for periodic split checks
-    last_split_check_time = time.time()
-    split_check_interval_s = getattr(pipeline_config, 'split_check_interval_s', 120)
+    # Track time for periodic flushes
+    last_flush_time = time.time()
+    flush_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
 
     for key, value in range_scan(src_db, start_key, end_key):
         # Skip metadata keys entirely (don't count them)
@@ -407,10 +353,38 @@ def _process_key_range(
 
         since_checkpoint['scanned'] += 1
 
+        # Check if we should flush (time-based, checked EVERY iteration)
+        # This ensures flush happens even when all keys are filtered out
+        should_flush = False
+        if work_tracker and flush_interval_s > 0:
+            current_time = time.time()
+            if current_time - last_flush_time >= flush_interval_s:
+                should_flush = True
+
         # Apply filtering
         processed_key = processor(key)
         if not processed_key:
             since_checkpoint['filtered'] += 1
+            # If flush interval elapsed, flush even though key was filtered
+            if should_flush:
+                # Checkpoint at current key (even though it was filtered out)
+                if work_tracker:
+                    work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=10)
+
+                # Flush buffer (may be empty if all recent keys were filtered)
+                num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)
+                if local_counters:
+                    local_counters['written'] += num_written
+
+                # Commit counts at checkpoint boundary
+                if local_counters:
+                    local_counters['scanned'] += since_checkpoint['scanned']
+                    local_counters['filtered'] += since_checkpoint['filtered']
+                    local_counters['enqueued'] += since_checkpoint['enqueued']
+                    since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
+
+                last_flush_time = time.time()
+
             continue
 
         # Prepare for buffering
@@ -419,8 +393,9 @@ def _process_key_range(
 
         since_checkpoint['enqueued'] += 1
 
-        # Add to buffer and flush if needed
-        should_flush = buffer.add(processed_key_bytes, value_bytes)
+        # Add to buffer
+        buffer.add(processed_key_bytes, value_bytes)
+
         if should_flush:
             # Update checkpoint position (with more retries for high-worker scenarios)
             if work_tracker:
@@ -438,31 +413,9 @@ def _process_key_range(
                 local_counters['enqueued'] += since_checkpoint['enqueued']
                 since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
-            # Periodic split check: if enough time has passed and there are idle workers,
-            # split off remaining work for them to claim
-            if work_tracker and split_check_interval_s > 0:
-                current_time = time.time()
-                if current_time - last_split_check_time >= split_check_interval_s:
-                    last_split_check_time = current_time
-
-                    # Check if there are idle workers
-                    progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
-                    if progress.idle_workers > 0:
-                        # Check if we haven't exceeded maximum split depth
-                        split_depth = _get_split_depth(work_unit, work_tracker)
-                        if split_depth < pipeline_config.max_split_depth:
-                            try:
-                                # Split at current position - creates child for remaining work
-                                # This preserves our completed work and gives idle workers the remainder
-                                child = work_tracker.split_work_unit(work_unit.unit_id)
-                                if child:
-                                    # Unit was split and marked completed - exit scan loop
-                                    # We've already flushed everything up to current_position
-                                    break
-                            except (ValueError, Exception):
-                                # Split failed (e.g., no progress yet, or position too close to end)
-                                # This is fine - just continue processing
-                                pass
+            # Periodic flush timing
+            if should_flush:
+                last_flush_time = time.time()
 
     # Completed processing entire range
     # Commit any remaining counts from partial buffer and update counters

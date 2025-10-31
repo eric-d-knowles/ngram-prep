@@ -13,6 +13,7 @@ from setproctitle import setproctitle
 from ..config import PipelineConfig
 from ngram_prep.tracking import (
     create_uniform_work_units,
+    create_smart_work_units,
     WorkTracker,
 )
 from ngram_prep.common_db import open_db
@@ -120,7 +121,10 @@ class PivotOrchestrator:
         num_workers: int,
     ) -> None:
         """
-        Create uniform work units using byte-range partitioning.
+        Create work units using density-based or uniform partitioning.
+
+        For large databases, uses parallel sampling to create balanced partitions.
+        Falls back to uniform partitioning for small datasets.
 
         Args:
             work_tracker: WorkTracker instance
@@ -133,11 +137,40 @@ class PivotOrchestrator:
             else num_workers
         )
 
-        # Create uniform work units (fast, no sampling needed)
-        work_units = create_uniform_work_units(num_work_units)
+        # Check if smart partitioning is enabled and appropriate
+        use_smart_partitioning = self.pipeline_config.use_smart_partitioning
 
-        print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
-        print(f"Dynamic splitting will handle load balancing at runtime")
+        # For very small unit counts, uniform is fine
+        if num_work_units < 4:
+            use_smart_partitioning = False
+
+        if use_smart_partitioning:
+            print(f"Sampling database to create {num_work_units} density-based work units...")
+
+            # Get sampling parameters from config
+            num_sampling_workers = self.pipeline_config.num_sampling_workers
+            if num_sampling_workers is None:
+                num_sampling_workers = min(num_work_units, 40)
+            samples_per_worker = self.pipeline_config.samples_per_worker
+
+            try:
+                work_units = create_smart_work_units(
+                    db_path=self.pipeline_config.src_db,
+                    num_units=num_work_units,
+                    num_sampling_workers=num_sampling_workers,
+                    samples_per_worker=samples_per_worker,
+                    read_profile=self.pipeline_config.reader_profile
+                )
+                print(f"Created {len(work_units)} balanced work units based on data density")
+            except Exception as e:
+                print(f"Smart partitioning failed: {e}")
+                print(f"Falling back to uniform partitioning...")
+                work_units = create_uniform_work_units(num_work_units)
+                print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
+        else:
+            # Create uniform work units (fast, no sampling needed)
+            work_units = create_uniform_work_units(num_work_units)
+            print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
 
         work_tracker.add_work_units(work_units)
 
@@ -435,8 +468,6 @@ class PivotOrchestrator:
             Configured WorkerConfig instance
         """
         return WorkerConfig(
-            buffer_size=self.pipeline_config.max_items_per_bucket,
-            buffer_bytes=self.pipeline_config.max_bytes_per_bucket,
             disable_wal=self.pipeline_config.writer_disable_wal,
             disable_compaction=True,
         )

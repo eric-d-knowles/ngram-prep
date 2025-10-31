@@ -54,16 +54,15 @@ def print_pipeline_header(
     print("\n\033[4mWorkers\033[0m")
     read_profile = pipeline_config.writer_read_profile
     write_profile = pipeline_config.writer_write_profile
-    buffer_formatted = format_bytes(worker_config.buffer_bytes)
+    flush_interval = getattr(pipeline_config, 'flush_interval_s', 5.0)
 
     num_initial_work_units = getattr(pipeline_config, 'num_initial_work_units', None) or num_workers
 
     _display.print_config_items({
         "Num Workers": num_workers,
         "Initial work units": num_initial_work_units,
-        "Dynamic splitting": "Enabled",
         "Profiles": f"read={read_profile}, write={write_profile}",
-        "Buffer": f"{worker_config.buffer_size:,} items, {buffer_formatted}",
+        "Flush interval": f"{flush_interval}s",
     })
 
     print("\n\033[4mFiles\033[0m")

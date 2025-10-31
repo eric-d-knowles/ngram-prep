@@ -1,123 +1,231 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Build script for ngram-prep Singularity/Apptainer container
+# Builds an immutable SIF for NYU Torch/Greene with a clean, menu-driven UI.
 
-# Build script for ngram-prep Singularity container
-# This script builds an immutable SIF container for use on NYU's Torch cluster
+set -Eeuo pipefail
+IFS=$'\n\t'
 
-set -e  # Exit on error
+# --------------------------- Config ---------------------------
+NETID="${NETID:-edk202}"
+DEFAULT_CONTAINER_DIR="${DEFAULT_CONTAINER_DIR:-/scratch/${NETID}/containers}"
+CONTAINER_NAME="${CONTAINER_NAME:-ngram-prep.sif}"
+DEF_FILE="${DEF_FILE:-environment.def}"
+LOG_DIR="${LOG_DIR:-/tmp}"
+LOG_FILE="${LOG_DIR}/sif_build_$(date +%Y%m%d_%H%M%S).log"
 
-# Configuration
-NETID="edk202"
-DEFAULT_CONTAINER_DIR="/scratch/${NETID}/containers"
-CONTAINER_NAME="ngram-prep.sif"
-DEF_FILE="environment.def"
+# Colors
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLD='\033[1m'; RST='\033[0m'
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-
-# Ask user for container directory
-echo -e "${YELLOW}Default container directory: ${DEFAULT_CONTAINER_DIR}${NC}"
-read -p "Press Enter to use default, or type a different path: " USER_INPUT
-
-if [ -z "$USER_INPUT" ]; then
-    CONTAINER_DIR="$DEFAULT_CONTAINER_DIR"
-    echo -e "${GREEN}Using default directory: ${CONTAINER_DIR}${NC}"
+# ---------------------- Tool detection -----------------------
+if command -v singularity >/dev/null 2>&1; then
+  SIF="singularity"
+elif command -v apptainer >/dev/null 2>&1; then
+  SIF="apptainer"
 else
-    CONTAINER_DIR="$USER_INPUT"
-    echo -e "${GREEN}Using custom directory: ${CONTAINER_DIR}${NC}"
+  echo -e "${RED}Error:${RST} Neither 'singularity' nor 'apptainer' found in PATH."
+  exit 127
 fi
 
-# Check if definition file exists
-if [ ! -f "$DEF_FILE" ]; then
-    echo -e "${RED}Error: Definition file '$DEF_FILE' not found${NC}"
-    exit 1
+# ---------------------- Helper functions ---------------------
+say() { printf "%b\n" "$*"; }
+info() { say "${GREEN}${*}${RST}"; }
+warn() { say "${YELLOW}${*}${RST}"; }
+err() { say "${RED}${*}${RST}" >&2; }
+
+die() { err "$*"; exit 1; }
+
+hr() { printf '%*s\n' 70 '' | tr ' ' -; }
+
+# Trap errors to show tail of log
+on_err() {
+  local rc=$?
+  err "\n[ERROR] Build script failed (rc=$rc). Recent log:"
+  tail -n 60 "$LOG_FILE" 2>/dev/null || true
+  exit "$rc"
+}
+trap on_err ERR
+
+# ---------------------- Build methods ------------------------
+standard_build() {
+  local out="$1" def="$2"
+  warn "Starting standard build..."
+  "$SIF" build "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  local rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Standard build succeeded."
+    return 0
+  else
+    return "$rc"
+  fi
+}
+
+fakeroot_build() {
+  local out="$1" def="$2"
+  warn "Starting fakeroot build..."
+  "$SIF" build --fakeroot "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  local rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Fakeroot build succeeded."
+    return 0
+  else
+    return "$rc"
+  fi
+}
+
+remote_build() {
+  local out="$1" def="$2"
+  warn "Starting remote build via Sylabs Cloud..."
+  warn "Note: requires a Sylabs token (see: ${BLD}${SIF} remote login${RST})"
+  # Save & unset bind vars (can conflict with remote service)
+  local old_sb="${SINGULARITY_BINDPATH:-}"; local old_ab="${APPTAINER_BINDPATH:-}"
+  unset SINGULARITY_BINDPATH || true
+  unset APPTAINER_BINDPATH  || true
+  
+  "$SIF" build --remote "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  local rc=${PIPESTATUS[0]}
+  
+  # Restore
+  [ -n "$old_sb" ] && export SINGULARITY_BINDPATH="$old_sb"
+  [ -n "$old_ab" ] && export APPTAINER_BINDPATH="$old_ab"
+  
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Remote build succeeded."
+    return 0
+  else
+    return "$rc"
+  fi
+}
+
+auto_build() {
+  local out="$1" def="$2"
+  warn "Auto mode: trying Standard → Fakeroot → Remote"
+
+  "$SIF" build "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  local rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Standard build succeeded."
+    return 0
+  else
+    warn "Standard build failed; trying fakeroot…"
+  fi
+
+  "$SIF" build --fakeroot "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  rc=${PIPESTATUS[0]}
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Fakeroot build succeeded."
+    return 0
+  else
+    warn "Fakeroot build failed; trying remote…"
+  fi
+
+  # Remote: temporarily unset bind vars again
+  local old_sb="${SINGULARITY_BINDPATH:-}"; local old_ab="${APPTAINER_BINDPATH:-}"
+  unset SINGULARITY_BINDPATH || true
+  unset APPTAINER_BINDPATH  || true
+  
+  "$SIF" build --remote "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  rc=${PIPESTATUS[0]}
+  
+  # Restore
+  [ -n "$old_sb" ] && export SINGULARITY_BINDPATH="$old_sb"
+  [ -n "$old_ab" ] && export APPTAINER_BINDPATH="$old_ab"
+  
+  if [ "$rc" -eq 0 ]; then
+    info "✓ Remote build succeeded."
+    return 0
+  fi
+
+  return 1
+}
+
+# ---------------------- UI: directory ------------------------
+warn "Default container directory: ${BLD}${DEFAULT_CONTAINER_DIR}${RST}"
+read -r -p "Press Enter to use default, or type a different path: " USER_INPUT
+if [ -z "${USER_INPUT:-}" ]; then
+  CONTAINER_DIR="$DEFAULT_CONTAINER_DIR"
+  info "Using default directory: $CONTAINER_DIR"
+else
+  CONTAINER_DIR="$USER_INPUT"
+  info "Using custom directory: $CONTAINER_DIR"
 fi
 
-# Create container directory if it doesn't exist
-echo -e "${GREEN}Creating container directory: ${CONTAINER_DIR}${NC}"
+[ -f "$DEF_FILE" ] || die "Definition file not found: $DEF_FILE"
+
+info "Creating container directory (if needed): $CONTAINER_DIR"
 mkdir -p "$CONTAINER_DIR"
 
-# Build the container
-echo -e "${GREEN}Building Singularity container...${NC}"
-echo -e "${YELLOW}This may take 10-20 minutes${NC}"
+OUTPUT_PATH="${CONTAINER_DIR%/}/${CONTAINER_NAME}"
 
-OUTPUT_PATH="${CONTAINER_DIR}/${CONTAINER_NAME}"
+hr
+info "Definition: $DEF_FILE"
+info "Output SIF: $OUTPUT_PATH"
+info "Runtime   : $SIF"
+info "Log file  : $LOG_FILE"
+hr
 
-# Try different build methods in order of preference
-BUILD_SUCCESS=false
+# ---------------------- UI: menu -----------------------------
+say "${BLD}Select build method:${RST}"
+say "  1) Auto (Standard → Fakeroot → Remote)"
+say "  2) Standard (local)"
+say "  3) Fakeroot (local, requires fakeroot access)"
+say "  4) Remote (Sylabs Cloud)"
+say "  q) Quit"
+read -r -p "Choice [1/2/3/4/q]: " CHOICE
+echo
 
-# Method 1: Try standard build (works on Torch)
-echo -e "${YELLOW}Attempting standard build...${NC}"
-if singularity build "$OUTPUT_PATH" "$DEF_FILE" 2>&1 | tee /tmp/build_log.txt | grep -q "FATAL"; then
-    echo -e "${YELLOW}Standard build not available${NC}"
+BUILD_OK=false
+case "${CHOICE:-1}" in
+  1|"")
+    warn "Auto-selected."
+    if auto_build "$OUTPUT_PATH" "$DEF_FILE"; then BUILD_OK=true; fi
+    ;;
+  2)
+    if standard_build "$OUTPUT_PATH" "$DEF_FILE"; then BUILD_OK=true; fi
+    ;;
+  3)
+    if fakeroot_build "$OUTPUT_PATH" "$DEF_FILE"; then BUILD_OK=true; fi
+    ;;
+  4)
+    if remote_build "$OUTPUT_PATH" "$DEF_FILE"; then BUILD_OK=true; fi
+    ;;
+  q|Q)
+    warn "Aborted by user."
+    exit 0
+    ;;
+  *)
+    die "Unrecognized choice: $CHOICE"
+    ;;
+esac
+
+# ---------------------- Post status --------------------------
+if "$BUILD_OK"; then
+  hr
+  info "✓ Container built successfully!"
+  info "Location: ${OUTPUT_PATH}"
+  echo
+  warn "Usage examples:"
+  echo "  # Run Python script"
+  echo "  $SIF run $OUTPUT_PATH script.py"
+  echo
+  echo "  # Interactive Python"
+  echo "  $SIF exec $OUTPUT_PATH python"
+  echo
+  echo "  # Jupyter notebook"
+  echo "  $SIF exec $OUTPUT_PATH jupyter notebook"
+  echo
+  echo "  # Shell access (with GPU)"
+  echo "  $SIF shell --nv $OUTPUT_PATH"
+  echo
+  warn "Note: Use --nv to enable GPU support."
+  hr
 else
-    if [ -f "$OUTPUT_PATH" ]; then
-        BUILD_SUCCESS=true
-        echo -e "${GREEN}✓ Standard build succeeded${NC}"
-    fi
-fi
-
-# Method 2: Try fakeroot (required on Greene with fakeroot access)
-if [ "$BUILD_SUCCESS" = false ]; then
-    echo -e "${YELLOW}Trying fakeroot build...${NC}"
-    if singularity build --fakeroot "$OUTPUT_PATH" "$DEF_FILE" 2>&1; then
-        BUILD_SUCCESS=true
-        echo -e "${GREEN}✓ Fakeroot build succeeded${NC}"
-    else
-        echo -e "${YELLOW}Fakeroot build failed${NC}"
-    fi
-fi
-
-# Method 3: Try remote build (requires Sylabs account)
-if [ "$BUILD_SUCCESS" = false ]; then
-    echo -e "${YELLOW}Trying remote build via Sylabs Cloud...${NC}"
-    echo -e "${YELLOW}Note: This requires a Sylabs account and may take longer${NC}"
-    
-    # Save and unset bind path variables for remote build
-    OLD_SINGULARITY_BINDPATH="${SINGULARITY_BINDPATH}"
-    OLD_APPTAINER_BINDPATH="${APPTAINER_BINDPATH}"
-    unset SINGULARITY_BINDPATH
-    unset APPTAINER_BINDPATH
-    
-    if singularity build --remote "$OUTPUT_PATH" "$DEF_FILE"; then
-        BUILD_SUCCESS=true
-        echo -e "${GREEN}✓ Remote build succeeded${NC}"
-    else
-        echo -e "${RED}Remote build failed${NC}"
-    fi
-    
-    # Restore bind path variables
-    export SINGULARITY_BINDPATH="${OLD_SINGULARITY_BINDPATH}"
-    export APPTAINER_BINDPATH="${OLD_APPTAINER_BINDPATH}"
-fi
-
-# Check final status
-if [ "$BUILD_SUCCESS" = true ]; then
-    echo -e "${GREEN}✓ Container built successfully!${NC}"
-    echo -e "${GREEN}Location: ${OUTPUT_PATH}${NC}"
-    echo ""
-    echo -e "${YELLOW}Usage examples:${NC}"
-    echo "  # Run Python script"
-    echo "  singularity run $OUTPUT_PATH script.py"
-    echo ""
-    echo "  # Interactive Python"
-    echo "  singularity exec $OUTPUT_PATH python"
-    echo ""
-    echo "  # Jupyter notebook"
-    echo "  singularity exec $OUTPUT_PATH jupyter notebook"
-    echo ""
-    echo "  # Shell access"
-    echo "  singularity shell --nv $OUTPUT_PATH"
-    echo ""
-    echo -e "${YELLOW}Note: Use --nv flag to enable GPU support${NC}"
-else
-    echo -e "${RED}✗ All build methods failed${NC}"
-    echo -e "${YELLOW}Options to fix:${NC}"
-    echo -e "${YELLOW}1. On Greene: Request fakeroot access from hpc@nyu.edu${NC}"
-    echo -e "${YELLOW}2. For remote build: Configure Sylabs token with 'singularity remote login'${NC}"
-    echo -e "${YELLOW}   Get token from: https://cloud.sylabs.io/auth/tokens${NC}"
-    echo -e "${YELLOW}3. On Torch: Standard build should work (when maintenance complete)${NC}"
-    exit 1
+  hr
+  err "✗ All selected build attempts failed."
+  warn "Options:"
+  warn "  1. On Greene: request fakeroot access (hpc@nyu.edu)."
+  warn "  2. Remote build: run '${SIF} remote login' and add your Sylabs token."
+  warn "     (Get token at cloud.sylabs.io/auth/tokens)"
+  warn "  3. On Torch: standard build should work when maintenance is complete."
+  hr
+  exit 1
 fi

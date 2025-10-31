@@ -90,16 +90,6 @@ class ProgressTracker:
             row = cursor.fetchone()
             starving_workers = int(row[0]) if row else 0
 
-            # Count total splits by counting distinct parent units
-            cursor = conn.execute(
-                """
-                SELECT COUNT(DISTINCT parent_id)
-                FROM work_units
-                WHERE parent_id IS NOT NULL
-                """
-            )
-            total_splits = cursor.fetchone()[0]
-
             return WorkProgress(
                 total=total,
                 pending=counts.get('pending', 0),
@@ -109,7 +99,7 @@ class ProgressTracker:
                 saved=0,  # No longer used: inline ingestion
                 ingesting=counts.get('ingesting', 0),
                 ingested=counts.get('ingested', 0),
-                split=total_splits,  # Total number of split operations performed
+                split=0,  # Dynamic splitting removed
                 splitting=0,  # No longer used (no 'split' status)
                 active_workers=active_workers,
                 idle_workers=idle_workers,

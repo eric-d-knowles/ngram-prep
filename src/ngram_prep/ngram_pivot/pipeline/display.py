@@ -57,7 +57,6 @@ def print_pipeline_header(
         "─" * LINE_WIDTH,
         f"Workers:              {pipeline_config.num_workers}",
         f"Initial work units:   {pipeline_config.num_initial_work_units or pipeline_config.num_workers}",
-        f"Max split depth:      {pipeline_config.max_split_depth}",
         f"Split check interval: {pipeline_config.split_check_interval_s}s",
         "",
         "Database Profiles",
@@ -66,10 +65,9 @@ def print_pipeline_header(
         f"Writer profile:       {pipeline_config.writer_profile}",
         f"Ingest profile:       {pipeline_config.ingest_write_profile}",
         "",
-        "Buffer Configuration",
+        "Flush Configuration",
         "─" * LINE_WIDTH,
-        f"Worker buffer size:   {worker_config.buffer_size:,} items",
-        f"Worker buffer bytes:  {format_bytes(worker_config.buffer_bytes)}",
+        f"Flush interval:       {getattr(pipeline_config, 'flush_interval_s', 5.0)}s",
         "",
     ]
     print("\n".join(lines), flush=True)

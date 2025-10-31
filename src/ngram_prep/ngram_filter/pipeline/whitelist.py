@@ -7,12 +7,17 @@ from collections import Counter
 from contextlib import contextmanager
 from itertools import islice
 from pathlib import Path
-from typing import Iterator, List, Tuple, Union, Generator
+from typing import Iterator, List, Tuple, Union, Generator, Optional
 
 try:
     import numpy as np  # optional fast path
 except Exception:
     np = None  # type: ignore[assignment]
+
+try:
+    import enchant
+except ImportError:
+    enchant = None  # type: ignore[assignment]
 
 import rocks_shim as rs  # <-- rocks-shim only
 from ngram_prep.common_db.api import open_db  # read profile via rocks-shim
@@ -98,6 +103,28 @@ def _maybe_decode(b: bytes, decode: bool) -> Union[str, bytes]:
     return b.decode(DECODING, "replace") if decode else b
 
 
+def _create_spell_checker(language: str = "en_US") -> Optional["enchant.Dict"]:
+    """Create a spell checker for the given language."""
+    if enchant is None:
+        return None
+    try:
+        return enchant.Dict(language)
+    except Exception:
+        return None
+
+
+def _is_correctly_spelled(word: str, spell_checker: Optional["enchant.Dict"]) -> bool:
+    """Check if a word is correctly spelled."""
+    if spell_checker is None:
+        return True  # No spell checking available, accept all words
+
+    # Skip non-alphabetic tokens (numbers, symbols, etc.)
+    if not word.isalpha():
+        return False
+
+    return spell_checker.check(word)
+
+
 def _iter_ranked_items(db_or_path: Union[str, Path, "rs.DB"], *, decode: bool = True) -> Generator[Tuple[Union[str, bytes], int], None, None]:
     """Generator that yields (key, total) sorted by total descending."""
     with _db_from(db_or_path) as db:
@@ -107,11 +134,32 @@ def _iter_ranked_items(db_or_path: Union[str, Path, "rs.DB"], *, decode: bool = 
         yield from sorted(items, key=lambda kv: kv[1], reverse=True)
 
 
-def _rank_all_counter(db_or_path: Union[str, Path, "rs.DB"], *, decode: bool = True) -> List[Tuple[Union[str, bytes], int]]:
-    """Use Counter for better performance on frequency operations."""
+def _rank_all_counter(
+        db_or_path: Union[str, Path, "rs.DB"],
+        *,
+        decode: bool = True,
+        spell_check: bool = False,
+        spell_check_language: str = "en_US",
+) -> List[Tuple[Union[str, bytes], int]]:
+    """Use Counter for better performance on frequency operations.
+
+    Args:
+        db_or_path: Database or path to database
+        decode: Whether to decode bytes to strings
+        spell_check: If True, only include correctly spelled words
+        spell_check_language: Language for spell checking (default: en_US)
+    """
+    spell_checker = _create_spell_checker(spell_check_language) if spell_check else None
     counter = Counter()
+
     with _db_from(db_or_path) as db:
         for k, v in _iter_db_items(db):
+            # Apply spell check filter if enabled
+            if spell_check:
+                word_str = k.decode(DECODING, "replace")
+                if not _is_correctly_spelled(word_str, spell_checker):
+                    continue
+
             counter[_maybe_decode(k, decode)] = _total_matches(v)
     return counter.most_common()
 
@@ -121,10 +169,22 @@ def _top_k_optimized(
         k: int,
         *,
         decode: bool = True,
+        spell_check: bool = False,
+        spell_check_language: str = "en_US",
 ) -> List[Tuple[Union[str, bytes], int]]:
-    """Streaming top-K via min-heap (RAM ~ O(K)) with optimizations."""
+    """Streaming top-K via min-heap (RAM ~ O(K)) with optimizations.
+
+    Args:
+        db_or_path: Database or path to database
+        k: Number of top items to return
+        decode: Whether to decode bytes to strings
+        spell_check: If True, only include correctly spelled words in top K
+        spell_check_language: Language for spell checking (default: en_US)
+    """
     if k <= 0:
         return []
+
+    spell_checker = _create_spell_checker(spell_check_language) if spell_check else None
 
     heap: List[Tuple[int, int, bytes]] = []  # (total, counter, key_bytes)
     counter = 0
@@ -132,6 +192,12 @@ def _top_k_optimized(
     with _db_from(db_or_path) as db:
         for kbytes, vbytes in _iter_db_items(db):
             tot = _total_matches(vbytes)
+
+            # Apply spell check filter if enabled
+            if spell_check:
+                word_str = kbytes.decode(DECODING, "replace")
+                if not _is_correctly_spelled(word_str, spell_checker):
+                    continue
 
             if len(heap) < k:
                 heapq.heappush(heap, (tot, counter, kbytes))
@@ -154,11 +220,22 @@ def write_whitelist_streaming(
         top: int | None = None,
         decode: bool = True,
         sep: str = "\t",
+        spell_check: bool = False,
+        spell_check_language: str = "en_US",
 ) -> Path:
     """
     Write a plain TXT file of tokens ranked by total frequency (desc) using streaming.
     Each line: <token><sep><total_matches>
     Memory usage: O(1) for unlimited output, O(K) for top-K
+
+    Args:
+        db_or_path: Database or path to database
+        dest: Output file path
+        top: Optional limit to top N tokens
+        decode: Whether to decode bytes to strings
+        sep: Separator between token and count
+        spell_check: If True, only include correctly spelled words
+        spell_check_language: Language for spell checking (default: en_US)
     """
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -167,10 +244,18 @@ def write_whitelist_streaming(
     with tmp.open("w", encoding="utf-8", newline="") as f:
         if top is not None:
             # Use optimized heap-based top-K for memory efficiency
-            items = _top_k_optimized(db_or_path, top, decode=decode)
+            items = _top_k_optimized(
+                db_or_path, top, decode=decode,
+                spell_check=spell_check,
+                spell_check_language=spell_check_language
+            )
         else:
             # Use streaming approach with Counter for better performance
-            items = _rank_all_counter(db_or_path, decode=decode)
+            items = _rank_all_counter(
+                db_or_path, decode=decode,
+                spell_check=spell_check,
+                spell_check_language=spell_check_language
+            )
 
         for token, total in items:
             if isinstance(token, bytes):
@@ -190,14 +275,28 @@ def write_whitelist(
         top: int | None = None,
         decode: bool = True,
         sep: str = "\t",
+        spell_check: bool = False,
+        spell_check_language: str = "en_US",
 ) -> Path:
     """
     Write a plain TXT file of tokens ranked by total frequency (desc).
     Each line: <token><sep><total_matches>
 
     This is the main API - uses streaming implementation for better performance.
+
+    Args:
+        db_or_path: Database or path to database
+        dest: Output file path
+        top: Optional limit to top N tokens
+        decode: Whether to decode bytes to strings
+        sep: Separator between token and count
+        spell_check: If True, only include correctly spelled words
+        spell_check_language: Language for spell checking (default: en_US)
     """
-    return write_whitelist_streaming(db_or_path, dest, top=top, decode=decode, sep=sep)
+    return write_whitelist_streaming(
+        db_or_path, dest, top=top, decode=decode, sep=sep,
+        spell_check=spell_check, spell_check_language=spell_check_language
+    )
 
 
 def load_whitelist_optimized(

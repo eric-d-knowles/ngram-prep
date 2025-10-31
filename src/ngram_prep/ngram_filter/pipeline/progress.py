@@ -148,7 +148,7 @@ def snapshot_counters(counters: Counters) -> ProgressSnapshot:
 def print_phase_banner() -> None:
     """Print the pipeline phase 1 banner and headers."""
     field_width = 14
-    fields = ["items", "kept%", "workers", "units", "splits", "rate", "elapsed"]
+    fields = ["items", "kept%", "workers", "units", "rate", "elapsed"]
     line = "─"
     print('\n' + ''.join(f"{field:^{field_width}}" for field in fields))
     print(''.join(f"{line*field_width:^{field_width}}" for field in fields))
@@ -235,12 +235,7 @@ class ProgressFormatter:
         if work_progress and num_workers:
             active = work_progress.active_workers
             total = num_workers
-            if active == total:
-                workers_str = f"{active}/{total}"
-            else:
-                # Show idle count when some workers are idle
-                idle = work_progress.idle_workers
-                workers_str = f"{active}/{total} ({idle}i)"
+            workers_str = f"{active}/{total}"
         elif work_progress:
             # No total count, just show active
             workers_str = f"{work_progress.active_workers}a"
@@ -258,13 +253,7 @@ class ProgressFormatter:
         else:
             units_str = "-"
 
-        # Format splits
-        if work_progress:
-            splits_str = str(work_progress.split)
-        else:
-            splits_str = "-"
-
-        fields = [items_str, kept_str, workers_str, units_str, splits_str, throughput_str, elapsed_str]
+        fields = [items_str, kept_str, workers_str, units_str, throughput_str, elapsed_str]
         field_width = 14
 
         return ''.join(f"{field:^{field_width}}" for field in fields)

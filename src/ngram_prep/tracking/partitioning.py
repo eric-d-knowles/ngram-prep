@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import List, Optional
 
 from .types import WorkUnit
 
-__all__ = ["create_uniform_work_units", "find_midpoint_key", "make_unit_id"]
+__all__ = ["create_uniform_work_units", "create_smart_work_units", "find_midpoint_key", "make_unit_id"]
 
 
 def make_unit_id(start_key: Optional[bytes], end_key: Optional[bytes]) -> str:
@@ -148,6 +149,68 @@ def create_uniform_work_units(num_units: int) -> List[WorkUnit]:
         work_units.append(
             WorkUnit(unit_id=unit_id, start_key=start_key, end_key=end_key)
         )
+
+    return work_units
+
+
+def create_smart_work_units(
+    db_path: Path,
+    num_units: int,
+    num_sampling_workers: Optional[int] = None,
+    samples_per_worker: int = 10000,
+    read_profile: Optional[str] = None
+) -> List[WorkUnit]:
+    """
+    Create density-based work units through parallel sampling.
+
+    Uses reservoir sampling to understand actual key distribution
+    and creates balanced work units with approximately equal data density.
+
+    This is slower than uniform partitioning (requires database scan) but
+    produces much better load balancing for skewed data distributions.
+
+    Args:
+        db_path: Path to database to sample
+        num_units: Number of work units to create
+        num_sampling_workers: Number of parallel sampling workers (default: min(num_units, 40))
+        samples_per_worker: Reservoir size per worker (default: 10000)
+        read_profile: Optional RocksDB read profile
+
+    Returns:
+        List of WorkUnit objects with balanced data distribution
+
+    Example:
+        >>> from pathlib import Path
+        >>> units = create_smart_work_units(
+        ...     db_path=Path("/data/ngrams.db"),
+        ...     num_units=40,
+        ...     num_sampling_workers=20,
+        ...     samples_per_worker=10000
+        ... )
+        >>> len(units)
+        40
+    """
+    from .density_sampling import DensitySampler
+
+    if num_sampling_workers is None:
+        num_sampling_workers = min(num_units, 40)
+
+    sampler = DensitySampler()
+
+    # Run parallel sampling
+    sampling_result = sampler.parallel_sample_keyspace(
+        db_path,
+        num_sampling_workers,
+        samples_per_worker,
+        read_profile
+    )
+
+    # Create balanced partitions
+    work_units = sampler.create_balanced_work_units(
+        sampling_result.all_samples,
+        sampling_result.total_keys_scanned,
+        num_units
+    )
 
     return work_units
 

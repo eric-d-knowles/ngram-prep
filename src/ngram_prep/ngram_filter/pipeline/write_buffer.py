@@ -12,35 +12,21 @@ __all__ = ["WriteBuffer"]
 class WriteBuffer:
     """Buffer for batching database writes."""
 
-    def __init__(self, max_items: int, max_bytes: int):
-        """
-        Initialize write buffer.
-
-        Args:
-            max_items: Maximum number of items to buffer
-            max_bytes: Maximum bytes to buffer
-        """
-        self.max_items = max_items
-        self.max_bytes = max_bytes
+    def __init__(self):
+        """Initialize write buffer."""
         self.items: list[tuple[bytes, bytes]] = []
         self.current_bytes = 0
 
-    def add(self, key: bytes, value: bytes) -> bool:
+    def add(self, key: bytes, value: bytes) -> None:
         """
         Add an item to the buffer.
 
         Args:
             key: Key bytes
             value: Value bytes
-
-        Returns:
-            True if buffer should be flushed after this addition
         """
         self.items.append((key, value))
         self.current_bytes += len(key) + len(value)
-
-        return (len(self.items) >= self.max_items or
-                self.current_bytes >= self.max_bytes)
 
     def flush(
             self,

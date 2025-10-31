@@ -1,30 +1,32 @@
 # ngram-prep
 
-**Scalable tools to prepare Google Books Ngrams data for linguistic and semantic analysis**
+**Scalable tools to prepare Google Books Ngrams data for semantic analysis**
 
-Process n-grams from the Google Books corpus using multiple CPUs. Ideal for large corpora consisting of millions or billions of entries. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+Process n-grams from the Google Books data repository using multiple CPUs. Ideal for large corpora consisting of millions or billions of ngrams. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
 
 ## Capabilities
 
-- **Automated data acquisition:** Download and organize Google Books n-gram datasets (1-grams through 5-grams, multiple languages)
-- **Flexible text processing:** Apply linguistic transformations (lemmatization, stopword removal, case normalization)
-- **Temporal analysis support:** Reorganize data to a format suitable for time-series analysis 
-  - FROM: `n-gram → (year1, count1, volumes1) (year2, count2, volumes2) ... (yearn, countn, volumesn)`
-  - TO:
+- **Data acquisition:** Download n-gram datasets (1-grams, 2-grams, 3-grams, 4-grams, or 5-grams). Immediately ingest into a queryable RockDB database. 
+- **Language support**. The pipeline work with any language supported by Google Books Ngrams: English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish. 
+- **Configurable processing:** Apply any or all of the following transformations: case normalization, stopword removal, short word removal, non-alphabetic token removal, and lemmatization. Discarded tokens are replaced in the corpus with `<UNK>`.
+- **Whitelist creation:** Output the top-N most frequent unigrams (1-grams) for creating an eligible vocabulary list. Then use this list to efficiently filter multigrams (2- through 5-grams). Processing multigrams using a whitelist reduces processing time by bypassing other filters, ensures correctly spelled words, and, when used in conjunction with case normalization, discards many proper nouns (e.g., "jackson" will be discarded).
+- **Temporal analysis support:** Reorganize data to a format suitable for time-series analyses:
+  - BEFORE: `n-gram → (year1, count1, volumes1) (year2, count2, volumes2) ... (yearn, countn, volumesn)`
+  - AFTER:
     - `[year1] n-gram → (count1, volumes1)`
     - `[year2] n-gram → (count2, volumes2)`
     - `...`
     - `[year3] n-gram → (countn, volumesn)`
-- **High-throughput architecture:** Parallel processing with automatic load balancing, progress tracking, and resume capability
-- **Research-friendly storage:** Fast key-value database (RocksDB) with efficient compression for long-term storage
+- **High-throughput architecture:** Parallel processing with automatic load balancing, progress tracking, and resume capability.
+- **Research-friendly storage:** Fast key-value database (RocksDB) quickly queries even very large datasets.
 
 ## Workflow
 
-This package provides three sequential pipeline stages:
+Three modules are provided for downloading and processing n-grams:
 
-1. **Acquire**: Download raw n-gram files from Google Books Ngrams and store in a queryable database
-2. **Filter**: Apply linguistic transformations (cleaning, lemmatization, stopword removal) to focus on relevant data
-3. **Pivot**: Reorganize data by year for time-series analysis (e.g., query all 5-grams containing "climate change" in 1995)
+1. `ngram_acuire`: Fetch raw n-gram files from the Google Books repository and store in a RocksDB database for fast querying.
+2. `ngram_filter`: Apply linguistic transformations (e.g., case normalization, lemmatization, and stopword removal) to focus on relevant data
+3. `ngram_pivot`: Reorganize data from "wide" (per-ngram) to "long" (per-year) format for time-series analysis.
 
 ## System Requirements
 
@@ -40,150 +42,83 @@ This package provides three sequential pipeline stages:
 pip install git+https://github.com/eric-d-knowles/ngram-prep.git
 ```
 
-**Dependencies:**
+**Python Dependencies (installed automatically):**
 - Python 3.11+
 - `rocks-shim` for database access
-- `nltk` (for stopwords and lemmatization)
-- Common HPC systems: Works with Slurm job schedulers
+- `Cython` for compilation
+- `numpy` for Cython extensions
+- `spacy` for lemmatization
+- `spacy-lookups-data` for lemma lookup tables
+- `stop-words` for stopword filtering
+- `pyenchant` for spell checking
+- `setproctitle` for process naming
+- `tqdm` for progress display
+
+**System Dependencies:**
+- `libenchant` C library for spell checking (likely already installed on HPC clusters)
+  - Ubuntu/Debian: `apt-get install libenchant-2-dev`
+  - RHEL/CentOS: `yum install enchant-devel`
+  - macOS: `brew install enchant`
+- Compatible HPC systems: Works with Slurm job schedulers
 
 ## Quick Start
 
-#### Setup
+See the `notebooks/` directory for complete examples:
+
+- **`download_unigrams.ipynb`** - Download and ingest 1-grams, apply filtering, generate vocabulary whitelist
+- **`download_multigrams.ipynb`** - Download and filter 2-grams through 5-grams using whitelist
+- **`pivot_unigrams.ipynb`** - Reorganize 1-grams for time-series analysis
+- **`pivot_multigrams.ipynb`** - Reorganize multi-grams for temporal analysis
+- **`train_word2vec.ipynb`** - Train word embeddings on processed n-grams
+
+### Basic Usage
 
 ```python
-# Auto-reload edited scripts (useful during development)
-%load_ext autoreload
-%autoreload 2
-
-# NLTK resources for text processing
-from nltk.corpus import stopwords
-stopwords = set(stopwords.words("english"))
-from nltk.stem import WordNetLemmatizer
-lemmatizer = WordNetLemmatizer()
-
-# Import ngram_prep modules
 from pathlib import Path
 from ngram_prep.ngram_acquire import download_and_ingest_to_rocksdb
-from ngram_prep.ngram_acquire.logger import setup_logger
 from ngram_prep.ngram_filter import PipelineConfig, FilterConfig, build_processed_db
 from ngram_prep.ngram_pivot import run_pivot_pipeline
 from ngram_prep.ngram_pivot.config import PipelineConfig as PivotConfig
-from ngram_prep.utilities.peek import db_head, db_peek, db_peek_prefix
 
-# Setup logging (optional but recommended)
-setup_logger(
-    db_path="/data/ngrams/5grams.db",
-    console=False,
-    rotate=True,
-    max_bytes=100_000_000,
-    backup_count=5,
-    force=True
-)
-```
-
-#### Step 1: Download and ingest 5-grams
-
-```python
+# Step 1: Download and ingest n-grams
 download_and_ingest_to_rocksdb(
-    ngram_size=5,
+    ngram_size=1,
     repo_release_id="20200217",
     repo_corpus_id="eng",
     db_path_stub="/data/ngrams",
-    file_range=(0, 19422),           # Process all files (or specify subset for testing)
-    random_seed=76,                  # Randomize download order
-    workers=30,
-    use_threads=False,
-    ngram_type="tagged",             # Include part-of-speech tags
-    overwrite_db=False,              # Set True to start fresh
-    write_batch_size=1_000_000,
-    open_type="write:packed24",
-    compact_after_ingest=True
-)
-```
-
-#### Step 2: Filter and clean the data
-
-```python
-# Set up paths
-src_db = Path("/data/ngrams/5grams.db")
-dst_db = src_db.parent / "5grams_processed.db"
-tmp_dir = src_db.parent / "processing_tmp"
-
-# Optional: use a whitelist from unigrams to filter vocabulary
-whitelist_path = Path("/data/ngrams/1grams_processed.db/whitelist.txt")
-
-# Configure filtering
-filter_config = FilterConfig(
-    stop_set=stopwords,
-    lemma_gen=lemmatizer,
-    whitelist_path=whitelist_path    # Optional: pre-filter vocabulary
+    workers=30
 )
 
-# Configure pipeline
+# Step 2: Filter and clean
 pipeline_config = PipelineConfig(
-    src_db=src_db,
-    dst_db=dst_db,
-    tmp_dir=tmp_dir,
+    src_db=Path("/data/ngrams/1grams.db"),
+    dst_db=Path("/data/ngrams/1grams_processed.db"),
+    tmp_dir=Path("/data/ngrams/tmp"),
     num_workers=40,
-    num_initial_work_units=80,
-    work_unit_claim_order="sequential",
-    max_split_depth=100,
-    split_check_interval_s=45.0,
-    mode="restart",                  # Or "resume" to continue interrupted jobs
-    progress_every_s=15.0,
-    max_items_per_bucket=10_000_000,
-    max_bytes_per_bucket=512 * 1024 * 1024,
-    ingest_num_readers=40,
-    ingest_batch_items=5_000_000,
-    ingest_queue_size=1
+    mode="restart"
+)
+
+filter_config = FilterConfig(
+    lowercase=True,
+    filter_short=True,
+    alpha_only=True
 )
 
 build_processed_db(pipeline_config, filter_config)
-```
 
-#### Step 3: Pivot for temporal analysis (optional)
-
-```python
-# This transforms the data structure from:
-#   Key: "climate change mitigation" → Values: (1995, 42, 38), (1996, 58, 51), ... (year, count, volumes)
-# To:
-#   Key: "[1995] climate change mitigation" → Value: (42, 38)
-#   Key: "[1996] climate change mitigation" → Value: (58, 51)
-
-pipeline_cfg = PivotConfig(
-    src_db=Path("/data/ngrams/5grams_processed.db"),
-    dst_db=Path("/data/ngrams/5grams_pivoted.db"),
+# Step 3: Pivot for time-series analysis (optional)
+pivot_config = PivotConfig(
+    src_db=Path("/data/ngrams/1grams_processed.db"),
+    dst_db=Path("/data/ngrams/1grams_pivoted.db"),
     tmp_dir=Path("/data/ngrams/pivot_tmp"),
     num_workers=30,
-    num_initial_work_units=40,
-    max_split_depth=100,
-    work_unit_claim_order="random",
-    split_check_interval_s=15.0,
-    progress_every_s=600.0,
-    mode="restart",
-    max_items_per_bucket=50_000_000,
-    max_bytes_per_bucket=5 * 1024 * 1024 * 1024,
-    num_ingest_readers=3,
-    ingest_buffer_shards=1
+    mode="restart"
 )
 
-run_pivot_pipeline(pipeline_cfg)
+run_pivot_pipeline(pivot_config)
 ```
 
-#### Querying the results
-
-```python
-db_path = "/data/ngrams/5grams_pivoted.db"
-
-# View sample entries
-db_head(db_path, n=5)
-
-# Search for specific phrases in a given year
-db_peek(db_path, start_key="[2002] your search term", n=5)
-
-# Find all 5-grams with a prefix
-db_peek_prefix(db_path, prefix="[2018] your prefix", n=10)
-```
+See notebooks for detailed configuration options, temporal analysis workflows, and querying examples.
 
 ## Configuration Reference
 
@@ -193,13 +128,13 @@ db_peek_prefix(db_path, prefix="[2018] your prefix", n=10)
 - `src_db`, `dst_db`: Input and output database paths
 - `tmp_dir`: Working directory for temporary files
 - `num_workers`: Number of parallel processing workers (default: 8, adjust based on CPU cores)
-- `mode`: `"resume"` (continue interrupted jobs), `"restart"` (start fresh), or `"reprocess"` (rerun all)
+- `mode`: `"resume"` (continue interrupted jobs), `"restart"` (start fresh)
 
 **Performance tuning:**
 - `num_initial_work_units`: Initial data partitions for load balancing (default: same as `num_workers`)
 - `max_split_depth`: How much to subdivide work for load balancing (default: 5)
 - `compact_after_ingest`: Optimize final database size (recommended: `True` for long-term storage)
-- `progress_every_s`: Progress update interval in seconds (increase for Slurm jobs)
+- `progress_every_s`: Progress update interval in seconds
 
 **Advanced options:**
 - `writer_read_profile`, `writer_write_profile`: Database I/O optimization profiles

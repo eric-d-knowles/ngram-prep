@@ -3,6 +3,7 @@ Lemmatizer wrapper for spaCy.
 
 Provides a simple .lemmatize(word, pos) interface compatible with the Cython filter pipeline.
 """
+import logging
 import spacy
 from spacy.tokens import Doc
 from functools import lru_cache
@@ -66,7 +67,16 @@ class SpacyLemmatizer:
         # Remove it and add lookup-based lemmatizer as primary
         self.nlp.remove_pipe("lemmatizer")
         self.nlp.add_pipe("lemmatizer", name="lemmatizer_lookup", config={"mode": "lookup"})
+
+        # Suppress spaCy's INFO messages during initialization
+        spacy_logger = logging.getLogger("spacy")
+        original_level = spacy_logger.level
+        spacy_logger.setLevel(logging.WARNING)
+
         self.nlp.initialize()
+
+        # Restore original logging level
+        spacy_logger.setLevel(original_level)
 
     def lemmatize(self, word: str, pos: str = "NOUN") -> str:
         """
@@ -74,7 +84,7 @@ class SpacyLemmatizer:
 
         Uses a hybrid approach:
         1. Try lookup table first (avoids "other" → "oth" errors)
-        2. If word unchanged, fall back to rule-based lemmatization
+        2. If word not in lookup table, fall back to rule-based lemmatization
 
         Args:
             word: The word to lemmatize
@@ -87,16 +97,16 @@ class SpacyLemmatizer:
         For better performance, consider using a caching wrapper or
         pre-lemmatizing a vocabulary.
         """
-        # Try lookup first
-        doc = Doc(self.nlp.vocab, words=[word])
-        doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
-        lookup_lemma = doc[0].lemma_
+        # Check if word is in lookup table
+        lookup_table = self.nlp.get_pipe("lemmatizer_lookup").lookups.get_table("lemma_lookup")
 
-        # If lookup found a lemma (changed from original), use it
-        if lookup_lemma != word:
-            return lookup_lemma
+        if word in lookup_table:
+            # Word is in lookup table, use its result
+            doc = Doc(self.nlp.vocab, words=[word])
+            doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
+            return doc[0].lemma_
 
-        # Otherwise, fall back to rule-based lemmatization with POS tag
+        # Word not in lookup table, fall back to rule-based lemmatization with POS tag
         doc = Doc(self.nlp.vocab, words=[word], pos=[pos])
         # Set morphology to avoid incorrect suffix stripping on edge cases
         if pos == "ADJ":
@@ -135,16 +145,16 @@ class CachedSpacyLemmatizer(SpacyLemmatizer):
 
     def _lemmatize_internal(self, word: str, pos: str) -> str:
         """Internal lemmatization (gets cached)."""
-        # Try lookup first
-        doc = Doc(self.nlp.vocab, words=[word])
-        doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
-        lookup_lemma = doc[0].lemma_
+        # Check if word is in lookup table
+        lookup_table = self.nlp.get_pipe("lemmatizer_lookup").lookups.get_table("lemma_lookup")
 
-        # If lookup found a lemma, use it
-        if lookup_lemma != word:
-            return lookup_lemma
+        if word in lookup_table:
+            # Word is in lookup table, use its result
+            doc = Doc(self.nlp.vocab, words=[word])
+            doc = self.nlp.get_pipe("lemmatizer_lookup")(doc)
+            return doc[0].lemma_
 
-        # Fall back to rule-based with morphology
+        # Word not in lookup table, fall back to rule-based with morphology
         doc = Doc(self.nlp.vocab, words=[word], pos=[pos])
         if pos == "ADJ":
             doc[0].set_morph("Degree=Pos")

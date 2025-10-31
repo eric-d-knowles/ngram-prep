@@ -24,8 +24,6 @@ __all__ = ["WorkerConfig", "worker_process"]
 class WorkerConfig:
     """Configuration for individual worker processes."""
 
-    buffer_size: int = 10_000  # Items to buffer before flushing
-    buffer_bytes: int = 8 * 1024 * 1024  # 8MB buffer limit
     disable_wal: bool = True  # Disable WAL for performance
     disable_compaction: bool = True  # Disable auto-compaction
 
@@ -86,31 +84,6 @@ def worker_process(
                     # Empty range - skip processing and splitting, just mark as ingested
                     work_tracker.ingest_work_unit(work_unit.unit_id)
                     continue
-
-                # Check if we should split this unit before processing (worker-driven splitting)
-                # Split if there are idle workers who could help with this work
-                progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
-
-                if progress.processing < pipeline_config.num_workers and progress.idle_workers > 0:
-                    # Only split if we haven't exceeded maximum split depth
-                    split_depth = _get_split_depth(work_unit, work_tracker)
-                    if split_depth >= pipeline_config.max_split_depth:
-                        # Don't split - already split too many times
-                        pass
-                    else:
-                        try:
-                            # Try to split - may fail if unit has no progress yet or is too small
-                            # This shrinks work_unit's end_key in DB and creates a child for the remainder
-                            child = work_tracker.split_current_unit(work_unit.unit_id)
-                            if child:
-                                # Reload work_unit to get the updated (shrunk) end_key
-                                work_unit = work_tracker.get_work_unit(work_unit.unit_id)
-                                if not work_unit:
-                                    # Unit disappeared (race condition) - skip to next iteration
-                                    continue
-                        except (ValueError, Exception):
-                            # Split failed - that's OK, continue processing full unit
-                            pass
 
                 # Track local counters for this work unit
                 local_counters = {'scanned': 0, 'decoded': 0, 'written': 0}
@@ -191,37 +164,6 @@ def _is_range_empty(work_unit: WorkUnit, src_db_path: Path, pipeline_config: Pip
         return False
 
 
-def _get_split_depth(work_unit: WorkUnit, work_tracker: WorkTracker) -> int:
-    """Calculate how many times this unit has been split (parent chain depth).
-
-    This traverses the parent chain to determine split depth, which prevents
-    infinite splitting by limiting how many times a unit can be recursively split.
-
-    Args:
-        work_unit: The work unit to check
-        work_tracker: Work tracker to look up parent chain
-
-    Returns:
-        Depth (0 = original unit, 1 = split once, 2 = split twice, etc.)
-    """
-    depth = 0
-    current_id = work_unit.parent_id
-
-    # Traverse parent chain
-    while current_id is not None:
-        depth += 1
-        parent = work_tracker.get_work_unit(current_id)
-        if not parent:
-            break  # Parent not found, stop traversal
-        current_id = parent.parent_id
-
-        # Safety limit to prevent infinite loops in case of circular parent references
-        if depth > 100:
-            break
-
-    return depth
-
-
 def _process_work_unit(
         work_unit: WorkUnit,
         src_db_path: Path,
@@ -262,7 +204,7 @@ def _process_work_unit(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Initialize write buffer
-    buffer = WriteBuffer(config.buffer_size, config.buffer_bytes)
+    buffer = WriteBuffer()
 
     # Process the work unit's key range
     was_split = False
@@ -281,6 +223,7 @@ def _process_work_unit(
                 work_unit,
                 src_db,
                 dst_db,
+                src_db_path,
                 buffer,
                 config,
                 pipeline_config,
@@ -337,6 +280,7 @@ def _process_key_range(
         work_unit: WorkUnit,
         src_db,
         dst_db,
+        src_db_path: Path,
         buffer: WriteBuffer,
         config: WorkerConfig,
         pipeline_config: PipelineConfig,
@@ -366,9 +310,9 @@ def _process_key_range(
     # Track counts since last checkpoint (to avoid double-counting on splits)
     since_checkpoint = {'scanned': 0, 'decoded': 0}
 
-    # Track time for periodic split checks
-    last_split_check_time = time.time()
-    split_check_interval_s = getattr(pipeline_config, 'split_check_interval_s', 120)
+    # Track time for periodic flushes
+    last_flush_time = time.time()
+    flush_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
 
     # Pre-compute year prefixes for common range (1400-2020)
     # Outlier years will be cached dynamically on first encounter
@@ -392,20 +336,12 @@ def _process_key_range(
                 target_value = encode_year_stats(occurrences, documents)
                 buffer.add(target_key, target_value)
 
-            # Check if buffer needs flushing (check after every ngram)
-            should_flush = len(buffer.items) >= config.buffer_size or buffer.current_bytes >= config.buffer_bytes
-
-            # Also check if we should split - force early flush if split conditions met
-            should_split = False
-            if work_tracker and split_check_interval_s > 0 and not should_flush:
+            # Check if we should flush (time-based only)
+            should_flush = False
+            if work_tracker and flush_interval_s > 0:
                 current_time = time.time()
-                if current_time - last_split_check_time >= split_check_interval_s:
-                    # Check if there are idle workers
-                    progress = work_tracker.get_progress(num_workers=pipeline_config.num_workers)
-                    if progress.idle_workers > 0:
-                        # Force early flush so we can checkpoint and split
-                        should_flush = True
-                        should_split = True
+                if current_time - last_flush_time >= flush_interval_s:
+                    should_flush = True
 
             if should_flush:
                     # Update checkpoint position (with more retries for high-worker scenarios)
@@ -423,26 +359,8 @@ def _process_key_range(
                         local_counters['decoded'] += since_checkpoint['decoded']
                         since_checkpoint = {'scanned': 0, 'decoded': 0}
 
-                    # Periodic split check: attempt split if conditions are met
-                    if should_split:
-                        # Update split check time
-                        last_split_check_time = time.time()
-
-                        # Check if we haven't exceeded maximum split depth
-                        split_depth = _get_split_depth(work_unit, work_tracker)
-                        if split_depth < pipeline_config.max_split_depth:
-                            try:
-                                # Split at current position - creates child for remaining work
-                                # This preserves our completed work and gives idle workers the remainder
-                                child = work_tracker.split_work_unit(work_unit.unit_id)
-                                if child:
-                                    # Unit was split and marked completed - exit scan loop
-                                    # We've already flushed everything up to current_position
-                                    break
-                            except (ValueError, Exception):
-                                # Split failed (e.g., no progress yet, or position too close to end)
-                                # This is fine - just continue processing
-                                pass
+                    if should_flush:
+                        last_flush_time = time.time()
 
         except Exception as e:
             if pipeline_config.validate:

@@ -9,7 +9,6 @@ from typing import List, Optional
 from .types import WorkUnit, WorkProgress
 from .database import init_tracking_database
 from .work_unit_store import WorkUnitStore
-from .work_splitter import WorkSplitter
 from .progress_tracker import ProgressTracker
 
 __all__ = ["WorkTracker", "WorkUnit", "WorkProgress"]
@@ -23,7 +22,6 @@ class WorkTracker:
     - Database schema management
     - CRUD operations on work units
     - Progress tracking and statistics
-    - Work unit splitting for load balancing
     """
 
     def __init__(self, db_path: Path, claim_order: str = "sequential"):
@@ -41,7 +39,6 @@ class WorkTracker:
 
         # Initialize specialized components
         self._store = WorkUnitStore(self.db_path, claim_order=claim_order)
-        self._splitter = WorkSplitter(self.db_path)
         self._progress = ProgressTracker(self.db_path)
 
     # =========================================================================
@@ -162,49 +159,6 @@ class WorkTracker:
             WorkProgress with current counts and active worker count
         """
         return self._progress.get_progress(num_workers)
-
-    # =========================================================================
-    # Splitting Methods
-    # =========================================================================
-
-    def split_current_unit(self, unit_id: str, max_retries: int = 5) -> Optional[WorkUnit]:
-        """
-        Split a processing work unit at its midpoint, creating a child for the remainder.
-
-        This is the worker-driven split approach: when a worker claims a unit and detects
-        idle workers, it immediately splits the unit at its midpoint before processing begins.
-
-        Args:
-            unit_id: ID of unit to split
-            max_retries: Maximum number of retry attempts for database locks
-
-        Returns:
-            Child WorkUnit for the remaining range, or None if unit cannot be split
-
-        Raises:
-            ValueError: If unit is not in valid state for splitting
-        """
-        return self._splitter.split_current_unit(unit_id, max_retries)
-
-    def split_work_unit(self, unit_id: str, max_retries: int = 5) -> WorkUnit:
-        """
-        Split a work unit with progress, preserving partial work.
-
-        Requires the unit to have made progress (current_position set).
-        Creates ONE child unit for the remaining range after current_position.
-        Parent unit is marked as 'completed' immediately.
-
-        Args:
-            unit_id: ID of unit to split
-            max_retries: Maximum number of retry attempts for database locks
-
-        Returns:
-            Child WorkUnit for the remaining range
-
-        Raises:
-            ValueError: If unit cannot be split (no progress, invalid state, etc.)
-        """
-        return self._splitter.split_work_unit(unit_id, max_retries)
 
     # =========================================================================
     # Maintenance Methods

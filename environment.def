@@ -35,7 +35,7 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
         "tqdm>=4.64" \
         "gensim>=4.0"
 
-    /opt/miniforge/bin/pip install "simplemma>=0.9" "spacy-lookups-data>=1.0"
+    /opt/miniforge/bin/pip install "simplemma>=0.9" "spacy-lookups-data>=1.0" "pyenchant>=3.2"
     
     /opt/miniforge/bin/python -m spacy download en_core_web_sm &
     /opt/miniforge/bin/python -m spacy download zh_core_web_sm &

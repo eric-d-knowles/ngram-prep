@@ -10,7 +10,7 @@ from typing import Optional, Set, Dict, Any, Union
 @dataclass(frozen=True)
 class FilterConfig:
     lowercase: bool = True
-    alpha_only: bool = True  # Filter out tokens with punctuation/numbers; accepts alphabetic chars from all languages
+    alpha_only: bool = True
     filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
@@ -39,15 +39,15 @@ class PipelineConfig:
     # Parallelism
     num_workers: int = 8
     num_initial_work_units: Optional[int] = None  # If None, defaults to num_workers
-    max_split_depth: int = 5  # Maximum depth for recursive splitting (2^5 = 32 splits per unit)
-    split_check_interval_s: float = 120.0  # How often workers check if they should split (0 to disable)
+    flush_interval_s: float = 5.0  # How often to flush buffer and check for splits (0 to disable)
+
+    # Work unit partitioning
+    use_smart_partitioning: bool = True  # Use density-based partitioning (slower startup, better balance)
+    num_sampling_workers: Optional[int] = None  # Parallel workers for sampling (default: min(num_units, 40))
+    samples_per_worker: int = 10_000  # Reservoir size per sampling worker (higher = more accurate)
 
     # Progress reporting
     progress_every_s: float = 5.0
-
-    # Worker configuration
-    max_items_per_bucket: int = 100_000
-    max_bytes_per_bucket: int = 128 * 1024 * 1024
 
     # Writer profiles
     writer_read_profile: str = "read:packed24"
@@ -71,3 +71,5 @@ class PipelineConfig:
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None
     output_whitelist_top_n: Optional[int] = None
+    output_whitelist_spell_check: bool = False  # Only include correctly spelled words
+    output_whitelist_spell_check_language: str = "en_US"  # Language for spell checking
