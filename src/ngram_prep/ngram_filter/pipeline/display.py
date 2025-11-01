@@ -52,8 +52,8 @@ def print_pipeline_header(
     _display.print_config_items(pipeline_items)
 
     print("\n\033[4mWorkers\033[0m")
-    read_profile = pipeline_config.writer_read_profile
-    write_profile = pipeline_config.writer_write_profile
+    read_profile = pipeline_config.reader_profile
+    write_profile = pipeline_config.writer_profile
     flush_interval = getattr(pipeline_config, 'flush_interval_s', 5.0)
 
     num_initial_work_units = getattr(pipeline_config, 'num_initial_work_units', None) or num_workers

@@ -178,7 +178,7 @@ class PipelineOrchestrator:
                     num_units=num_work_units,
                     num_sampling_workers=num_sampling_workers,
                     samples_per_worker=samples_per_worker,
-                    read_profile=self.pipeline_config.writer_read_profile
+                    read_profile=self.pipeline_config.reader_profile
                 )
                 print(f"Created {len(work_units)} balanced work units based on data density")
             except Exception as e:
@@ -227,6 +227,11 @@ class PipelineOrchestrator:
             2,
             f"Processing {progress.pending} work units with {num_workers} workers..."
         )
+
+        # Skip processing if no pending work units
+        if progress.pending == 0:
+            print("No pending work units - skipping processing phase")
+            return
 
         # Set up progress monitoring
         progress_reporter = self._setup_progress_monitoring()
@@ -314,6 +319,13 @@ class PipelineOrchestrator:
 
     def _ingest_shards(self) -> None:
         """Ingest all shards with parallel reads and sequential writes."""
+        # Check if ingestion is already complete
+        work_tracker = WorkTracker(
+            self.temp_paths['work_tracker'],
+            claim_order=self.pipeline_config.work_unit_claim_order
+        )
+        progress = work_tracker.get_progress()
+
         # Get shard count for header
         import sqlite3
         with sqlite3.connect(str(self.temp_paths['work_tracker']), timeout=10.0) as conn:
@@ -324,6 +336,11 @@ class PipelineOrchestrator:
         queue_size = getattr(self.pipeline_config, "ingest_queue_size", 8)
 
         print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} parallel readers...")
+
+        # Skip ingestion if all shards are already ingested
+        if progress.ingested == progress.total and num_shards == 0:
+            print("All shards already ingested - skipping ingestion phase")
+            return
 
         total_items, total_bytes = ingest_shards_parallel(
             output_dir=self.temp_paths['output_dir'],

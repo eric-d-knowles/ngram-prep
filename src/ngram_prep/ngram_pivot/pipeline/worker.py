@@ -51,7 +51,7 @@ def worker_process(
     """
     try:
         # Set process title for system monitoring
-        setproctitle(f"ngp:worker[{worker_id}]")
+        setproctitle(f"ngp:worker[{worker_id:03d}]")
 
         # Initialize work tracker
         work_tracker = WorkTracker(

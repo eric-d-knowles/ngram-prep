@@ -49,9 +49,9 @@ class PipelineConfig:
     # Progress reporting
     progress_every_s: float = 5.0
 
-    # Writer profiles
-    writer_read_profile: str = "read:packed24"
-    writer_write_profile: str = 'write:packed24'
+    # Reader/Writer profiles
+    reader_profile: str = "read:packed24"
+    writer_profile: str = 'write:packed24'
     writer_disable_wal: bool = True
 
     # Ingest configuration (parallel reads, sequential writes)

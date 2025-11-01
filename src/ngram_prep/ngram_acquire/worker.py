@@ -88,7 +88,7 @@ def process_and_ingest_file(
     # Set process title if available (helps with process monitoring)
     if _setproctitle is not None:
         try:
-            _setproctitle.setproctitle(f"nga:worker[{worker_id}]")
+            _setproctitle.setproctitle(f"nga:worker[{worker_id:03d}]")
         except Exception:
             pass
 

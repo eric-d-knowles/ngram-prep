@@ -56,7 +56,7 @@ def worker_process(
     """
     try:
         # Set process title for system monitoring
-        setproctitle(f"ngf:worker[{worker_id}]")
+        setproctitle(f"ngf:worker[{worker_id:03d}]")
 
         # Initialize work tracker and processor
         work_tracker = WorkTracker(
@@ -112,13 +112,9 @@ def worker_process(
                     counters
                 )
 
-                # Commit counters for the work we completed
-                # All counts are accurate - no adjustments needed
-                if counters and local_counters:
-                    increment_counter(counters.items_scanned, local_counters['scanned'])
-                    increment_counter(counters.items_filtered, local_counters['filtered'])
-                    increment_counter(counters.items_enqueued, local_counters['enqueued'])
-                    increment_counter(counters.items_written, local_counters['written'])
+                # Counters are now updated at each checkpoint (every flush_interval_s)
+                # No need to update again here - would cause double counting
+                # Keep local_counters for per-shard statistics/debugging
 
                 processed_units += 1
 
@@ -196,7 +192,7 @@ def _is_range_empty(work_unit: WorkUnit, src_db_path: Path, pipeline_config: Pip
     end_key = work_unit.end_key
 
     try:
-        with open_db(src_db_path, mode="r", profile=pipeline_config.writer_read_profile) as src_db:
+        with open_db(src_db_path, mode="r", profile=pipeline_config.reader_profile) as src_db:
             # Check if there's at least one key in the range (excluding metadata)
             for key, _ in range_scan(src_db, start_key, end_key):
                 # Skip metadata keys
@@ -263,12 +259,12 @@ def _process_work_unit(
     with open_db(
             src_db_path,
             mode="r",
-            profile=pipeline_config.writer_read_profile
+            profile=pipeline_config.reader_profile
     ) as src_db:
         with open_db(
                 output_path,
                 mode="rw",
-                profile=pipeline_config.writer_write_profile,
+                profile=pipeline_config.writer_profile,
                 create_if_missing=True
         ) as dst_db:
             was_split, _ = _process_key_range(
@@ -381,6 +377,15 @@ def _process_key_range(
                     local_counters['scanned'] += since_checkpoint['scanned']
                     local_counters['filtered'] += since_checkpoint['filtered']
                     local_counters['enqueued'] += since_checkpoint['enqueued']
+                    local_counters['written'] += num_written
+
+                    # Also update shared counters immediately for live progress
+                    if counters:
+                        increment_counter(counters.items_scanned, since_checkpoint['scanned'])
+                        increment_counter(counters.items_filtered, since_checkpoint['filtered'])
+                        increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+                        increment_counter(counters.items_written, num_written)
+
                     since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
                 last_flush_time = time.time()
@@ -411,6 +416,15 @@ def _process_key_range(
                 local_counters['scanned'] += since_checkpoint['scanned']
                 local_counters['filtered'] += since_checkpoint['filtered']
                 local_counters['enqueued'] += since_checkpoint['enqueued']
+                local_counters['written'] += num_written
+
+                # Also update shared counters immediately for live progress
+                if counters:
+                    increment_counter(counters.items_scanned, since_checkpoint['scanned'])
+                    increment_counter(counters.items_filtered, since_checkpoint['filtered'])
+                    increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+                    increment_counter(counters.items_written, num_written)
+
                 since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
             # Periodic flush timing

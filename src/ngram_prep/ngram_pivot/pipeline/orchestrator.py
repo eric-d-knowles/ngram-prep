@@ -131,11 +131,11 @@ class PivotOrchestrator:
             num_workers: Number of workers (used if num_initial_work_units not set)
         """
         # Use num_initial_work_units if specified, otherwise default to num_workers
-        num_work_units = (
-            self.pipeline_config.num_initial_work_units
-            if self.pipeline_config.num_initial_work_units
-            else num_workers
-        )
+        num_work_units = getattr(
+            self.pipeline_config,
+            'num_initial_work_units',
+            None
+        ) or num_workers
 
         # Check if smart partitioning is enabled and appropriate
         use_smart_partitioning = self.pipeline_config.use_smart_partitioning

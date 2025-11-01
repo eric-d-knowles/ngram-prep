@@ -61,7 +61,7 @@ def read_and_write_batch_process(
     import time as time_module
 
     try:
-        setproctitle(f"ngp:ingest-worker-{worker_id}")
+        setproctitle(f"ngp:ingest-worker-{worker_id:03d}")
         work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
         shards_processed = 0
 
