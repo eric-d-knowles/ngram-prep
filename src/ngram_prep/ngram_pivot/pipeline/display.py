@@ -57,7 +57,6 @@ def print_pipeline_header(
         "─" * LINE_WIDTH,
         f"Workers:              {pipeline_config.num_workers}",
         f"Initial work units:   {pipeline_config.num_initial_work_units or pipeline_config.num_workers}",
-        f"Split check interval: {pipeline_config.split_check_interval_s}s",
         "",
         "Database Profiles",
         "─" * LINE_WIDTH,

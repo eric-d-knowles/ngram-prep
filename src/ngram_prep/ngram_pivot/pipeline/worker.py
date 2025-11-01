@@ -293,10 +293,6 @@ def _process_key_range(
     This function scans the source database from start_key to end_key and writes
     pivoted results to a buffer. It flushes periodically and checkpoints progress.
 
-    Periodic splitting: Every split_check_interval_s (default 120s), the worker checks
-    if there are idle workers. If so, it splits its remaining work at the current position,
-    creating a new pending unit for idle workers to claim.
-
     Returns:
         Tuple of (was_split, unused_tuple):
         - was_split: Always False (splits no longer detected during processing)
