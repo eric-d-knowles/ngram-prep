@@ -349,8 +349,6 @@ def ingest_coordinator_sst_direct(
     with open_db(dst_db_path, mode="rw", profile=ingest_write_profile, create_if_missing=True) as dst_db:
         pass  # Just create it, will reopen below
 
-    print(f"Ingesting {len(completed_units)} SST files via direct ingestion...")
-
     with tqdm(
         total=len(completed_units),
         desc="SST Files Ingested:",
@@ -384,9 +382,6 @@ def ingest_coordinator_sst_direct(
                     # Don't mark as ingested if it failed
                     # This allows resume to retry
                     raise
-
-    print()  # Newline after progress bar
-
 
 def run_worker_pool(
         num_workers: int,
