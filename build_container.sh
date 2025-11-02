@@ -17,6 +17,17 @@ LOG_FILE="${LOG_DIR}/sif_build_$(date +%Y%m%d_%H%M%S).log"
 LIMA_INSTANCE="${LIMA_INSTANCE:-default}"
 LIMA_WORKDIR="${LIMA_WORKDIR:-/tmp/lima-builds}"
 
+# Parse command line arguments
+FORCE_BUILD=""
+for arg in "$@"; do
+  case $arg in
+    --force|-f)
+      FORCE_BUILD="--force"
+      shift
+      ;;
+  esac
+done
+
 # Colors
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLD='\033[1m'; RST='\033[0m'
 
@@ -68,7 +79,7 @@ trap on_err ERR
 standard_build() {
   local out="$1" def="$2"
   warn "Starting standard build..."
-  "$SIF" build "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   local rc=${PIPESTATUS[0]}
   if [ "$rc" -eq 0 ]; then
     info "✓ Standard build succeeded."
@@ -81,7 +92,7 @@ standard_build() {
 fakeroot_build() {
   local out="$1" def="$2"
   warn "Starting fakeroot build..."
-  "$SIF" build --fakeroot "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build --fakeroot $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   local rc=${PIPESTATUS[0]}
   if [ "$rc" -eq 0 ]; then
     info "✓ Fakeroot build succeeded."
@@ -100,7 +111,7 @@ remote_build() {
   unset SINGULARITY_BINDPATH || true
   unset APPTAINER_BINDPATH  || true
   
-  "$SIF" build --remote "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build --remote $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   local rc=${PIPESTATUS[0]}
   
   # Restore
@@ -160,6 +171,26 @@ lima_build() {
   info "Definition file: $abs_def"
   info "Output location: ${abs_out_dir}/${out_basename}"
   
+  # Check available disk space in Lima VM (root filesystem, not /tmp tmpfs)
+  warn "Checking disk space in Lima VM..."
+  local available_gb
+  available_gb=$(limactl shell "$LIMA_INSTANCE" bash -c 'df -BG / | tail -1 | awk "{print \$4}" | sed "s/G//"' 2>/dev/null || echo "0")
+  info "Available space on root filesystem: ${available_gb}GB"
+  
+  if [ "$available_gb" -lt 20 ]; then
+    warn "Low disk space detected! This build requires ~15-20GB."
+    warn "Consider increasing Lima VM disk size:"
+    warn "  1. Stop Lima: limactl stop $LIMA_INSTANCE"
+    warn "  2. Edit ~/.lima/$LIMA_INSTANCE/lima.yaml"
+    warn "  3. Set 'disk: \"50GiB\"' or higher"
+    warn "  4. Start Lima: limactl start $LIMA_INSTANCE"
+    read -r -p "Continue anyway? [y/N]: " continue_build
+    if [[ ! "$continue_build" =~ ^[Yy]$ ]]; then
+      err "Build cancelled by user."
+      return 1
+    fi
+  fi
+  
   # Check if apptainer is installed in Lima
   warn "Checking for Apptainer in Lima VM..."
   if ! limactl shell "$LIMA_INSTANCE" command -v apptainer >/dev/null 2>&1; then
@@ -171,6 +202,7 @@ sudo apt-get update
 sudo apt-get install -y wget
 
 # Download and install Apptainer (adjust version as needed)
+cd /tmp
 APPTAINER_VERSION=1.3.2
 wget "https://github.com/apptainer/apptainer/releases/download/v${APPTAINER_VERSION}/apptainer_${APPTAINER_VERSION}_amd64.deb"
 sudo apt-get install -y "./apptainer_${APPTAINER_VERSION}_amd64.deb"
@@ -189,8 +221,47 @@ INSTALL_SCRIPT
   warn "Building SIF in Lima (this may take a while)..."
   limactl shell "$LIMA_INSTANCE" bash <<LIMA_BUILD 2>&1 | tee -a "$LOG_FILE"
 set -e
-cd "$abs_out_dir"
-sudo apptainer build "${out_basename}" "${abs_def}"
+
+# Use a directory on the actual disk, not tmpfs /tmp
+# The root filesystem has the actual disk space
+TMPDIR=/var/tmp/lima-apptainer-\$USER
+sudo mkdir -p "\$TMPDIR"
+sudo chown \$USER:wheel "\$TMPDIR" 2>/dev/null || sudo chown \$USER:users "\$TMPDIR"
+
+# Clean up any old temp files
+rm -rf "\$TMPDIR"/* 2>/dev/null || true
+
+# Export TMPDIR for Apptainer to use
+export APPTAINER_TMPDIR="\$TMPDIR"
+export TMPDIR="\$TMPDIR"
+
+# Also set cache directory on actual disk
+export APPTAINER_CACHEDIR=/var/tmp/lima-apptainer-cache-\$USER
+sudo mkdir -p "\$APPTAINER_CACHEDIR"
+sudo chown \$USER:wheel "\$APPTAINER_CACHEDIR" 2>/dev/null || sudo chown \$USER:users "\$APPTAINER_CACHEDIR"
+
+# Show disk space on actual disk
+echo "Available space on root filesystem:"
+df -h /
+
+# Build in a writable location in Lima VM
+BUILD_DIR=/var/tmp/lima-builds-\$USER
+mkdir -p "\$BUILD_DIR"
+cd "\$BUILD_DIR"
+
+# Build the SIF in the writable location
+sudo -E apptainer build $FORCE_BUILD "${out_basename}" "${abs_def}"
+
+# Copy the built SIF to the Mac filesystem location
+echo "Copying SIF to Mac filesystem..."
+sudo cp "\$BUILD_DIR/${out_basename}" "${abs_out_dir}/${out_basename}.tmp"
+sudo chmod 644 "${abs_out_dir}/${out_basename}.tmp"
+mv "${abs_out_dir}/${out_basename}.tmp" "${abs_out_dir}/${out_basename}" 2>/dev/null || \
+  sudo mv "${abs_out_dir}/${out_basename}.tmp" "${abs_out_dir}/${out_basename}"
+
+# Clean up after successful build
+echo "Cleaning up temporary files..."
+sudo rm -rf "\$TMPDIR" "\$APPTAINER_CACHEDIR" "\$BUILD_DIR" 2>/dev/null || true
 LIMA_BUILD
   
   local rc=${PIPESTATUS[0]}
@@ -220,7 +291,7 @@ auto_build() {
   
   warn "Auto mode: trying Standard → Fakeroot → Remote"
 
-  "$SIF" build "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   local rc=${PIPESTATUS[0]}
   if [ "$rc" -eq 0 ]; then
     info "✓ Standard build succeeded."
@@ -229,7 +300,7 @@ auto_build() {
     warn "Standard build failed; trying fakeroot…"
   fi
 
-  "$SIF" build --fakeroot "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build --fakeroot $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   rc=${PIPESTATUS[0]}
   if [ "$rc" -eq 0 ]; then
     info "✓ Fakeroot build succeeded."
@@ -243,7 +314,7 @@ auto_build() {
   unset SINGULARITY_BINDPATH || true
   unset APPTAINER_BINDPATH  || true
   
-  "$SIF" build --remote "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
+  "$SIF" build --remote $FORCE_BUILD "$out" "$def" 2>&1 | tee -a "$LOG_FILE"
   rc=${PIPESTATUS[0]}
   
   # Restore
@@ -290,6 +361,9 @@ if ! $ON_MAC; then
   info "Runtime   : $SIF"
 fi
 info "Log file  : $LOG_FILE"
+if [ -n "$FORCE_BUILD" ]; then
+  warn "Force mode: ENABLED (will overwrite existing SIF)"
+fi
 if $ON_MAC; then
   if $LIMA_AVAILABLE; then
     info "Lima      : Available (instance: $LIMA_INSTANCE)"
