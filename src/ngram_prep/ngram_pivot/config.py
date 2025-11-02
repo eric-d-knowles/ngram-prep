@@ -35,6 +35,7 @@ class PipelineConfig:
     writer_disable_wal: bool = True
 
     # Ingest configuration (runs as separate stage after workers complete)
+    ingest_mode: Literal["write_batch", "direct_sst"] = "write_batch"  # Ingestion strategy
     ingest_read_profile: str = 'read:packed24'
     ingest_write_profile: str = 'write:packed24'
     ingest_disable_wal: bool = True

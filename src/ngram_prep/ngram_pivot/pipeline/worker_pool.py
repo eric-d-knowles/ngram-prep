@@ -13,10 +13,10 @@ from ngram_prep.common_db.api import open_db, scan_all
 from ngram_prep.tracking import WorkTracker
 
 from ..config import PipelineConfig
-from .worker import worker_process, WorkerConfig
+from .worker import worker_process, worker_process_sst, WorkerConfig
 from .progress import Counters
 
-__all__ = ["run_worker_pool", "ingest_coordinator_process"]
+__all__ = ["run_worker_pool", "ingest_coordinator_process", "ingest_coordinator_sst_direct"]
 
 
 def read_and_write_batch_process(
@@ -288,6 +288,106 @@ def ingest_coordinator_process(
     print()  # Newline after progress bar
 
 
+def ingest_coordinator_sst_direct(
+        dst_db_path: Path,
+        work_tracker_path: Path,
+        output_dir: Path,
+        pipeline_config: PipelineConfig,
+) -> None:
+    """
+    Ingest completed SST files via direct file ingestion (fast path).
+
+    This coordinator ingests SST files created by worker_process_sst() directly
+    into the destination database using RocksDB's ingest() API. This is MUCH
+    faster than write_batch mode since it bypasses memtable writes entirely.
+
+    Strategy:
+    - Collect all completed SST file paths
+    - Batch SST files for ingestion
+    - Use DB.ingest() to bulk-add files
+    - Mark shards as ingested and clean up
+
+    Benefits:
+    - ✅ No serial write lock contention (ingest is atomic)
+    - ✅ No memtable overhead
+    - ✅ Direct file operations (move/link)
+    - ✅ Orders of magnitude faster for large datasets
+
+    Requirements:
+    - Shards must have non-overlapping key ranges
+    - SST files must be created with SstFileWriter
+
+    Args:
+        dst_db_path: Path to destination database
+        work_tracker_path: Path to work tracker
+        output_dir: Directory containing completed SST files
+        pipeline_config: Pipeline configuration
+    """
+    from tqdm import tqdm
+
+    # Get configuration
+    ingest_write_profile = getattr(pipeline_config, "ingest_write_profile", "write:packed24")
+
+    # Get all completed work units in deterministic order
+    work_tracker = WorkTracker(work_tracker_path, claim_order="sequential")
+
+    import sqlite3
+    with sqlite3.connect(str(work_tracker_path), timeout=10.0) as conn:
+        cursor = conn.execute(
+            "SELECT unit_id FROM work_units WHERE status = 'completed' ORDER BY unit_id"
+        )
+        completed_units = [row[0] for row in cursor.fetchall()]
+
+    if not completed_units:
+        print("No completed shards to ingest")
+        return
+
+    # Create destination DB parent directory
+    dst_db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Ensure destination DB exists (create if needed)
+    with open_db(dst_db_path, mode="rw", profile=ingest_write_profile, create_if_missing=True) as dst_db:
+        pass  # Just create it, will reopen below
+
+    print(f"Ingesting {len(completed_units)} SST files via direct ingestion...")
+
+    with tqdm(
+        total=len(completed_units),
+        desc="SST Files Ingested:",
+        unit="files",
+        ncols=100,
+        bar_format='{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]'
+    ) as pbar:
+        # Open destination DB once for all ingestions
+        with open_db(dst_db_path, mode="rw", profile=ingest_write_profile) as dst_db:
+            for unit_id in completed_units:
+                sst_path = output_dir / f"{unit_id}.sst"
+
+                if not sst_path.exists():
+                    # Empty shard or already cleaned up - just mark as ingested
+                    work_tracker.ingest_work_unit(unit_id)
+                    pbar.update(1)
+                    continue
+
+                try:
+                    # Ingest SST file directly into destination DB
+                    # move=True: Move file instead of copying (faster, saves space)
+                    dst_db.ingest([str(sst_path)], move=True, write_global_seqno=False)
+
+                    # Mark as ingested in work tracker
+                    work_tracker.ingest_work_unit(unit_id)
+
+                    pbar.update(1)
+
+                except Exception as e:
+                    print(f"\nError ingesting SST file {unit_id}: {e}", flush=True)
+                    # Don't mark as ingested if it failed
+                    # This allows resume to retry
+                    raise
+
+    print()  # Newline after progress bar
+
+
 def run_worker_pool(
         num_workers: int,
         src_db_path: Path,
@@ -300,11 +400,15 @@ def run_worker_pool(
     """
     Run a pool of worker processes to handle all work units.
 
+    Routes to appropriate worker function based on ingest_mode:
+    - "direct_sst": Uses worker_process_sst() to write SST files directly
+    - "write_batch": Uses worker_process() to write RocksDB databases
+
     Args:
         num_workers: Number of worker processes to spawn
         src_db_path: Path to source database
         work_tracker_path: Path to work tracker database
-        output_dir: Directory for output databases
+        output_dir: Directory for output databases or SST files
         pipeline_config: Pipeline configuration
         worker_config: Worker-specific configuration
         counters: Optional shared counters for progress tracking
@@ -315,10 +419,14 @@ def run_worker_pool(
     ctx = mp.get_context("spawn")
     processes = []
 
-    # Start all worker processes (no concurrent ingestion)
+    # Determine which worker function to use based on ingest mode
+    ingest_mode = getattr(pipeline_config, "ingest_mode", "write_batch")
+    worker_func = worker_process_sst if ingest_mode == "direct_sst" else worker_process
+
+    # Start all worker processes
     for worker_id in range(num_workers):
         process = ctx.Process(
-            target=worker_process,
+            target=worker_func,
             args=(
                 worker_id,
                 src_db_path,

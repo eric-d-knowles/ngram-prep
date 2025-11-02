@@ -17,7 +17,7 @@ from .write_buffer import WriteBuffer
 from ngram_prep.common_db.api import open_db, range_scan
 from ngram_prep.tracking import WorkTracker, WorkUnit, SimpleOutputManager
 
-__all__ = ["WorkerConfig", "worker_process"]
+__all__ = ["WorkerConfig", "worker_process", "worker_process_sst"]
 
 
 @dataclass
@@ -26,6 +26,99 @@ class WorkerConfig:
 
     disable_wal: bool = True  # Disable WAL for performance
     disable_compaction: bool = True  # Disable auto-compaction
+
+
+def worker_process_sst(
+        worker_id: int,
+        src_db_path: Path,
+        work_tracker_path: Path,
+        output_dir: Path,
+        pipeline_config: PipelineConfig,
+        worker_config: WorkerConfig,
+        counters: Optional[Counters] = None,
+) -> None:
+    """
+    Worker process that writes shards directly as SST files (for direct_sst ingest mode).
+
+    This is similar to worker_process() but writes data directly to SST files using
+    SstFileWriter instead of creating RocksDB databases. This enables much faster
+    ingestion via DB.ingest().
+
+    Args:
+        worker_id: Unique identifier for this worker
+        src_db_path: Path to source database
+        work_tracker_path: Path to work tracker database
+        output_dir: Directory for output SST files
+        pipeline_config: Configuration for DB operations
+        worker_config: Worker-specific configuration
+        counters: Optional shared counters for progress tracking
+    """
+    try:
+        # Set process title for system monitoring
+        setproctitle(f"ngp:worker[{worker_id:03d}]")
+
+        # Initialize work tracker
+        work_tracker = WorkTracker(
+            work_tracker_path,
+            claim_order=pipeline_config.work_unit_claim_order
+        )
+
+        # Initialize output manager
+        output_manager = SimpleOutputManager(output_dir, extension=".sst")
+
+        processed_units = 0
+
+        # Main work loop
+        while True:
+            work_unit = _claim_next_work_unit(worker_id, work_tracker, output_manager)
+            if work_unit is None:
+                # Check if there's still any work in progress or pending
+                progress = work_tracker.get_progress()
+                if progress.processing > 0 or progress.pending > 0:
+                    # Wait for more work to become available
+                    import time
+                    time.sleep(0.5)
+                    continue
+                # All work is done
+                break
+
+            try:
+                # Check if range is empty first
+                if _is_range_empty(work_unit, src_db_path, pipeline_config):
+                    # Empty range - skip processing, just mark as ingested
+                    work_tracker.ingest_work_unit(work_unit.unit_id)
+                    continue
+
+                # Track local counters for this work unit
+                local_counters = {'scanned': 0, 'decoded': 0, 'written': 0}
+
+                _process_work_unit_to_sst(
+                    work_unit,
+                    src_db_path,
+                    output_dir,
+                    worker_config,
+                    pipeline_config,
+                    local_counters,
+                    work_tracker
+                )
+
+                # Commit counters for the work we completed
+                if counters and local_counters:
+                    increment_counter(counters.items_scanned, local_counters['scanned'])
+                    increment_counter(counters.items_decoded, local_counters['decoded'])
+                    increment_counter(counters.items_written, local_counters['written'])
+
+                processed_units += 1
+
+            except Exception as e:
+                # Actual failure - mark unit as failed
+                print(f"Worker {worker_id} failed on unit {work_unit.unit_id}: {e}")
+                traceback.print_exc()
+                work_tracker.fail_work_unit(work_unit.unit_id)
+
+    except Exception as e:
+        print(f"Worker {worker_id} crashed during startup: {e}")
+        traceback.print_exc()
 
 
 def worker_process(
@@ -162,6 +255,159 @@ def _is_range_empty(work_unit: WorkUnit, src_db_path: Path, pipeline_config: Pip
     except Exception:
         # If we can't check, assume it's not empty to be safe
         return False
+
+
+def _process_work_unit_to_sst(
+        work_unit: WorkUnit,
+        src_db_path: Path,
+        output_dir: Path,
+        config: WorkerConfig,
+        pipeline_config: PipelineConfig,
+        local_counters: Optional[dict] = None,
+        work_tracker: Optional[WorkTracker] = None,
+) -> None:
+    """
+    Process a work unit by writing pivoted data directly to an SST file.
+
+    This function is similar to _process_work_unit but uses SstFileWriter to create
+    SST files that can be directly ingested, bypassing memtable writes entirely.
+
+    Args:
+        work_unit: The work unit to process
+        src_db_path: Path to source database
+        output_dir: Directory for output SST files
+        config: Worker configuration
+        pipeline_config: Pipeline configuration
+        local_counters: Optional local counters for tracking work
+        work_tracker: Optional work tracker for checkpointing progress
+    """
+    import rocks_shim as rs
+
+    # Create output SST file for this work unit
+    output_path = output_dir / f"{work_unit.unit_id}.sst"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Open SST writer
+    writer = rs.SstFileWriter()
+    writer.open(str(output_path))
+
+    try:
+        # Process key range and write to SST
+        with open_db(
+                src_db_path,
+                mode="r",
+                profile=pipeline_config.reader_profile
+        ) as src_db:
+            _process_key_range_to_sst(
+                work_unit,
+                src_db,
+                writer,
+                pipeline_config,
+                local_counters,
+                work_tracker
+            )
+
+        # Finalize SST file
+        writer.finish()
+
+        # Mark unit as completed
+        if work_tracker:
+            work_tracker.complete_work_unit(work_unit.unit_id)
+
+    except Exception:
+        # Clean up partial SST file on failure
+        try:
+            output_path.unlink()
+        except Exception:
+            pass
+        raise
+
+
+def _process_key_range_to_sst(
+        work_unit: WorkUnit,
+        src_db,
+        writer,
+        pipeline_config: PipelineConfig,
+        local_counters: Optional[dict] = None,
+        work_tracker: Optional[WorkTracker] = None,
+) -> None:
+    """
+    Process key range and write directly to SST file using SstFileWriter.
+
+    Args:
+        work_unit: Work unit defining key range
+        src_db: Source database handle
+        writer: SstFileWriter instance
+        pipeline_config: Pipeline configuration
+        local_counters: Optional counters for tracking
+        work_tracker: Optional work tracker for checkpointing
+    """
+    import time
+
+    start_key = work_unit.start_key if work_unit.start_key is not None else b""
+    end_key = work_unit.end_key
+
+    # Track counts and time for checkpointing
+    since_checkpoint = {'scanned': 0, 'decoded': 0, 'written': 0}
+    last_checkpoint_time = time.time()
+    checkpoint_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
+
+    # Pre-compute year prefixes
+    year_prefixes = _precompute_year_prefixes(min_year=1400, max_year=2021)
+
+    # Collect all pivoted key-value pairs in memory before writing
+    # (SstFileWriter requires keys to be added in sorted order)
+    pivoted_data = []
+
+    for ngram_key, packed_value in range_scan(src_db, start_key, end_key):
+        since_checkpoint['scanned'] += 1
+
+        try:
+            # Decode all year records for this n-gram
+            year_records = decode_packed24_records(packed_value)
+            since_checkpoint['decoded'] += len(year_records)
+
+            # Create pivoted key-value pairs
+            for year, occurrences, documents in year_records:
+                # Use pre-computed prefix (or cache outliers dynamically)
+                if year not in year_prefixes:
+                    year_prefixes[year] = encode_year_ngram_key(year, b"")
+                target_key = year_prefixes[year] + ngram_key
+                target_value = encode_year_stats(occurrences, documents)
+                pivoted_data.append((target_key, target_value))
+
+            # Checkpoint progress periodically
+            if work_tracker and checkpoint_interval_s > 0:
+                current_time = time.time()
+                if current_time - last_checkpoint_time >= checkpoint_interval_s:
+                    work_tracker.checkpoint_position(work_unit.unit_id, ngram_key, max_retries=10)
+
+                    # Update counters
+                    if local_counters:
+                        local_counters['scanned'] += since_checkpoint['scanned']
+                        local_counters['decoded'] += since_checkpoint['decoded']
+                        since_checkpoint = {'scanned': 0, 'decoded': 0, 'written': 0}
+
+                    last_checkpoint_time = current_time
+
+        except Exception as e:
+            if pipeline_config.validate:
+                raise
+            # Otherwise skip this record and continue
+
+    # Sort all pivoted data by key (required for SST writer)
+    pivoted_data.sort(key=lambda x: x[0])
+
+    # Write all sorted data to SST file
+    for key, value in pivoted_data:
+        writer.put(key, value)
+        since_checkpoint['written'] += 1
+
+    # Commit final counts
+    if local_counters:
+        local_counters['scanned'] += since_checkpoint['scanned']
+        local_counters['decoded'] += since_checkpoint['decoded']
+        local_counters['written'] += since_checkpoint['written']
 
 
 def _process_work_unit(

@@ -261,20 +261,35 @@ class PivotOrchestrator:
             print("No shards to ingest (all already ingested)")
             return
 
-        num_readers = getattr(self.pipeline_config, "num_ingest_readers", 8)
-        buffer_shards = getattr(self.pipeline_config, "ingest_buffer_shards", 3)
-        total_buffered = num_readers * buffer_shards
+        # Route to appropriate ingestion strategy based on ingest_mode
+        ingest_mode = getattr(self.pipeline_config, "ingest_mode", "write_batch")
 
-        print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} workers (each buffers {buffer_shards} shards = {total_buffered} total in memory)...")
+        if ingest_mode == "direct_sst":
+            # Direct SST ingestion (fast path for non-overlapping key ranges)
+            print_phase_header(3, f"Ingesting {num_shards} SST files via direct ingestion...")
+            from .worker_pool import ingest_coordinator_sst_direct
+            ingest_coordinator_sst_direct(
+                dst_db_path=self.temp_paths['dst_db'],
+                work_tracker_path=self.temp_paths['work_tracker'],
+                output_dir=self.temp_paths['output_dir'],
+                pipeline_config=self.pipeline_config,
+            )
+        else:
+            # Write batch ingestion (default, works for all cases)
+            num_readers = getattr(self.pipeline_config, "num_ingest_readers", 8)
+            buffer_shards = getattr(self.pipeline_config, "ingest_buffer_shards", 3)
+            total_buffered = num_readers * buffer_shards
 
-        from .worker_pool import ingest_coordinator_process
-        ingest_coordinator_process(
-            dst_db_path=self.temp_paths['dst_db'],
-            work_tracker_path=self.temp_paths['work_tracker'],
-            output_dir=self.temp_paths['output_dir'],
-            pipeline_config=self.pipeline_config,
-            stop_event=None,  # Separate-stage mode - reader stops when no more units
-        )
+            print_phase_header(3, f"Ingesting {num_shards} shards with {num_readers} workers (each buffers {buffer_shards} shards = {total_buffered} total in memory)...")
+
+            from .worker_pool import ingest_coordinator_process
+            ingest_coordinator_process(
+                dst_db_path=self.temp_paths['dst_db'],
+                work_tracker_path=self.temp_paths['work_tracker'],
+                output_dir=self.temp_paths['output_dir'],
+                pipeline_config=self.pipeline_config,
+                stop_event=None,  # Separate-stage mode - reader stops when no more units
+            )
 
     def _setup_progress_monitoring(self):
         """
