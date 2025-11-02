@@ -3,7 +3,7 @@
 import os
 import re
 import shutil
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime
 from itertools import product
 
@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from .config import ensure_iterable, set_info
 from .display import print_training_header, print_completion_banner, LINE_WIDTH
+from .model import load_data_to_shared_memory
 from .worker import train_model
 
 __all__ = ["train_models"]
@@ -146,7 +147,9 @@ def train_models(
         unk_mode='reject',
         load_into_memory=True,
         shuffle=True,
-        random_seed=42
+        random_seed=42,
+        use_shared_memory=True,
+        verbose_loading=False
 ):
     """
     Train Word2Vec models for multiple years from RocksDB.
@@ -180,6 +183,10 @@ def train_models(
         shuffle (bool): If True, shuffle ngrams before each epoch.
                        Recommended: True (avoids consecutive repetition).
         random_seed (int): Random seed for shuffling.
+        use_shared_memory (bool): If True and load_into_memory=True, load data into shared memory
+                                 once and share across all workers. Recommended: True (saves memory).
+        verbose_loading (bool): If True, show detailed progress bars for each year being loaded.
+                               Useful for debugging slow loads. Default: False.
     """
     # Generate default suffix if not provided
     if dir_suffix is None:
@@ -256,6 +263,9 @@ def train_models(
     # Format grid parameters
     year_range_str = f'{years[0]}–{years[1]} ({years[1] - years[0] + 1} years)'
 
+    memory_mode = "Shared memory" if (use_shared_memory and load_into_memory) else \
+                  "Per-worker memory" if load_into_memory else "Streaming"
+
     grid_params = '\n'.join([
         "Training Parameters",
         "─" * LINE_WIDTH,
@@ -270,7 +280,7 @@ def train_models(
         "Data Options",
         "─" * LINE_WIDTH,
         f"UNK mode:             {unk_mode}",
-        f"Load into memory:     {load_into_memory}",
+        f"Memory mode:          {memory_mode}",
         f"Shuffle:              {shuffle}",
         f"Workers per model:    {workers_per_model}",
     ])
@@ -326,16 +336,79 @@ def train_models(
     print(f"Years:                {years_count}")
     print("")
 
-    # Simple aggregated progress bar showing completed models
-    with ProcessPoolExecutor(max_workers=max_parallel_models) as executor:
-        futures = [executor.submit(train_model, *task) for task in tasks]
-        with tqdm(total=len(tasks), desc="Training Models", unit=" models") as pbar:
-            for future in as_completed(futures):
+    # Load data into shared memory if requested
+    shared_memory_datasets = {}  # year -> (dataset, shm)
+    shared_memory_blocks = []  # For cleanup
+
+    if use_shared_memory and load_into_memory and tasks:
+        print("Loading data into shared memory...")
+        # Get unique (year, weight_by) combinations from tasks
+        year_weight_combos = list(set((task[0], task[4]) for task in tasks))
+
+        def load_year_data(year_wb):
+            """Helper function to load a single year's data."""
+            year, wb = year_wb
+            return year, wb, load_data_to_shared_memory(
+                db_path=db_path,
+                year=year,
+                weight_by=wb,
+                log_base=10,
+                unk_mode=unk_mode,
+                show_progress=verbose_loading
+            )
+
+        # Parallelize loading across years using ThreadPoolExecutor
+        # Threads work well here since most time is spent in I/O (RocksDB reads)
+        max_loaders = min(len(year_weight_combos), max(1, max_parallel_models // 2))
+
+        with ThreadPoolExecutor(max_workers=max_loaders) as executor:
+            futures = [executor.submit(load_year_data, ywb) for ywb in year_weight_combos]
+
+            with tqdm(total=len(year_weight_combos), desc="Loading years", unit=" years") as pbar:
+                for future in as_completed(futures):
+                    try:
+                        year, wb, (dataset, shm) = future.result()
+                        shared_memory_datasets[(year, wb)] = dataset
+                        shared_memory_blocks.append(shm)
+                    except Exception as e:
+                        print(f"\nError loading year data: {e}")
+                        raise
+                    pbar.update(1)
+        print("")
+
+    try:
+        # Update tasks to include shared memory dataset if available
+        if shared_memory_datasets:
+            updated_tasks = []
+            for task in tasks:
+                year = task[0]
+                weight_by = task[4]
+                dataset = shared_memory_datasets.get((year, weight_by))
+                # Append dataset to task tuple
+                updated_tasks.append(task + (dataset,))
+            tasks = updated_tasks
+
+        # Simple aggregated progress bar showing completed models
+        with ProcessPoolExecutor(max_workers=max_parallel_models) as executor:
+            futures = [executor.submit(train_model, *task) for task in tasks]
+            with tqdm(total=len(tasks), desc="Training Models", unit=" models") as pbar:
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                    except Exception as e:
+                        print(f"\nTask failed with error: {e}")
+                    pbar.update(1)
+
+    finally:
+        # Clean up shared memory
+        if shared_memory_blocks:
+            print("\nCleaning up shared memory...")
+            for shm in shared_memory_blocks:
                 try:
-                    future.result()
+                    shm.close()
+                    shm.unlink()
                 except Exception as e:
-                    print(f"\nTask failed with error: {e}")
-                pbar.update(1)
+                    print(f"Warning: Failed to clean up shared memory: {e}")
 
     # Print completion banner
     print_completion_banner(model_dir, models_to_train)

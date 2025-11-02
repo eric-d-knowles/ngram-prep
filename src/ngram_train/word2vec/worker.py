@@ -51,7 +51,8 @@ def configure_logging(log_dir, filename):
 
 def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
                 window, min_count, approach, epochs, workers, unk_mode='reject',
-                load_into_memory=False, shuffle=False, random_seed=42):
+                load_into_memory=False, shuffle=False, random_seed=42,
+                shared_memory_dataset=None):
     """
     Train a Word2Vec model for a specific year from RocksDB.
 
@@ -74,6 +75,7 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
         load_into_memory (bool): If True, load ngrams into memory before training.
         shuffle (bool): If True, shuffle ngrams before each epoch.
         random_seed (int): Random seed for shuffling.
+        shared_memory_dataset (SharedMemoryDataset, optional): Pre-loaded dataset in shared memory.
     """
     # Set process title for monitoring
     if setproctitle is not None:
@@ -126,7 +128,8 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             unk_mode=unk_mode,
             load_into_memory=load_into_memory,
             shuffle=shuffle,
-            random_seed=random_seed
+            random_seed=random_seed,
+            shared_memory_dataset=shared_memory_dataset
         )
 
         model_filename = f"w2v_{name_string}.kv"
