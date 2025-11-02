@@ -310,7 +310,7 @@ class SentencesIterable:
             return None  # Not available in streaming mode
 
 
-def load_data_to_shared_memory(db_path, year, weight_by, log_base, unk_mode, show_progress=False):
+def load_data_to_shared_memory(db_path, year, weight_by, log_base, unk_mode):
     """
     Load ngrams into shared memory for use across multiple worker processes.
 
@@ -320,24 +320,17 @@ def load_data_to_shared_memory(db_path, year, weight_by, log_base, unk_mode, sho
         weight_by (str): Weighting strategy ("freq", "doc_freq", or "none").
         log_base (int): Base for logarithmic weighting.
         unk_mode (str): How to handle <UNK> tokens.
-        show_progress (bool): If True, show detailed progress bar for loading.
 
     Returns:
         tuple: (SharedMemoryDataset, shared_memory.SharedMemory)
                The SharedMemoryDataset for workers and the SharedMemory object for cleanup.
     """
-    from tqdm import tqdm
-
     ngram_filter = create_unk_filter(unk_mode)
     ngrams = []
     total_examples = 0
     total_words = 0
 
     ngram_stream = stream_year_ngrams(db_path, year, ngram_filter=ngram_filter)
-
-    # Wrap with progress bar if requested
-    if show_progress:
-        ngram_stream = tqdm(ngram_stream, desc=f"Loading year {year}", unit=" ngrams", leave=False)
 
     for ngram_bytes, occurrences, documents in ngram_stream:
         ngram_str = ngram_bytes.decode('utf-8', errors='replace')
@@ -357,13 +350,9 @@ def load_data_to_shared_memory(db_path, year, weight_by, log_base, unk_mode, sho
         else:
             weight = 1
 
-        # Optimized: Use list multiplication instead of loop
-        # This is faster for small weights and same speed for weight=1
-        if weight == 1:
+        # Add weighted copies
+        for _ in range(weight):
             ngrams.append(ngram_tokens)
-        else:
-            # Create references (shallow copies) - memory efficient
-            ngrams.extend([ngram_tokens] * weight)
 
         total_examples += weight
         total_words += len(ngram_tokens) * weight

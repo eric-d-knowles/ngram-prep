@@ -3,7 +3,7 @@
 import os
 import re
 import shutil
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from itertools import product
 
@@ -148,8 +148,7 @@ def train_models(
         load_into_memory=True,
         shuffle=True,
         random_seed=42,
-        use_shared_memory=True,
-        verbose_loading=False
+        use_shared_memory=True
 ):
     """
     Train Word2Vec models for multiple years from RocksDB.
@@ -185,8 +184,6 @@ def train_models(
         random_seed (int): Random seed for shuffling.
         use_shared_memory (bool): If True and load_into_memory=True, load data into shared memory
                                  once and share across all workers. Recommended: True (saves memory).
-        verbose_loading (bool): If True, show detailed progress bars for each year being loaded.
-                               Useful for debugging slow loads. Default: False.
     """
     # Generate default suffix if not provided
     if dir_suffix is None:
@@ -343,37 +340,18 @@ def train_models(
     if use_shared_memory and load_into_memory and tasks:
         print("Loading data into shared memory...")
         # Get unique (year, weight_by) combinations from tasks
-        year_weight_combos = list(set((task[0], task[4]) for task in tasks))
+        year_weight_combos = set((task[0], task[4]) for task in tasks)
 
-        def load_year_data(year_wb):
-            """Helper function to load a single year's data."""
-            year, wb = year_wb
-            return year, wb, load_data_to_shared_memory(
+        for year, wb in tqdm(year_weight_combos, desc="Loading years", unit=" years"):
+            dataset, shm = load_data_to_shared_memory(
                 db_path=db_path,
                 year=year,
                 weight_by=wb,
                 log_base=10,
-                unk_mode=unk_mode,
-                show_progress=verbose_loading
+                unk_mode=unk_mode
             )
-
-        # Parallelize loading across years using ThreadPoolExecutor
-        # Threads work well here since most time is spent in I/O (RocksDB reads)
-        max_loaders = min(len(year_weight_combos), max(1, max_parallel_models // 2))
-
-        with ThreadPoolExecutor(max_workers=max_loaders) as executor:
-            futures = [executor.submit(load_year_data, ywb) for ywb in year_weight_combos]
-
-            with tqdm(total=len(year_weight_combos), desc="Loading years", unit=" years") as pbar:
-                for future in as_completed(futures):
-                    try:
-                        year, wb, (dataset, shm) = future.result()
-                        shared_memory_datasets[(year, wb)] = dataset
-                        shared_memory_blocks.append(shm)
-                    except Exception as e:
-                        print(f"\nError loading year data: {e}")
-                        raise
-                    pbar.update(1)
+            shared_memory_datasets[(year, wb)] = dataset
+            shared_memory_blocks.append(shm)
         print("")
 
     try:
