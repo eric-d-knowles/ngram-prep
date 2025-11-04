@@ -1,8 +1,0 @@
-2025-11-03 19:35:26 INFO     root: Logging initialized: /scratch/edk202/ngram-prep/logs/unigrams_filter/ngram_download_20251103_193526.log
-2025-11-03 19:35:26 INFO     root: ================================================================================
-2025-11-03 19:35:26 INFO     root: Workflow: unigrams_filter
-2025-11-03 19:35:26 INFO     root: Started: 2025-11-03 19:35:26
-2025-11-03 19:35:26 INFO     root: Data path: /vast/edk202/NLP_corpora/Google_Books/20200217/eng/1gram_files
-2025-11-03 19:35:26 INFO     root: Log file: /scratch/edk202/ngram-prep/logs/unigrams_filter/ngram_download_20251103_193526.log
-2025-11-03 19:35:26 INFO     root: ================================================================================
-2025-11-03 19:44:37 INFO     ngram_prep.ngram_filter.pipeline.orchestrator: Starting post-ingestion compaction
