@@ -496,6 +496,11 @@ class PipelineOrchestrator:
             "output_whitelist_spell_check_language",
             "en_US",
         )
+        year_range = getattr(
+            self.pipeline_config,
+            "output_whitelist_year_range",
+            None,
+        )
 
         print_phase_header(5, "Generating output whitelist...")
 
@@ -511,6 +516,10 @@ class PipelineOrchestrator:
         if spell_check:
             print(f"  Spell checking enabled ({spell_check_language})")
 
+        if year_range:
+            start_year, end_year = year_range
+            print(f"  Year range filter: {start_year}-{end_year} (inclusive)")
+
         start_time = time.perf_counter()
         final_path = write_whitelist(
             db_or_path=self.temp_paths['dst_db'],
@@ -520,6 +529,7 @@ class PipelineOrchestrator:
             sep="\t",
             spell_check=spell_check,
             spell_check_language=spell_check_language,
+            year_range=year_range,
         )
         elapsed = time.perf_counter() - start_time
 

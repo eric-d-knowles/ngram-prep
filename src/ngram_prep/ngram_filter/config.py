@@ -73,3 +73,4 @@ class PipelineConfig:
     output_whitelist_top_n: Optional[int] = None
     output_whitelist_spell_check: bool = False  # Only include correctly spelled words
     output_whitelist_spell_check_language: str = "en_US"  # Language for spell checking
+    output_whitelist_year_range: Optional[tuple[int, int]] = None  # (start_year, end_year) - only include ngrams present in all years in range

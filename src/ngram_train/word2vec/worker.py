@@ -50,9 +50,7 @@ def configure_logging(log_dir, filename):
 
 
 def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
-                window, min_count, approach, epochs, workers, unk_mode='reject',
-                load_into_memory=False, shuffle=False, random_seed=42,
-                shared_memory_dataset=None):
+                window, min_count, approach, epochs, workers, unk_mode='reject', debug_sample=0, debug_interval=0):
     """
     Train a Word2Vec model for a specific year from RocksDB.
 
@@ -72,10 +70,8 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             - 'reject': Discard entire n-gram if it contains any <UNK> (default)
             - 'strip': Remove <UNK> tokens, keep if ≥2 tokens remain
             - 'retain': Keep n-grams as-is, including <UNK> tokens
-        load_into_memory (bool): If True, load ngrams into memory before training.
-        shuffle (bool): If True, shuffle ngrams before each epoch.
-        random_seed (int): Random seed for shuffling.
-        shared_memory_dataset (SharedMemoryDataset, optional): Pre-loaded dataset in shared memory.
+        debug_sample (int): If > 0, print first N sentences for debugging
+        debug_interval (int): If > 0, print one sample every N seconds (overrides debug_sample)
     """
     # Set process title for monitoring
     if setproctitle is not None:
@@ -87,8 +83,8 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
     sg = 1 if approach == 'skip-gram' else 0
 
     name_string = (
-        f"y{year}_wb{weight_by}_vs{vector_size}_w{window}_"
-        f"mc{min_count}_sg{sg}_e{epochs}"
+        f"y{year}_wb{weight_by}_vs{vector_size:03d}_w{window:03d}_"
+        f"mc{min_count:03d}_sg{sg}_e{epochs:03d}"
     )
 
     logger = configure_logging(
@@ -108,12 +104,8 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             f"Processing year {year} with parameters: "
             f"vector_size={vector_size}, window={window}, "
             f"min_count={min_count}, sg={sg}, epochs={epochs}, "
-            f"unk_mode={unk_mode}, "
-            f"load_into_memory={load_into_memory}, shuffle={shuffle}..."
+            f"unk_mode={unk_mode}..."
         )
-
-        if load_into_memory:
-            logger.info(f"Loading year {year} into memory...")
 
         model = train_word2vec(
             db_path=db_path,
@@ -126,10 +118,8 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
             epochs=epochs,
             workers=workers,
             unk_mode=unk_mode,
-            load_into_memory=load_into_memory,
-            shuffle=shuffle,
-            random_seed=random_seed,
-            shared_memory_dataset=shared_memory_dataset
+            debug_sample=debug_sample,
+            debug_interval=debug_interval
         )
 
         model_filename = f"w2v_{name_string}.kv"

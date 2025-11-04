@@ -1,0 +1,214 @@
+2025-11-03 16:40:52 INFO     root: Logging initialized: /scratch/edk202/ngram-prep/logs/unigrams_acquire/ngram_download_20251103_164052.log
+2025-11-03 16:40:52 INFO     root: ================================================================================
+2025-11-03 16:40:52 INFO     root: Workflow: unigrams_acquire
+2025-11-03 16:40:52 INFO     root: Started: 2025-11-03 16:40:52
+2025-11-03 16:40:52 INFO     root: Data path: /vast/edk202/NLP_corpora/Google_Books/20200217/eng/1gram_files
+2025-11-03 16:40:52 INFO     root: Log file: /scratch/edk202/ngram-prep/logs/unigrams_acquire/ngram_download_20251103_164052.log
+2025-11-03 16:40:52 INFO     root: ================================================================================
+2025-11-03 16:40:52 INFO     ngram_prep.ngram_acquire.core: Starting N-gram processing pipeline
+2025-11-03 16:40:52 INFO     ngram_prep.ngram_acquire.core: Database path: /vast/edk202/NLP_corpora/Google_Books/20200217/eng/1gram_files/1grams.db
+2025-11-03 16:40:52 INFO     ngram_prep.ngram_acquire.core: Removing existing database for fresh start
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.utils.cleanup: Successfully removed database directory (attempt 1)
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.core: Successfully removed existing database
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.io.fetch: Fetching file listing page 1 from https://books.storage.googleapis.com/?prefix=ngrams/books/20200217/eng/1- (attempt 1/3)
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.io.fetch: Page 1: Found 24 matching files (total: 24)
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.io.fetch: Fetched 24 total matching files across 1 pages
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.coordinator: Discovered 24 files from https://books.storage.googleapis.com/?prefix=ngrams/books/20200217/eng/1-
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.coordinator: Selected files 0 to 23 (24 total)
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.core: Using RocksDB profile: write:packed24
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.coordinator: Randomized file order with seed 98
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.executor: Log file path for workers: /scratch/edk202/ngram-prep/logs/unigrams_acquire/ngram_download_20251103_164052.log
+2025-11-03 16:40:53 INFO     ngram_prep.ngram_acquire.executor: Using multiprocessing start method: fork
+2025-11-03 16:41:08 INFO     worker_3230345: Worker 11 (PID 3230345): Processing 1-00000-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230342: Worker 8 (PID 3230342): Processing 1-00008-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230346: Worker 12 (PID 3230346): Processing 1-00006-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230352: Worker 17 (PID 3230352): Processing 1-00009-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230344: Worker 10 (PID 3230344): Processing 1-00005-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230343: Worker 9 (PID 3230343): Processing 1-00010-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230353: Worker 18 (PID 3230353): Processing 1-00015-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230338: Worker 6 (PID 3230338): Processing 1-00014-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230347: Worker 13 (PID 3230347): Processing 1-00003-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230350: Worker 16 (PID 3230350): Processing 1-00002-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230349: Worker 15 (PID 3230349): Processing 1-00012-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230354: Worker 19 (PID 3230354): Processing 1-00021-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230332: Worker 1 (PID 3230332): Processing 1-00016-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230341: Worker 7 (PID 3230341): Processing 1-00020-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230333: Worker 2 (PID 3230333): Processing 1-00022-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230336: Worker 4 (PID 3230336): Processing 1-00004-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230334: Worker 3 (PID 3230334): Processing 1-00019-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230337: Worker 5 (PID 3230337): Processing 1-00017-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230355: Worker 20 (PID 3230355): Processing 1-00013-of-00024.gz
+2025-11-03 16:41:08 INFO     worker_3230348: Worker 14 (PID 3230348): Processing 1-00007-of-00024.gz
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00005-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00010-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00015-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00008-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00014-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00012-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00003-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00006-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00002-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00000-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00009-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00021-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00016-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00020-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00022-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00004-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00019-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00017-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00013-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:08 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00007-of-00024.gz (attempt 1/3)
+2025-11-03 16:41:09 INFO     worker_3230336: Worker 4 (PID 3230336): File size: 470,860,746 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230342: Worker 8 (PID 3230342): File size: 627,251,491 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230353: Worker 18 (PID 3230353): File size: 549,554,806 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230344: Worker 10 (PID 3230344): File size: 430,527,082 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230349: Worker 15 (PID 3230349): File size: 544,641,231 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230338: Worker 6 (PID 3230338): File size: 620,141,271 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230333: Worker 2 (PID 3230333): File size: 650,608,487 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230355: Worker 20 (PID 3230355): File size: 611,684,090 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230347: Worker 13 (PID 3230347): File size: 433,796,325 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230343: Worker 9 (PID 3230343): File size: 601,722,860 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230354: Worker 19 (PID 3230354): File size: 567,682,980 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230348: Worker 14 (PID 3230348): File size: 621,693,906 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230334: Worker 3 (PID 3230334): File size: 603,614,113 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230337: Worker 5 (PID 3230337): File size: 637,782,333 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230352: Worker 17 (PID 3230352): File size: 568,490,258 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230332: Worker 1 (PID 3230332): File size: 627,221,886 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230345: Worker 11 (PID 3230345): File size: 265,116,429 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230341: Worker 7 (PID 3230341): File size: 612,141,103 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230346: Worker 12 (PID 3230346): File size: 479,124,157 bytes (compressed)
+2025-11-03 16:41:09 INFO     worker_3230350: Worker 16 (PID 3230350): File size: 469,613,220 bytes (compressed)
+2025-11-03 16:42:11 INFO     worker_3230345: Worker 11 (PID 3230345): SUCCESS: 1-00000-of-00024.gz - 2,396,510 lines, 1,236,100 entries, 997,717,985 uncompressed bytes
+2025-11-03 16:42:14 INFO     worker_3230345: Worker 21 (PID 3230345): Processing 1-00023-of-00024.gz
+2025-11-03 16:42:14 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00023-of-00024.gz (attempt 1/3)
+2025-11-03 16:42:14 INFO     worker_3230345: Worker 21 (PID 3230345): File size: 706,657,351 bytes (compressed)
+2025-11-03 16:42:15 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,236,100 entries
+2025-11-03 16:42:22 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,236,100 entries
+2025-11-03 16:42:22 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1236100 entries, 1 files
+2025-11-03 16:42:22 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00000-of-00024.gz
+2025-11-03 16:42:44 INFO     worker_3230347: Worker 13 (PID 3230347): SUCCESS: 1-00003-of-00024.gz - 3,081,673 lines, 1,585,355 entries, 1,558,525,292 uncompressed bytes
+2025-11-03 16:42:45 INFO     worker_3230344: Worker 10 (PID 3230344): SUCCESS: 1-00005-of-00024.gz - 3,375,570 lines, 1,722,456 entries, 1,563,799,951 uncompressed bytes
+2025-11-03 16:42:49 INFO     worker_3230347: Worker 22 (PID 3230347): Processing 1-00001-of-00024.gz
+2025-11-03 16:42:49 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00001-of-00024.gz (attempt 1/3)
+2025-11-03 16:42:49 INFO     worker_3230346: Worker 12 (PID 3230346): SUCCESS: 1-00006-of-00024.gz - 3,103,866 lines, 1,609,267 entries, 1,635,593,890 uncompressed bytes
+2025-11-03 16:42:49 INFO     worker_3230347: Worker 22 (PID 3230347): File size: 516,407,175 bytes (compressed)
+2025-11-03 16:42:51 INFO     worker_3230350: Worker 16 (PID 3230350): SUCCESS: 1-00002-of-00024.gz - 3,315,859 lines, 1,707,431 entries, 1,663,232,193 uncompressed bytes
+2025-11-03 16:42:51 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,585,355 entries
+2025-11-03 16:42:54 INFO     worker_3230336: Worker 4 (PID 3230336): SUCCESS: 1-00004-of-00024.gz - 3,377,697 lines, 1,730,599 entries, 1,699,513,423 uncompressed bytes
+2025-11-03 16:42:57 INFO     worker_3230344: Worker 23 (PID 3230344): Processing 1-00018-of-00024.gz
+2025-11-03 16:42:57 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00018-of-00024.gz (attempt 1/3)
+2025-11-03 16:42:58 INFO     worker_3230344: Worker 23 (PID 3230344): File size: 593,921,274 bytes (compressed)
+2025-11-03 16:42:58 INFO     worker_3230349: Worker 15 (PID 3230349): SUCCESS: 1-00012-of-00024.gz - 3,135,145 lines, 1,627,480 entries, 1,813,074,352 uncompressed bytes
+2025-11-03 16:43:00 INFO     worker_3230353: Worker 18 (PID 3230353): SUCCESS: 1-00015-of-00024.gz - 3,100,658 lines, 1,605,827 entries, 1,853,488,031 uncompressed bytes
+2025-11-03 16:43:02 INFO     worker_3230346: Worker 24 (PID 3230346): Processing 1-00011-of-00024.gz
+2025-11-03 16:43:02 INFO     ngram_prep.ngram_acquire.io.download: Downloading https://storage.googleapis.com/books/ngrams/books/20200217/eng/1-00011-of-00024.gz (attempt 1/3)
+2025-11-03 16:43:02 INFO     worker_3230352: Worker 17 (PID 3230352): SUCCESS: 1-00009-of-00024.gz - 3,109,631 lines, 1,610,435 entries, 1,890,104,895 uncompressed bytes
+2025-11-03 16:43:02 INFO     worker_3230346: Worker 24 (PID 3230346): File size: 614,673,843 bytes (compressed)
+2025-11-03 16:43:04 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,585,355 entries
+2025-11-03 16:43:04 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1585355 entries, 1 files
+2025-11-03 16:43:04 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00003-of-00024.gz
+2025-11-03 16:43:05 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,722,456 entries
+2025-11-03 16:43:11 INFO     worker_3230355: Worker 20 (PID 3230355): SUCCESS: 1-00013-of-00024.gz - 3,402,459 lines, 1,761,555 entries, 2,035,655,289 uncompressed bytes
+2025-11-03 16:43:12 INFO     worker_3230343: Worker 9 (PID 3230343): SUCCESS: 1-00010-of-00024.gz - 3,365,531 lines, 1,740,326 entries, 2,047,514,804 uncompressed bytes
+2025-11-03 16:43:13 INFO     worker_3230338: Worker 6 (PID 3230338): SUCCESS: 1-00014-of-00024.gz - 3,392,643 lines, 1,751,562 entries, 2,061,606,868 uncompressed bytes
+2025-11-03 16:43:13 INFO     worker_3230348: Worker 14 (PID 3230348): SUCCESS: 1-00007-of-00024.gz - 3,384,843 lines, 1,743,226 entries, 2,065,012,901 uncompressed bytes
+2025-11-03 16:43:14 INFO     worker_3230342: Worker 8 (PID 3230342): SUCCESS: 1-00008-of-00024.gz - 3,408,143 lines, 1,760,137 entries, 2,088,357,814 uncompressed bytes
+2025-11-03 16:43:15 INFO     worker_3230354: Worker 19 (PID 3230354): SUCCESS: 1-00021-of-00024.gz - 3,071,926 lines, 1,701,601 entries, 1,985,493,389 uncompressed bytes
+2025-11-03 16:43:18 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,722,456 entries
+2025-11-03 16:43:18 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1722456 entries, 1 files
+2025-11-03 16:43:18 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00005-of-00024.gz
+2025-11-03 16:43:19 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,609,267 entries
+2025-11-03 16:43:25 INFO     worker_3230334: Worker 3 (PID 3230334): SUCCESS: 1-00019-of-00024.gz - 3,384,057 lines, 1,853,580 entries, 2,161,481,446 uncompressed bytes
+2025-11-03 16:43:27 INFO     worker_3230341: Worker 7 (PID 3230341): SUCCESS: 1-00020-of-00024.gz - 3,427,775 lines, 1,900,542 entries, 2,172,926,967 uncompressed bytes
+2025-11-03 16:43:29 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,609,267 entries
+2025-11-03 16:43:29 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1609267 entries, 1 files
+2025-11-03 16:43:29 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00006-of-00024.gz
+2025-11-03 16:43:29 INFO     worker_3230337: Worker 5 (PID 3230337): SUCCESS: 1-00017-of-00024.gz - 3,403,219 lines, 1,873,537 entries, 2,244,506,719 uncompressed bytes
+2025-11-03 16:43:29 INFO     worker_3230332: Worker 1 (PID 3230332): SUCCESS: 1-00016-of-00024.gz - 3,375,649 lines, 1,876,091 entries, 2,213,567,189 uncompressed bytes
+2025-11-03 16:43:30 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,627,480 entries
+2025-11-03 16:43:33 INFO     worker_3230333: Worker 2 (PID 3230333): SUCCESS: 1-00022-of-00024.gz - 3,467,821 lines, 1,916,297 entries, 2,292,644,789 uncompressed bytes
+2025-11-03 16:43:43 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,627,480 entries
+2025-11-03 16:43:43 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1627480 entries, 1 files
+2025-11-03 16:43:43 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00012-of-00024.gz
+2025-11-03 16:43:44 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,730,599 entries
+2025-11-03 16:43:55 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,730,599 entries
+2025-11-03 16:43:56 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1730599 entries, 1 files
+2025-11-03 16:43:56 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00004-of-00024.gz
+2025-11-03 16:43:57 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,707,431 entries
+2025-11-03 16:44:08 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,707,431 entries
+2025-11-03 16:44:08 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1707431 entries, 1 files
+2025-11-03 16:44:08 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00002-of-00024.gz
+2025-11-03 16:44:10 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,605,827 entries
+2025-11-03 16:44:22 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,605,827 entries
+2025-11-03 16:44:22 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1605827 entries, 1 files
+2025-11-03 16:44:22 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00015-of-00024.gz
+2025-11-03 16:44:22 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,740,326 entries
+2025-11-03 16:44:33 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,740,326 entries
+2025-11-03 16:44:33 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1740326 entries, 1 files
+2025-11-03 16:44:33 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00010-of-00024.gz
+2025-11-03 16:44:33 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,761,555 entries
+2025-11-03 16:44:39 INFO     worker_3230347: Worker 22 (PID 3230347): SUCCESS: 1-00001-of-00024.gz - 3,345,476 lines, 1,723,094 entries, 1,817,040,854 uncompressed bytes
+2025-11-03 16:44:46 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,761,555 entries
+2025-11-03 16:44:46 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1761555 entries, 1 files
+2025-11-03 16:44:46 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00013-of-00024.gz
+2025-11-03 16:44:46 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,610,435 entries
+2025-11-03 16:44:54 INFO     worker_3230345: Worker 21 (PID 3230345): SUCCESS: 1-00023-of-00024.gz - 4,149,670 lines, 2,272,482 entries, 2,478,015,724 uncompressed bytes
+2025-11-03 16:44:58 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,610,435 entries
+2025-11-03 16:44:58 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1610435 entries, 1 files
+2025-11-03 16:44:58 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00009-of-00024.gz
+2025-11-03 16:45:00 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,751,562 entries
+2025-11-03 16:45:03 INFO     worker_3230346: Worker 24 (PID 3230346): SUCCESS: 1-00011-of-00024.gz - 3,386,487 lines, 1,745,574 entries, 2,035,434,968 uncompressed bytes
+2025-11-03 16:45:10 INFO     worker_3230344: Worker 23 (PID 3230344): SUCCESS: 1-00018-of-00024.gz - 3,118,263 lines, 1,728,664 entries, 2,096,108,628 uncompressed bytes
+2025-11-03 16:45:13 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,751,562 entries
+2025-11-03 16:45:13 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1751562 entries, 1 files
+2025-11-03 16:45:13 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00014-of-00024.gz
+2025-11-03 16:45:14 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,760,137 entries
+2025-11-03 16:45:24 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,760,137 entries
+2025-11-03 16:45:24 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1760137 entries, 1 files
+2025-11-03 16:45:25 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00008-of-00024.gz
+2025-11-03 16:45:25 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,853,580 entries
+2025-11-03 16:45:40 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,853,580 entries
+2025-11-03 16:45:40 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1853580 entries, 1 files
+2025-11-03 16:45:40 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00019-of-00024.gz
+2025-11-03 16:45:42 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,701,601 entries
+2025-11-03 16:45:54 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,701,601 entries
+2025-11-03 16:45:55 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1701601 entries, 1 files
+2025-11-03 16:45:55 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00021-of-00024.gz
+2025-11-03 16:45:56 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,743,226 entries
+2025-11-03 16:46:07 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,743,226 entries
+2025-11-03 16:46:07 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1743226 entries, 1 files
+2025-11-03 16:46:07 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00007-of-00024.gz
+2025-11-03 16:46:10 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,900,542 entries
+2025-11-03 16:46:25 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,900,542 entries
+2025-11-03 16:46:25 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1900542 entries, 1 files
+2025-11-03 16:46:25 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00020-of-00024.gz
+2025-11-03 16:46:26 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,876,091 entries
+2025-11-03 16:46:38 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,876,091 entries
+2025-11-03 16:46:38 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1876091 entries, 1 files
+2025-11-03 16:46:38 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00016-of-00024.gz
+2025-11-03 16:46:39 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,873,537 entries
+2025-11-03 16:46:51 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,873,537 entries
+2025-11-03 16:46:51 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1873537 entries, 1 files
+2025-11-03 16:46:51 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00017-of-00024.gz
+2025-11-03 16:46:52 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,723,094 entries
+2025-11-03 16:47:02 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,723,094 entries
+2025-11-03 16:47:02 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1723094 entries, 1 files
+2025-11-03 16:47:02 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00001-of-00024.gz
+2025-11-03 16:47:03 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,916,297 entries
+2025-11-03 16:47:15 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,916,297 entries
+2025-11-03 16:47:15 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1916297 entries, 1 files
+2025-11-03 16:47:15 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00022-of-00024.gz
+2025-11-03 16:47:16 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,745,574 entries
+2025-11-03 16:47:25 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,745,574 entries
+2025-11-03 16:47:25 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1745574 entries, 1 files
+2025-11-03 16:47:25 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00011-of-00024.gz
+2025-11-03 16:47:26 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 2,272,482 entries
+2025-11-03 16:47:38 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 2,272,482 entries
+2025-11-03 16:47:38 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 2272482 entries, 1 files
+2025-11-03 16:47:38 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00023-of-00024.gz
+2025-11-03 16:47:42 INFO     ngram_prep.ngram_acquire.db.write: Writing batch: 1,728,664 entries
+2025-11-03 16:47:53 INFO     ngram_prep.ngram_acquire.db.write: Batch complete: 1,728,664 entries
+2025-11-03 16:47:54 INFO     ngram_prep.ngram_acquire.batch_writer: Flushed batch: 1728664 entries, 1 files
+2025-11-03 16:47:54 INFO     ngram_prep.ngram_acquire.executor: Processed: 1-00018-of-00024.gz
+2025-11-03 16:47:56 INFO     ngram_prep.ngram_acquire.core: Starting post-ingestion compaction

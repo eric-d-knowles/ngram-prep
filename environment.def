@@ -9,7 +9,7 @@ From: nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
 
 %post
     apt-get update
-    apt-get install -y wget git
+    apt-get install -y wget git libenchant-2-2
     
     wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh
     bash /tmp/miniforge.sh -b -p /opt/miniforge

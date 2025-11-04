@@ -104,13 +104,25 @@ def _maybe_decode(b: bytes, decode: bool) -> Union[str, bytes]:
 
 
 def _create_spell_checker(language: str = "en_US") -> Optional["enchant.Dict"]:
-    """Create a spell checker for the given language."""
+    """Create a spell checker for the given language.
+
+    Returns None if enchant is not available (spell checking will be disabled).
+    Raises an exception if enchant is available but the language is not.
+    """
     if enchant is None:
         return None
     try:
         return enchant.Dict(language)
-    except Exception:
-        return None
+    except enchant.errors.DictNotFoundError as e:
+        raise ValueError(
+            f"Spell checking language '{language}' not found. "
+            f"Install it with: enchant.broker.list_dicts() to see available languages."
+        ) from e
+    except Exception as e:
+        # For other enchant errors, raise with more context
+        raise ValueError(
+            f"Failed to create spell checker for language '{language}': {e}"
+        ) from e
 
 
 def _is_correctly_spelled(word: str, spell_checker: Optional["enchant.Dict"]) -> bool:
@@ -140,6 +152,7 @@ def _rank_all_counter(
         decode: bool = True,
         spell_check: bool = False,
         spell_check_language: str = "en_US",
+        year_range: Optional[tuple[int, int]] = None,
 ) -> List[Tuple[Union[str, bytes], int]]:
     """Use Counter for better performance on frequency operations.
 
@@ -148,12 +161,28 @@ def _rank_all_counter(
         decode: Whether to decode bytes to strings
         spell_check: If True, only include correctly spelled words
         spell_check_language: Language for spell checking (default: en_US)
+        year_range: Optional (start_year, end_year) tuple - only include ngrams present in all years
     """
     spell_checker = _create_spell_checker(spell_check_language) if spell_check else None
+
+    # Warn if spell checking was requested but is unavailable
+    if spell_check and spell_checker is None:
+        import logging
+        logging.warning(
+            "Spell checking was requested but enchant library is not available. "
+            "All words will be included regardless of spelling. "
+            "Install enchant C library to enable spell checking."
+        )
+
     counter = Counter()
 
     with _db_from(db_or_path) as db:
         for k, v in _iter_db_items(db):
+            # Apply year range filter if enabled
+            if year_range is not None:
+                if not _check_year_coverage(v, year_range):
+                    continue
+
             # Apply spell check filter if enabled
             if spell_check:
                 word_str = k.decode(DECODING, "replace")
@@ -164,6 +193,33 @@ def _rank_all_counter(
     return counter.most_common()
 
 
+def _check_year_coverage(value_bytes: bytes, year_range: tuple[int, int]) -> bool:
+    """Check if an ngram has data for all years in the specified range.
+
+    Args:
+        value_bytes: Packed records (<QQQ format)
+        year_range: (start_year, end_year) inclusive range
+
+    Returns:
+        True if ngram appears in all years within range, False otherwise
+    """
+    if len(value_bytes) < TUPLE_SIZE:
+        return False
+
+    start_year, end_year = year_range
+    required_years = set(range(start_year, end_year + 1))
+    years_present = set()
+
+    usable = (len(value_bytes) // TUPLE_SIZE) * TUPLE_SIZE
+    for (year, _match, _vol) in struct.iter_unpack(FMT, value_bytes[:usable]):
+        years_present.add(year)
+        # Early exit if we've found all required years
+        if required_years.issubset(years_present):
+            return True
+
+    return required_years.issubset(years_present)
+
+
 def _top_k_optimized(
         db_or_path: Union[str, Path, "rs.DB"],
         k: int,
@@ -171,6 +227,7 @@ def _top_k_optimized(
         decode: bool = True,
         spell_check: bool = False,
         spell_check_language: str = "en_US",
+        year_range: Optional[tuple[int, int]] = None,
 ) -> List[Tuple[Union[str, bytes], int]]:
     """Streaming top-K via min-heap (RAM ~ O(K)) with optimizations.
 
@@ -180,17 +237,32 @@ def _top_k_optimized(
         decode: Whether to decode bytes to strings
         spell_check: If True, only include correctly spelled words in top K
         spell_check_language: Language for spell checking (default: en_US)
+        year_range: Optional (start_year, end_year) tuple - only include ngrams present in all years
     """
     if k <= 0:
         return []
 
     spell_checker = _create_spell_checker(spell_check_language) if spell_check else None
 
+    # Warn if spell checking was requested but is unavailable
+    if spell_check and spell_checker is None:
+        import logging
+        logging.warning(
+            "Spell checking was requested but enchant library is not available. "
+            "All words will be included regardless of spelling. "
+            "Install enchant C library to enable spell checking."
+        )
+
     heap: List[Tuple[int, int, bytes]] = []  # (total, counter, key_bytes)
     counter = 0
 
     with _db_from(db_or_path) as db:
         for kbytes, vbytes in _iter_db_items(db):
+            # Apply year range filter if enabled
+            if year_range is not None:
+                if not _check_year_coverage(vbytes, year_range):
+                    continue
+
             tot = _total_matches(vbytes)
 
             # Apply spell check filter if enabled
@@ -222,6 +294,7 @@ def write_whitelist_streaming(
         sep: str = "\t",
         spell_check: bool = False,
         spell_check_language: str = "en_US",
+        year_range: Optional[tuple[int, int]] = None,
 ) -> Path:
     """
     Write a plain TXT file of tokens ranked by total frequency (desc) using streaming.
@@ -236,6 +309,7 @@ def write_whitelist_streaming(
         sep: Separator between token and count
         spell_check: If True, only include correctly spelled words
         spell_check_language: Language for spell checking (default: en_US)
+        year_range: Optional (start_year, end_year) tuple - only include ngrams present in all years
     """
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -247,14 +321,16 @@ def write_whitelist_streaming(
             items = _top_k_optimized(
                 db_or_path, top, decode=decode,
                 spell_check=spell_check,
-                spell_check_language=spell_check_language
+                spell_check_language=spell_check_language,
+                year_range=year_range
             )
         else:
             # Use streaming approach with Counter for better performance
             items = _rank_all_counter(
                 db_or_path, decode=decode,
                 spell_check=spell_check,
-                spell_check_language=spell_check_language
+                spell_check_language=spell_check_language,
+                year_range=year_range
             )
 
         for token, total in items:
@@ -277,6 +353,7 @@ def write_whitelist(
         sep: str = "\t",
         spell_check: bool = False,
         spell_check_language: str = "en_US",
+        year_range: Optional[tuple[int, int]] = None,
 ) -> Path:
     """
     Write a plain TXT file of tokens ranked by total frequency (desc).
@@ -292,10 +369,12 @@ def write_whitelist(
         sep: Separator between token and count
         spell_check: If True, only include correctly spelled words
         spell_check_language: Language for spell checking (default: en_US)
+        year_range: Optional (start_year, end_year) tuple - only include ngrams present in all years
     """
     return write_whitelist_streaming(
         db_or_path, dest, top=top, decode=decode, sep=sep,
-        spell_check=spell_check, spell_check_language=spell_check_language
+        spell_check=spell_check, spell_check_language=spell_check_language,
+        year_range=year_range
     )
 
 

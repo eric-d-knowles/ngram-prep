@@ -438,6 +438,12 @@ def _process_key_range(
         local_counters['filtered'] += since_checkpoint['filtered']
         local_counters['enqueued'] += since_checkpoint['enqueued']
 
+        # Also update shared counters with final batch (critical fix!)
+        if counters:
+            increment_counter(counters.items_scanned, since_checkpoint['scanned'])
+            increment_counter(counters.items_filtered, since_checkpoint['filtered'])
+            increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+
     return False, (0, 0, 0)
 
 
