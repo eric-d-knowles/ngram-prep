@@ -137,6 +137,7 @@ def train_models(
         years,  # Move required parameter before optional ones
         dir_suffix=None,
         mode='resume',
+        year_step=1,
         weight_by=('freq',),
         vector_size=(100,),
         window=(2,),
@@ -160,6 +161,9 @@ def train_models(
                           e.g., '/scratch/edk202/NLP_corpora/Google_Books/20200217/eng/5gram_files'
                           Must contain 'NLP_corpora' and end with 'Xgram_files'.
         years (tuple): Tuple of (start_year, end_year) inclusive.
+        year_step (int): Step size for year increments. Default: 1 (every year).
+                        Examples: year_step=5 trains (1900, 1905, 1910, ...),
+                                 year_step=10 trains (1900, 1910, 1920, ...)
         dir_suffix (str): Suffix for model and log directories (e.g., 'window_comparison').
                          If None, generates timestamp-based name (e.g., '20241027_143022').
                          Recommended: Use descriptive names for experiments.
@@ -267,8 +271,12 @@ def train_models(
             f"Invalid mode: '{mode}'. Must be 'resume', 'restart', or 'new'."
         )
 
-    # Format grid parameters
-    year_range_str = f'{years[0]}–{years[1]} ({years[1] - years[0] + 1} years)'
+    # Format grid parameters with step information
+    total_years = len(range(years[0], years[1] + 1, year_step))
+    if year_step == 1:
+        year_range_str = f'{years[0]}–{years[1]} ({total_years} years)'
+    else:
+        year_range_str = f'{years[0]}–{years[1]} (step={year_step}, {total_years} years)'
 
     # Determine corpus mode description
     if use_corpus_file:
@@ -308,7 +316,7 @@ def train_models(
     param_combinations = list(
         product(weight_by, vector_size, window, min_count, approach, epochs)
     )
-    years_range = range(years[0], years[1] + 1)
+    years_range = range(years[0], years[1] + 1, year_step)
 
     # Build full task list (for statistics and filtering)
     all_tasks = [
@@ -332,7 +340,7 @@ def train_models(
 
     # Calculate statistics
     param_combinations_count = len(param_combinations)
-    years_count = years[1] - years[0] + 1
+    years_count = len(years_range)
     total_models_in_grid = len(all_tasks)
     models_to_train = len(tasks)
 
