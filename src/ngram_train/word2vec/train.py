@@ -381,7 +381,6 @@ def train_models(
                 except Exception as e:
                     print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
                     raise
-        print("")
 
     # Update all tasks to include their corpus_file_path
     if use_corpus_file:
