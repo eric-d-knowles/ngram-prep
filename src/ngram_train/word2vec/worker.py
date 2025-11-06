@@ -30,26 +30,26 @@ def configure_logging(log_dir, filename):
 
     # Create file handler
     file_handler = logging.FileHandler(log_file_path, mode="w")
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
 
     # Configure root logger for this worker process
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
     # Clear any existing handlers from parent process
     root_logger.handlers.clear()
     root_logger.addHandler(file_handler)
 
     # Create logger
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Configure all gensim loggers
     for gensim_module in ["gensim", "gensim.models.word2vec", "gensim.models.base_any2vec", "gensim.utils"]:
         gensim_logger = logging.getLogger(gensim_module)
-        gensim_logger.setLevel(logging.DEBUG)
+        gensim_logger.setLevel(logging.INFO)
 
     return logger
 
@@ -86,19 +86,19 @@ def train_model(year, db_path, model_dir, log_dir, weight_by, vector_size,
         debug_sample (int): If > 0, print first N sentences for debugging
         debug_interval (int): If > 0, print one sample every N seconds (overrides debug_sample)
     """
-    # Set process title for monitoring
-    if setproctitle is not None:
-        try:
-            setproctitle(f"ngt:y{year}_vs{vector_size}_w{window}")
-        except Exception:
-            pass  # Silently continue if setproctitle fails
-
     sg = 1 if approach == 'skip-gram' else 0
 
     name_string = (
         f"y{year}_wb{weight_by}_vs{vector_size:03d}_w{window:03d}_"
         f"mc{min_count:03d}_sg{sg}_e{epochs:03d}"
     )
+
+    # Set process title for monitoring
+    if setproctitle is not None:
+        try:
+            setproctitle(f"ngt:{name_string}")
+        except Exception:
+            pass  # Silently continue if setproctitle fails
 
     logger = configure_logging(
         log_dir,

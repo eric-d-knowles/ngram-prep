@@ -377,9 +377,9 @@ def train_models(
                 try:
                     corpus_file_path = future.result()
                     corpus_file_map[(year, weight_by_val)] = corpus_file_path
-                    print(f"  Created corpus file for year {year}, weight_by={weight_by_val}: {corpus_file_path}")
+                    print(f"Created corpus file for year {year}, weight_by={weight_by_val}: {corpus_file_path}")
                 except Exception as e:
-                    print(f"  Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
+                    print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
                     raise
         print("")
 

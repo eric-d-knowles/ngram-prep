@@ -184,9 +184,6 @@ def _evaluate_one_file(params):
     Returns:
         dict or None: Evaluation results dictionary or None if evaluation failed
     """
-    # Set process title with nge: prefix
-    setproctitle("nge:evaluate_model")
-
     (file_name, model_dir, similarity_dataset, analogy_dataset, log_dir,
      run_similarity, run_analogy) = params
 
@@ -196,7 +193,18 @@ def _evaluate_one_file(params):
         return None
 
     (year, weight_by, vector_size, window,
-     min_count, approach, epochs) = metadata
+     min_count, sg_str, epochs) = metadata
+
+    # Convert sg value to approach name
+    sg = int(sg_str)
+    approach = 'skip-gram' if sg == 1 else 'cbow'
+
+    # Set process title with nge: prefix using full model naming pattern
+    name_string = (
+        f"y{year}_wb{weight_by}_vs{int(vector_size):03d}_w{int(window):03d}_"
+        f"mc{int(min_count):03d}_sg{sg}_e{int(epochs):03d}"
+    )
+    setproctitle(f"nge:{name_string}")
 
     model_path = os.path.join(model_dir, file_name)
 

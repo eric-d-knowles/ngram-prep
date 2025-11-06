@@ -193,7 +193,7 @@ def create_corpus_file(db_path, year, weight_by, unk_mode='reject',
     import logging
 
     # Set process title for monitoring
-    setproctitle(f"ngt:writer_y{year}_w{weight_by}")
+    setproctitle(f"ngt:writer_y{year}_wb{weight_by}")
 
     sentences = SentencesIterable(
         db_path=db_path,
