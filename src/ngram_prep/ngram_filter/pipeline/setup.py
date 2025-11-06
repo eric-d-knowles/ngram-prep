@@ -69,6 +69,7 @@ def prepare_paths(pipeline_config: PipelineConfig) -> dict[str, Path]:
         'tmp_dir': pipeline_config.tmp_dir.resolve(),
     }
 
+    paths['base'] = paths['tmp_dir']
     paths['work_tracker'] = paths['tmp_dir'] / "work_tracker.db"
     paths['output_dir'] = paths['tmp_dir'] / "worker_outputs"
 

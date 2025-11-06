@@ -19,6 +19,8 @@ from ngram_prep.tracking import (
     create_smart_work_units,
     WorkTracker,
     SimpleOutputManager,
+    PartitionCache,
+    PartitionCacheKey,
 )
 from ngram_prep.utilities.display import truncate_path_to_fit
 from ngram_prep.common_db import open_db
@@ -164,28 +166,64 @@ class PipelineOrchestrator:
             use_smart_partitioning = False
 
         if use_smart_partitioning:
-            print(f"Sampling database to create {num_work_units} density-based work units...")
-
             # Get sampling parameters from config
             num_sampling_workers = self.pipeline_config.num_sampling_workers
             if num_sampling_workers is None:
                 num_sampling_workers = min(num_work_units, 40)
             samples_per_worker = self.pipeline_config.samples_per_worker
 
-            try:
-                work_units = create_smart_work_units(
-                    db_path=self.pipeline_config.src_db,
-                    num_units=num_work_units,
-                    num_sampling_workers=num_sampling_workers,
-                    samples_per_worker=samples_per_worker,
-                    read_profile=self.pipeline_config.reader_profile
-                )
-                print(f"Created {len(work_units)} balanced work units based on data density")
-            except Exception as e:
-                print(f"Smart partitioning failed: {e}")
-                print(f"Falling back to uniform partitioning...")
-                work_units = create_uniform_work_units(num_work_units)
-                print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
+            # Check if we should use cached partitions
+            cache_enabled = getattr(self.pipeline_config, 'use_cached_partitions', True)
+            should_cache = getattr(self.pipeline_config, 'cache_partitions', True)
+
+            # Initialize partition cache
+            partition_cache = PartitionCache(self.temp_paths['base'])
+            cache_key = PartitionCacheKey(
+                db_path=str(self.pipeline_config.src_db),
+                num_units=num_work_units,
+                samples_per_worker=samples_per_worker,
+                num_sampling_workers=num_sampling_workers
+            )
+
+            # Try to load from cache first
+            work_units = None
+            if cache_enabled and partition_cache.exists(cache_key):
+                print(f"Loading cached partitions ({num_work_units} work units)...")
+                try:
+                    work_units = partition_cache.load(cache_key)
+                    if work_units:
+                        print(f"Loaded {len(work_units)} work units from cache")
+                except Exception as e:
+                    print(f"Failed to load cached partitions: {e}")
+                    print(f"Will resample database...")
+                    work_units = None
+
+            # If no cached partitions, sample the database
+            if work_units is None:
+                print(f"Sampling database to create {num_work_units} density-based work units...")
+                try:
+                    work_units = create_smart_work_units(
+                        db_path=self.pipeline_config.src_db,
+                        num_units=num_work_units,
+                        num_sampling_workers=num_sampling_workers,
+                        samples_per_worker=samples_per_worker,
+                        read_profile=self.pipeline_config.reader_profile
+                    )
+                    print(f"Created {len(work_units)} balanced work units based on data density")
+
+                    # Cache the results if enabled
+                    if should_cache:
+                        try:
+                            partition_cache.save(cache_key, work_units)
+                            print(f"Cached partition results for future use")
+                        except Exception as e:
+                            print(f"Warning: Failed to cache partitions: {e}")
+
+                except Exception as e:
+                    print(f"Smart partitioning failed: {e}")
+                    print(f"Falling back to uniform partitioning...")
+                    work_units = create_uniform_work_units(num_work_units)
+                    print(f"Created {len(work_units)} uniform work units (byte-range partitioning)")
         else:
             # Create uniform work units (fast, no sampling needed)
             work_units = create_uniform_work_units(num_work_units)

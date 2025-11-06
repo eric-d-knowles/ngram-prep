@@ -290,15 +290,23 @@ def _evaluate_models_in_directory(
         run_analogy (bool): Whether to run analogy evaluation
     """
     # Identify which files haven't been evaluated yet
-    if os.path.isfile(eval_file):
-        existing = pd.read_csv(eval_file)['model'].values
+    if save_mode == 'overwrite':
+        # In overwrite mode, evaluate all models
+        files_to_evaluate = [
+            f for f in os.listdir(model_dir)
+            if f.endswith('.kv')
+        ]
     else:
-        existing = []
+        # In append mode, only evaluate models not in existing CSV
+        if os.path.isfile(eval_file):
+            existing = pd.read_csv(eval_file)['model'].values
+        else:
+            existing = []
 
-    files_to_evaluate = [
-        f for f in os.listdir(model_dir)
-        if f.endswith('.kv') and f not in existing
-    ]
+        files_to_evaluate = [
+            f for f in os.listdir(model_dir)
+            if f.endswith('.kv') and f not in existing
+        ]
 
     if not files_to_evaluate:
         print("No new models to evaluate.")

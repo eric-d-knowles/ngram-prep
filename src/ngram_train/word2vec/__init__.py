@@ -1,7 +1,7 @@
 """Word2Vec training module for Google N-grams."""
 
 from .train import train_models
-from .model import SentencesIterable, train_word2vec
+from .model import SentencesIterable, train_word2vec, create_corpus_file
 from .worker import train_model, configure_logging
 from .config import ensure_iterable, construct_model_path, set_info
 from .display import print_training_header, print_completion_banner, LINE_WIDTH
@@ -19,6 +19,7 @@ __all__ = [
     # Model training
     "SentencesIterable",
     "train_word2vec",
+    "create_corpus_file",
     # Model analysis
     "W2VModel",
     # Worker functions

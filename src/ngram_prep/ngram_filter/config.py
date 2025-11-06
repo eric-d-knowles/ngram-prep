@@ -45,6 +45,8 @@ class PipelineConfig:
     use_smart_partitioning: bool = True  # Use density-based partitioning (slower startup, better balance)
     num_sampling_workers: Optional[int] = None  # Parallel workers for sampling (default: min(num_units, 40))
     samples_per_worker: int = 10_000  # Reservoir size per sampling worker (higher = more accurate)
+    cache_partitions: bool = True  # Cache smart partitioning results to avoid re-sampling
+    use_cached_partitions: bool = True  # Use cached partitions if available (otherwise resample)
 
     # Progress reporting
     progress_every_s: float = 5.0

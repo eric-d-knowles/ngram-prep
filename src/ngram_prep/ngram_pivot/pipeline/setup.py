@@ -43,6 +43,7 @@ class PipelineSetup:
             'src_db': self.pipeline_config.src_db,
             'dst_db': self.pipeline_config.dst_db,
             'tmp_dir': tmp_dir,
+            'base': tmp_dir,
             'work_tracker': tmp_dir / "work_tracker.db",
             'output_dir': tmp_dir / "shards",
         }

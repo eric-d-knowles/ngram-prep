@@ -35,13 +35,10 @@ def setup_notebook_logging(
     log_dir = Path(log_base_dir) / workflow_name
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate timestamp-based log filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = log_dir / f"{workflow_name}_{timestamp}.log"
-
     # Set up logger
     log_file = setup_logger(
-        db_path=str(log_path.parent),
+        db_path=str(log_dir),
+        filename_prefix=workflow_name,
         console=console,
         rotate=rotate,
         max_bytes=max_bytes,

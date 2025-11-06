@@ -14,3 +14,6 @@ htmlcov/
 
 # Singularity containers (built files go in /scratch/<netid>/containers/)
 *.sif
+
+# Symlink to vast data directory
+vast_data
