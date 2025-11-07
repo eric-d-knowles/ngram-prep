@@ -9,6 +9,7 @@ from .w2v_model import W2VModel
 from .evaluate import evaluate_models
 from .align import normalize_and_align_models
 from .visualize import plot_evaluation_results
+from .regression_analysis import run_regression_analysis, plot_regression_results, get_model_summary
 
 __all__ = [
     # Main entry points
@@ -16,6 +17,10 @@ __all__ = [
     "evaluate_models",
     "normalize_and_align_models",
     "plot_evaluation_results",
+    # Regression analysis
+    "run_regression_analysis",
+    "plot_regression_results",
+    "get_model_summary",
     # Model training
     "SentencesIterable",
     "train_word2vec",

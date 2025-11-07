@@ -1,0 +1,7 @@
+2025-11-06 01:18:47 INFO     root: Logging initialized: /scratch/edk202/ngram-prep/logs/evaluation_workflow/evaluation_workflow_20251106_011847.log
+2025-11-06 01:18:47 INFO     root: ================================================================================
+2025-11-06 01:18:47 INFO     root: Workflow: evaluation_workflow
+2025-11-06 01:18:47 INFO     root: Started: 2025-11-06 01:18:47
+2025-11-06 01:18:47 INFO     root: Data path: /vast/edk202/NLP_models/Google_Books/20200217/eng/5gram_files
+2025-11-06 01:18:47 INFO     root: Log file: /scratch/edk202/ngram-prep/logs/evaluation_workflow/evaluation_workflow_20251106_011847.log
+2025-11-06 01:18:47 INFO     root: ================================================================================

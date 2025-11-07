@@ -367,7 +367,7 @@ def train_models(
     # Create all corpus files in parallel if using corpus_file mode
     corpus_file_map = {}  # Maps (year, weight_by) -> corpus_file_path
     if use_corpus_file:
-        print("Creating corpus files in parallel...")
+        print("Creating corpus files in parallel...", flush=True)
         with ProcessPoolExecutor(max_workers=len(tasks_by_year_weight)) as executor:
             corpus_futures = {
                 executor.submit(
@@ -385,10 +385,11 @@ def train_models(
                 try:
                     corpus_file_path = future.result()
                     corpus_file_map[(year, weight_by_val)] = corpus_file_path
-                    print(f"Created corpus file for year {year}, weight_by={weight_by_val}: {corpus_file_path}")
+                    print(f"  Created corpus file for year {year}, weight_by={weight_by_val}: {corpus_file_path}")
                 except Exception as e:
-                    print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
+                    print(f"  Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
                     raise
+        print("")  # Blank line after corpus file creation
 
     # Update all tasks to include their corpus_file_path
     if use_corpus_file:
