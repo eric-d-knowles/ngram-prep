@@ -408,9 +408,6 @@ def train_models(
     # Train all models
     models_trained = 0
     all_tasks_to_run = [task for year_tasks in tasks_by_year_weight.values() for task in year_tasks]
-    print(f"Tasks before grouping: {len(tasks)}")
-    print(f"Tasks after regrouping: {len(all_tasks_to_run)}")
-    print("")
     with tqdm(total=len(all_tasks_to_run), desc="Training Models", unit=" models") as pbar:
         try:
             # Train all models across all years in parallel
