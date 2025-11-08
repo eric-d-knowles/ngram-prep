@@ -338,9 +338,11 @@ def _process_key_range(
     # Track counts since last checkpoint (to avoid double-counting on splits)
     since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
-    # Track time for periodic flushes
+    # Track time for periodic flushes with adaptive backoff on checkpoint contention
     last_flush_time = time.time()
     flush_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
+    checkpoint_failures = 0  # Track consecutive checkpoint failures
+    adaptive_flush_interval = flush_interval_s  # Will increase on contention
 
     for key, value in range_scan(src_db, start_key, end_key):
         # Skip metadata keys entirely (don't count them)
@@ -354,7 +356,7 @@ def _process_key_range(
         should_flush = False
         if work_tracker and flush_interval_s > 0:
             current_time = time.time()
-            if current_time - last_flush_time >= flush_interval_s:
+            if current_time - last_flush_time >= adaptive_flush_interval:
                 should_flush = True
 
         # Apply filtering
@@ -364,8 +366,17 @@ def _process_key_range(
             # If flush interval elapsed, flush even though key was filtered
             if should_flush:
                 # Checkpoint at current key (even though it was filtered out)
+                checkpoint_succeeded = True
                 if work_tracker:
-                    work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=10)
+                    try:
+                        work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=3)
+                        checkpoint_failures = 0  # Reset on success
+                    except Exception:
+                        checkpoint_succeeded = False
+                        checkpoint_failures += 1
+                        # Adaptive backoff: double interval after 2 consecutive failures
+                        if checkpoint_failures >= 2:
+                            adaptive_flush_interval = min(adaptive_flush_interval * 2, 60.0)
 
                 # Flush buffer (may be empty if all recent keys were filtered)
                 num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)
@@ -402,9 +413,18 @@ def _process_key_range(
         buffer.add(processed_key_bytes, value_bytes)
 
         if should_flush:
-            # Update checkpoint position (with more retries for high-worker scenarios)
+            # Update checkpoint position with adaptive backoff
+            checkpoint_succeeded = True
             if work_tracker:
-                work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=10)
+                try:
+                    work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=3)
+                    checkpoint_failures = 0  # Reset on success
+                except Exception:
+                    checkpoint_succeeded = False
+                    checkpoint_failures += 1
+                    # Adaptive backoff: double interval after 2 consecutive failures
+                    if checkpoint_failures >= 2:
+                        adaptive_flush_interval = min(adaptive_flush_interval * 2, 60.0)
 
             # Flush buffer to disk
             num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)
@@ -428,8 +448,7 @@ def _process_key_range(
                 since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
             # Periodic flush timing
-            if should_flush:
-                last_flush_time = time.time()
+            last_flush_time = time.time()
 
     # Completed processing entire range
     # Commit any remaining counts from partial buffer and update counters

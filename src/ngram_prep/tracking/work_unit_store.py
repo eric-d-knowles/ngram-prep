@@ -148,7 +148,10 @@ class WorkUnitStore:
 
         for attempt in range(max_retries):
             try:
-                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
+                # Use immediate transaction mode to fail fast on contention
+                # instead of waiting for long timeout periods
+                conn = sqlite3.connect(str(self.db_path), timeout=5.0, isolation_level='IMMEDIATE')
+                try:
                     conn.execute(
                         """
                         UPDATE work_units
@@ -158,7 +161,9 @@ class WorkUnitStore:
                         (position, unit_id)
                     )
                     conn.commit()
-                return
+                    return
+                finally:
+                    conn.close()
             except sqlite3.OperationalError as e:
                 if "locked" in str(e) and attempt < max_retries - 1:
                     # Exponential backoff with jitter to avoid thundering herd
