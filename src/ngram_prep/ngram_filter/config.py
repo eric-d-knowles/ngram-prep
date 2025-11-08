@@ -31,6 +31,13 @@ class FilterConfig:
 # Pipeline orchestration options
 @dataclass(frozen=True)
 class PipelineConfig:
+    """Pipeline orchestration configuration for parallel filter execution.
+
+    Mode options:
+        - "restart": Wipe output DB and cache, create fresh work units
+        - "resume": Continue from last checkpoint (preserves all state)
+        - "reprocess": Wipe output DB but reuse cached partitions
+    """
     # I/O
     src_db: Path
     dst_db: Path
@@ -66,7 +73,7 @@ class PipelineConfig:
     ingest_queue_size: int = 8  # Max shards buffered in memory (controls memory usage)
 
     # Pipeline control
-    mode: str = "resume"  # "restart", "resume", or "reprocess"
+    mode: str = "resume"  # "restart" (wipe all), "resume" (continue), or "reprocess" (wipe DB, keep cache)
     compact_after_ingest: bool = True
     work_unit_claim_order: str = "sequential"  # "sequential" or "random"
 

@@ -9,7 +9,13 @@ from typing import Optional, Literal
 
 @dataclass(frozen=True)
 class PipelineConfig:
-    """Pipeline orchestration configuration for parallel pivot execution."""
+    """Pipeline orchestration configuration for parallel pivot execution.
+
+    Mode options:
+        - "restart": Wipe output DB and cache, create fresh work units
+        - "resume": Continue from last checkpoint (preserves all state)
+        - "reprocess": Wipe output DB but reuse cached partitions
+    """
 
     # I/O
     src_db: Path

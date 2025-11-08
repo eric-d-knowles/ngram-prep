@@ -128,7 +128,10 @@ See notebooks for detailed configuration options, temporal analysis workflows, a
 - `src_db`, `dst_db`: Input and output database paths
 - `tmp_dir`: Working directory for temporary files
 - `num_workers`: Number of parallel processing workers (default: 8, adjust based on CPU cores)
-- `mode`: `"resume"` (continue interrupted jobs), `"restart"` (start fresh)
+- `mode`: Execution mode options:
+  - `"resume"`: Continue interrupted jobs (preserves all state)
+  - `"restart"`: Start completely fresh (wipes output DB and cache)
+  - `"reprocess"`: Rebuild output DB while reusing cached partitions
 
 **Performance tuning:**
 - `num_initial_work_units`: Initial data partitions for load balancing (default: same as `num_workers`)
@@ -161,7 +164,10 @@ See notebooks for detailed configuration options, temporal analysis workflows, a
 - `src_db`, `dst_db`: Input and output database paths
 - `tmp_dir`: Working directory for temporary files
 - `num_workers`: Number of parallel workers (typically higher than filter, e.g., 30)
-- `mode`: `"resume"`, `"restart"`, or `"reprocess"`
+- `mode`: Execution mode options:
+  - `"resume"`: Continue interrupted jobs (preserves all state)
+  - `"restart"`: Start completely fresh (wipes output DB and cache)
+  - `"reprocess"`: Rebuild output DB while reusing cached partitions
 
 **Performance tuning:**
 - `num_initial_work_units`: Initial partitions (often higher than workers, e.g., 40-80)

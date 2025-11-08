@@ -98,9 +98,17 @@ class PivotOrchestrator:
             self._create_new_work_units(work_tracker, num_workers)
 
         elif mode == 'reprocess':
-            print("Reprocess - creating new work units and resetting status")
-            work_tracker.clear_all_work_units()
-            self._create_new_work_units(work_tracker, num_workers)
+            print("Reprocess - using cached partitions if available")
+            # In reprocess mode, we try to use cached partitions
+            # If cache exists, resume with existing work units
+            # If no cache, create new work units
+            progress = work_tracker.get_progress()
+            if progress.total == 0:
+                print("No existing work units - creating new ones")
+                self._create_new_work_units(work_tracker, num_workers)
+            else:
+                print("Found existing work units - resetting their status")
+                work_tracker.reset_all_processing_units()
 
         elif mode == 'resume':
             progress = work_tracker.get_progress()

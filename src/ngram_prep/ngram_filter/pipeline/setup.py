@@ -83,20 +83,25 @@ def prepare_directories(
     """
     Clean and create necessary directories based on mode.
 
+    Mode behavior:
+        - "restart": Wipes output DB and temp directory (including cache)
+        - "resume": Preserves all existing state
+        - "reprocess": Wipes output DB but preserves temp directory (cache)
+
     Args:
         temp_paths: Dictionary of pipeline paths
         pipeline_config: Pipeline configuration
     """
     mode = getattr(pipeline_config, 'mode', 'resume')
 
-    # Clean destination DB only for restart/reprocess modes
+    # Clean destination DB for restart/reprocess modes
     if mode in ('restart', 'reprocess') and temp_paths['dst_db'].exists():
         shutil.rmtree(temp_paths['dst_db'])
 
     temp_paths['dst_db'].parent.mkdir(parents=True, exist_ok=True)
 
-    # Clean temp directory for restart or reprocess modes
-    if mode in ('restart', 'reprocess') and temp_paths['tmp_dir'].exists():
+    # Clean temp directory only for restart mode (reprocess preserves cache)
+    if mode == 'restart' and temp_paths['tmp_dir'].exists():
         shutil.rmtree(temp_paths['tmp_dir'])
 
     # Create temp directories

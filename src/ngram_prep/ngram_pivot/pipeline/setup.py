@@ -49,7 +49,13 @@ class PipelineSetup:
         }
 
     def _handle_mode(self) -> None:
-        """Handle different execution modes (restart/resume/reprocess)."""
+        """Handle different execution modes (restart/resume/reprocess).
+
+        Mode behavior:
+            - "restart": Wipes output DB and temp directory (including cache)
+            - "resume": Preserves all existing state
+            - "reprocess": Wipes output DB but preserves temp directory (cache)
+        """
         mode = self.pipeline_config.mode
         tmp_dir = self.temp_paths['tmp_dir']
         dst_db = self.temp_paths['dst_db']
