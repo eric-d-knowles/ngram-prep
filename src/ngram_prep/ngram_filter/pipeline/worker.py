@@ -78,15 +78,8 @@ def worker_process(
             work_unit = _claim_next_work_unit(worker_id, work_tracker, output_manager)
 
             if work_unit is None:
-                # Check if there's still any work in progress or pending
-                progress = work_tracker.get_progress()
-
-                if progress.processing > 0 or progress.pending > 0:
-                    # Wait for more work to become available
-                    import time
-                    time.sleep(0.5)
-                    continue
-                # All work is done
+                # No work available - exit immediately to reduce contention
+                # Other workers will complete remaining units without interference
                 break
 
             try:
@@ -332,72 +325,54 @@ def _process_key_range(
     start_key = work_unit.start_key if work_unit.start_key is not None else b""
     end_key = work_unit.end_key
 
-    # Track last flushed key for checkpointing
-    last_flushed_key = None
+    # Track counts since last flush (for batching counter updates)
+    since_flush = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
-    # Track counts since last checkpoint (to avoid double-counting on splits)
-    since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
-
-    # Track time for periodic flushes with adaptive backoff on checkpoint contention
+    # Track time for periodic flushes
     last_flush_time = time.time()
     flush_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
-    checkpoint_failures = 0  # Track consecutive checkpoint failures
-    adaptive_flush_interval = flush_interval_s  # Will increase on contention
 
     for key, value in range_scan(src_db, start_key, end_key):
         # Skip metadata keys entirely (don't count them)
         if key.startswith(METADATA_PREFIX):
             continue
 
-        since_checkpoint['scanned'] += 1
+        since_flush['scanned'] += 1
 
         # Check if we should flush (time-based, checked EVERY iteration)
         # This ensures flush happens even when all keys are filtered out
         should_flush = False
-        if work_tracker and flush_interval_s > 0:
+        if flush_interval_s > 0:
             current_time = time.time()
-            if current_time - last_flush_time >= adaptive_flush_interval:
+            if current_time - last_flush_time >= flush_interval_s:
                 should_flush = True
 
         # Apply filtering
         processed_key = processor(key)
         if not processed_key:
-            since_checkpoint['filtered'] += 1
+            since_flush['filtered'] += 1
             # If flush interval elapsed, flush even though key was filtered
             if should_flush:
-                # Checkpoint at current key (even though it was filtered out)
-                checkpoint_succeeded = True
-                if work_tracker:
-                    try:
-                        work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=3)
-                        checkpoint_failures = 0  # Reset on success
-                    except Exception:
-                        checkpoint_succeeded = False
-                        checkpoint_failures += 1
-                        # Adaptive backoff: double interval after 2 consecutive failures
-                        if checkpoint_failures >= 2:
-                            adaptive_flush_interval = min(adaptive_flush_interval * 2, 60.0)
-
                 # Flush buffer (may be empty if all recent keys were filtered)
                 num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)
                 if local_counters:
                     local_counters['written'] += num_written
 
-                # Commit counts at checkpoint boundary
+                # Update counters at flush boundary
                 if local_counters:
-                    local_counters['scanned'] += since_checkpoint['scanned']
-                    local_counters['filtered'] += since_checkpoint['filtered']
-                    local_counters['enqueued'] += since_checkpoint['enqueued']
+                    local_counters['scanned'] += since_flush['scanned']
+                    local_counters['filtered'] += since_flush['filtered']
+                    local_counters['enqueued'] += since_flush['enqueued']
                     local_counters['written'] += num_written
 
                     # Also update shared counters immediately for live progress
                     if counters:
-                        increment_counter(counters.items_scanned, since_checkpoint['scanned'])
-                        increment_counter(counters.items_filtered, since_checkpoint['filtered'])
-                        increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+                        increment_counter(counters.items_scanned, since_flush['scanned'])
+                        increment_counter(counters.items_filtered, since_flush['filtered'])
+                        increment_counter(counters.items_enqueued, since_flush['enqueued'])
                         increment_counter(counters.items_written, num_written)
 
-                    since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
+                    since_flush = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
                 last_flush_time = time.time()
 
@@ -407,61 +382,47 @@ def _process_key_range(
         processed_key_bytes = _ensure_bytes(processed_key)
         value_bytes = _ensure_bytes(value)
 
-        since_checkpoint['enqueued'] += 1
+        since_flush['enqueued'] += 1
 
         # Add to buffer
         buffer.add(processed_key_bytes, value_bytes)
 
         if should_flush:
-            # Update checkpoint position with adaptive backoff
-            checkpoint_succeeded = True
-            if work_tracker:
-                try:
-                    work_tracker.checkpoint_position(work_unit.unit_id, key, max_retries=3)
-                    checkpoint_failures = 0  # Reset on success
-                except Exception:
-                    checkpoint_succeeded = False
-                    checkpoint_failures += 1
-                    # Adaptive backoff: double interval after 2 consecutive failures
-                    if checkpoint_failures >= 2:
-                        adaptive_flush_interval = min(adaptive_flush_interval * 2, 60.0)
-
             # Flush buffer to disk
             num_written = buffer.flush_and_count(dst_db, pipeline_config.writer_disable_wal)
             if local_counters:
                 local_counters['written'] += num_written
 
-            # Commit counts at checkpoint boundary
+            # Update counters at flush boundary
             if local_counters:
-                local_counters['scanned'] += since_checkpoint['scanned']
-                local_counters['filtered'] += since_checkpoint['filtered']
-                local_counters['enqueued'] += since_checkpoint['enqueued']
+                local_counters['scanned'] += since_flush['scanned']
+                local_counters['filtered'] += since_flush['filtered']
+                local_counters['enqueued'] += since_flush['enqueued']
                 local_counters['written'] += num_written
 
                 # Also update shared counters immediately for live progress
                 if counters:
-                    increment_counter(counters.items_scanned, since_checkpoint['scanned'])
-                    increment_counter(counters.items_filtered, since_checkpoint['filtered'])
-                    increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+                    increment_counter(counters.items_scanned, since_flush['scanned'])
+                    increment_counter(counters.items_filtered, since_flush['filtered'])
+                    increment_counter(counters.items_enqueued, since_flush['enqueued'])
                     increment_counter(counters.items_written, num_written)
 
-                since_checkpoint = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
+                since_flush = {'scanned': 0, 'filtered': 0, 'enqueued': 0}
 
-            # Periodic flush timing
             last_flush_time = time.time()
 
     # Completed processing entire range
     # Commit any remaining counts from partial buffer and update counters
     if local_counters:
-        local_counters['scanned'] += since_checkpoint['scanned']
-        local_counters['filtered'] += since_checkpoint['filtered']
-        local_counters['enqueued'] += since_checkpoint['enqueued']
+        local_counters['scanned'] += since_flush['scanned']
+        local_counters['filtered'] += since_flush['filtered']
+        local_counters['enqueued'] += since_flush['enqueued']
 
-        # Also update shared counters with final batch (critical fix!)
+        # Also update shared counters with final batch
         if counters:
-            increment_counter(counters.items_scanned, since_checkpoint['scanned'])
-            increment_counter(counters.items_filtered, since_checkpoint['filtered'])
-            increment_counter(counters.items_enqueued, since_checkpoint['enqueued'])
+            increment_counter(counters.items_scanned, since_flush['scanned'])
+            increment_counter(counters.items_filtered, since_flush['filtered'])
+            increment_counter(counters.items_enqueued, since_flush['enqueued'])
 
     return False, (0, 0, 0)
 
