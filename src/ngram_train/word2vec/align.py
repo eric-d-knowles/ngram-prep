@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from .w2v_model import W2VModel
 from .display import LINE_WIDTH
-from ngram_prep.utilities.display import truncate_path_to_fit
+from ngramkit.utilities.display import truncate_path_to_fit
 
 __all__ = ["normalize_and_align_models"]
 

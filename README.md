@@ -1,8 +1,10 @@
-# ngram-prep
+# ngram-kit
 
 **Scalable tools to prepare Google Books Ngrams data for semantic analysis**
 
-Process n-grams from the Google Books data repository using multiple CPUs. Ideal for large corpora consisting of millions or billions of ngrams. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+Prepare and train models on n-grams from the Google Books data repository using multiple CPUs. Ideal for large corpora consisting of millions or billions of ngrams. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+
+While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud computing infrastructures. Processing pilelines that might take days on a laptop can be completed in hours on a cluster or cloud platform.
 
 ## Capabilities
 
@@ -75,10 +77,10 @@ See the `notebooks/` directory for complete examples:
 
 ```python
 from pathlib import Path
-from ngram_prep.ngram_acquire import download_and_ingest_to_rocksdb
-from ngram_prep.ngram_filter import PipelineConfig, FilterConfig, build_processed_db
-from ngram_prep.ngram_pivot import run_pivot_pipeline
-from ngram_prep.ngram_pivot.config import PipelineConfig as PivotConfig
+from ngramkit.ngram_acquire import download_and_ingest_to_rocksdb
+from ngramkit.ngram_filter import PipelineConfig, FilterConfig, build_processed_db
+from ngramkit.ngram_pivot import run_pivot_pipeline
+from ngramkit.ngram_pivot.config import PipelineConfig as PivotConfig
 
 # Step 1: Download and ingest n-grams
 download_and_ingest_to_rocksdb(

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build script for ngram-prep Singularity/Apptainer container
+# Build script for ngram-kit Singularity/Apptainer container
 # Builds an immutable SIF for NYU Torch/Greene with a clean, menu-driven UI.
 
 set -Eeuo pipefail
@@ -8,7 +8,7 @@ IFS=$'\n\t'
 # --------------------------- Config ---------------------------
 NETID="${NETID:-edk202}"
 DEFAULT_CONTAINER_DIR="${DEFAULT_CONTAINER_DIR:-/scratch/${NETID}/containers}"
-CONTAINER_NAME="${CONTAINER_NAME:-ngram-prep.sif}"
+CONTAINER_NAME="${CONTAINER_NAME:-ngram-kit.sif}"
 DEF_FILE="${DEF_FILE:-environment.def}"
 LOG_DIR="${LOG_DIR:-/tmp}"
 LOG_FILE="${LOG_DIR}/sif_build_$(date +%Y%m%d_%H%M%S).log"

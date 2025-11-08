@@ -28,8 +28,8 @@ class BuildExt(build_ext):
 
 ext_modules = [
     Extension(
-        name="ngram_prep.ngram_filter.filters.core_cy",
-        sources=["src/ngram_prep/ngram_filter/filters/core_cy.pyx"],
+        name="ngramkit.ngram_filter.filters.core_cy",
+        sources=["src/ngramkit/ngram_filter/filters/core_cy.pyx"],
         include_dirs=[np.get_include()],
     ),
 ]
@@ -45,7 +45,7 @@ compiler_directives = dict(
 )
 
 setup(
-    name="ngram-prep",
+    name="ngram-kit",
     package_dir={"": "src"},
     packages=find_packages("src"),
     ext_modules=cythonize(ext_modules, compiler_directives=compiler_directives),

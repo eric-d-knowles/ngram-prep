@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel", "Cython>=3.0", "numpy>=1.20"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ngram-prep"
+name = "ngram-kit"
 version = "0.1.0"
-description = "A package for n-gram preprocessing and analysis"
+description = "A toolkit for n-gram data preparation and training"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -15,7 +15,7 @@ authors = [
 maintainers = [
     {name = "Your Name", email = "your.email@example.com"},
 ]
-keywords = ["nlp", "ngram", "preprocessing", "text-analysis"]
+keywords = ["nlp", "ngram", "preprocessing", "text-analysis", "training"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -42,11 +42,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/ngram-prep"
-Documentation = "https://github.com/yourusername/ngram-prep#readme"
-Repository = "https://github.com/yourusername/ngram-prep.git"
-"Bug Tracker" = "https://github.com/yourusername/ngram-prep/issues"
-Changelog = "https://github.com/yourusername/ngram-prep/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/yourusername/ngram-kit"
+Documentation = "https://github.com/yourusername/ngram-kit#readme"
+Repository = "https://github.com/yourusername/ngram-kit.git"
+"Bug Tracker" = "https://github.com/yourusername/ngram-kit/issues"
+Changelog = "https://github.com/yourusername/ngram-kit/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -1,6 +1,6 @@
 """Display formatting for Word2Vec training pipeline."""
 
-from ngram_prep.utilities.display import truncate_path_to_fit
+from ngramkit.utilities.display import truncate_path_to_fit
 
 __all__ = ["print_training_header", "print_completion_banner", "LINE_WIDTH"]
 

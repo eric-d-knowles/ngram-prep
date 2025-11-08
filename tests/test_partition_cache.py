@@ -4,7 +4,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from ngram_prep.tracking import PartitionCache, PartitionCacheKey, WorkUnit
+from ngramkit.tracking import PartitionCache, PartitionCacheKey, WorkUnit
 
 
 def test_partition_cache_basic():

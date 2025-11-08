@@ -10,7 +10,7 @@ from math import log, floor
 from gensim.models import Word2Vec
 from setproctitle import setproctitle
 
-from ngram_prep.ngram_pivot.stream import stream_year_ngrams
+from ngramkit.ngram_pivot.stream import stream_year_ngrams
 
 __all__ = [
     "SentencesIterable",

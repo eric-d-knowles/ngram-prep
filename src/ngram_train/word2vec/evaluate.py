@@ -16,7 +16,7 @@ from gensim.test.utils import datapath
 from setproctitle import setproctitle
 from tqdm import tqdm
 
-from ngram_prep.utilities.display import truncate_path_to_fit
+from ngramkit.utilities.display import truncate_path_to_fit
 from .w2v_model import W2VModel
 
 __all__ = ["evaluate_models"]
