@@ -2,16 +2,17 @@
 
 **Scalable tools to prepare Google Books Ngrams data for semantic analysis**
 
-Prepare and train models on n-grams from the Google Books data repository using multiple CPUs. Ideal for large corpora consisting of millions or billions of ngrams. Provides efficient pipelines for filtering, transforming, and organizing n-gram data prior to analysis.
+Data preparation and model training tools for the study diachronic semantic change using Google Ngrams corpora. Ideal for large datasets consisting of millions or billions of n-grams. Provides efficient pipelines for filtering, transforming, and organizing the raw data—and for using the processed data to train and evaluate `word2vec` models.
 
-While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud computing infrastructures. Processing pilelines that might take days on a laptop can be completed in hours on a cluster or cloud platform.
+While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud computing infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
 
 ## Capabilities
 
-- **Data acquisition:** Download n-gram datasets (1-grams, 2-grams, 3-grams, 4-grams, or 5-grams). Immediately ingest into a queryable RockDB database. 
-- **Language support**. The pipeline work with any language supported by Google Books Ngrams: English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish. 
+### Data Preparation
+- **Data acquisition:** Download n-gram datasets (1- through 5-grams). Immediately ingest into a queryable RockDB database. 
+- **Language support**. Work with any language supported by Google Books Ngrams: English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish. 
 - **Configurable processing:** Apply any or all of the following transformations: case normalization, stopword removal, short word removal, non-alphabetic token removal, and lemmatization. Discarded tokens are replaced in the corpus with `<UNK>`.
-- **Whitelist creation:** Output the top-N most frequent unigrams (1-grams) for creating an eligible vocabulary list. Then use this list to efficiently filter multigrams (2- through 5-grams). Processing multigrams using a whitelist reduces processing time by bypassing other filters, ensures correctly spelled words, and, when used in conjunction with case normalization, discards many proper nouns (e.g., "jackson" will be discarded).
+- **Whitelist creation:** Output the top-N most frequent unigrams, applying optional spell-checking, and then use this whitelist to efficiently filter multigrams. Processing multigrams using a spell-checked whitelist reduces processing time by bypassing other filters, discards misspelled words, and discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded).
 - **Temporal analysis support:** Reorganize data to a format suitable for time-series analyses:
   - BEFORE: `n-gram → (year1, count1, volumes1) (year2, count2, volumes2) ... (yearn, countn, volumesn)`
   - AFTER:
@@ -19,8 +20,17 @@ While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, t
     - `[year2] n-gram → (count2, volumes2)`
     - `...`
     - `[year3] n-gram → (countn, volumesn)`
-- **High-throughput architecture:** Parallel processing with automatic load balancing, progress tracking, and resume capability.
-- **Research-friendly storage:** Fast key-value database (RocksDB) quickly queries even very large datasets.
+- **High-throughput architecture:** Parallel processing with load balancing, progress tracking, and resume capability in the event of interruption.
+- **Research-friendly storage:** Fast key-value database (RocksDB) quickly queries even enormous datasets.
+
+### Model Training and Evaluation
+- **Word embeddings:** Train `word2vec` models on the processed n-grams using `gensim`'s implementation. Optionally use `corpus_file` mode to enable fast, multithreaded training and training multiple years at once. Easily adjust model hyperparameters:
+  - `approach`: use skip-gram or continuous bag-of-words (CBOW) architectures
+  - `vector_size`: the number vector dimensions (features) to extract
+  - `window size`: the width of the context window
+  - `min_count`: the minimum frequency of words to include in the model
+  - `weight_by`: downweight common ngrams by frequency or document count
+- **Evaluation:** Evaluate the performance of the trained model using standard intrinsic tests of similarity and analogy performance. Plot the results for visual comparison of model quality. Use mixed-model regression to quantify the impact of different hyperparameters on model performance across years.
 
 ## Workflow
 
