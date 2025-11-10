@@ -1,4 +1,4 @@
-x__pycache__/
+__pycache__/
 *.py[cod]
 *.egg-info/
 dist/
@@ -17,3 +17,8 @@ htmlcov/
 
 # Symlink to vast data directory
 vast_data
+
+# Generated logs and models
+logs/
+logs_*/
+models_*/
