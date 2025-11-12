@@ -428,9 +428,8 @@ def train_models(
                     if corpus_file_path and os.path.exists(corpus_file_path):
                         try:
                             os.unlink(corpus_file_path)
-                            tqdm.write(f"\nCleaned up corpus file: {corpus_file_path}")
-                        except Exception as e:
-                            tqdm.write(f"\nWarning: Could not remove corpus file {corpus_file_path}: {e}")
+                        except Exception:
+                            pass  # Silently ignore cleanup errors
 
     # Print completion banner
     print_completion_banner(model_dir, models_trained)
