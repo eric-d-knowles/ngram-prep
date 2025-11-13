@@ -11,16 +11,14 @@ from functools import lru_cache
 
 # Default spaCy models by language
 DEFAULT_MODELS = {
-    "en": "en_core_web_sm",
-    "de": "de_core_news_sm",
-    "es": "es_core_news_sm",
-    "fr": "fr_core_news_sm",
-    "it": "it_core_news_sm",
-    "pt": "pt_core_news_sm",
-    "nl": "nl_core_news_sm",
-    "el": "el_core_news_sm",
-    "zh": "zh_core_web_sm",
-    "ja": "ja_core_news_sm",
+    "en": "en_core_web_sm",      # English
+    "de": "de_core_news_sm",     # German (ger)
+    "es": "es_core_news_sm",     # Spanish (spa)
+    "fr": "fr_core_news_sm",     # French (fre)
+    "it": "it_core_news_sm",     # Italian (ita)
+    "ru": "ru_core_news_sm",     # Russian (rus)
+    "zh": "zh_core_web_sm",      # Chinese (chi-sim)
+    "he": "he_core_news_sm",     # Hebrew (heb)
 }
 
 

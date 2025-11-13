@@ -1,0 +1,3 @@
+INFO:    User not listed in /etc/subuid, trying root-mapped namespace
+INFO:    The %post section will be run under the fakeroot command
+FATAL:   While checking build target: build target 'ngram-kit.sif' already exists. Use --force if you want to overwrite it

@@ -8,4 +8,4 @@
 export APPTAINER_BIND=""
 export SINGULARITY_BIND=""
 
-apptainer build /scratch/edk202/containers/ngram-kit.sif /scratch/edk202/ngram-kit/environment.def
+apptainer build --force /scratch/edk202/containers/ngram-kit.sif /scratch/edk202/ngram-kit/environment.def

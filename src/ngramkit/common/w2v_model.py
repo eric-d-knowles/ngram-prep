@@ -323,60 +323,66 @@ class W2VModel:
         if missing_words:
             print(f"⚠️ Warning: The following words are missing from the model and will be ignored: {missing_words}")
 
-        def cosine_similarity_list(words1, words2):
-            return [self.model.similarity(w1, w2) for w1 in words1 for w2 in words2 if w1 in self.vocab and w2 in self.vocab]
+        def mean_similarity(target_word, attribute_words):
+            """Compute mean cosine similarity between a target word and a set of attribute words"""
+            sims = [self.model.similarity(target_word, attr) for attr in attribute_words if attr in self.vocab]
+            return np.mean(sims) if sims else 0.0
 
-        # Compute original association scores
-        S_targ1_attr1 = cosine_similarity_list(targ1, attr1)
-        S_targ1_attr2 = cosine_similarity_list(targ1, attr2)
-        S_targ2_attr1 = cosine_similarity_list(targ2, attr1)
-        S_targ2_attr2 = cosine_similarity_list(targ2, attr2)
+        def s(target_word, attr1_words, attr2_words):
+            """Compute association difference for a single target word (Equation 2 in Caliskan et al.)"""
+            return mean_similarity(target_word, attr1_words) - mean_similarity(target_word, attr2_words)
 
-        # Compute test statistic (difference in means)
-        mean_diff_targ1 = np.mean(S_targ1_attr1) - np.mean(S_targ1_attr2)
-        mean_diff_targ2 = np.mean(S_targ2_attr1) - np.mean(S_targ2_attr2)
+        # Compute test statistic using per-word associations (Equation 3 in Caliskan et al.)
+        # Sum of s() over target1 minus sum of s() over target2
+        targ1_filtered = [w for w in targ1 if w in self.vocab]
+        targ2_filtered = [w for w in targ2 if w in self.vocab]
+        attr1_filtered = [w for w in attr1 if w in self.vocab]
+        attr2_filtered = [w for w in attr2 if w in self.vocab]
 
-        # Compute pooled standard deviation across X ∪ Y (as in Caliskan et al.)
-        all_similarities = S_targ1_attr1 + S_targ1_attr2 + S_targ2_attr1 + S_targ2_attr2
-        pooled_std = np.std(all_similarities, ddof=1)
+        s_vals_targ1 = [s(x, attr1_filtered, attr2_filtered) for x in targ1_filtered]
+        s_vals_targ2 = [s(y, attr1_filtered, attr2_filtered) for y in targ2_filtered]
+
+        # Compute pooled standard deviation across all s() values (Equation 4 in Caliskan et al.)
+        all_s_vals = s_vals_targ1 + s_vals_targ2
+        pooled_std = np.std(all_s_vals, ddof=1)
 
         if pooled_std == 0:
-            print("⚠️ Warning: No variation in similarities. Returning NaN for WEAT effect size.")
+            print("⚠️ Warning: No variation in association scores. Returning NaN for WEAT effect size.")
             return (np.nan, None, None) if return_std else (np.nan, None)
 
-        # Compute observed WEAT effect size
-        weat_effect_size = (mean_diff_targ1 - mean_diff_targ2) / pooled_std
+        # Compute observed test statistic and WEAT effect size
+        # Test statistic is the sum (for permutation test)
+        # Effect size uses means (following Caliskan et al.)
+        observed_test_statistic = np.sum(s_vals_targ1) - np.sum(s_vals_targ2)
+        mean_diff = np.mean(s_vals_targ1) - np.mean(s_vals_targ2)
+        weat_effect_size = mean_diff / pooled_std
 
         if num_permutations == 0:
             return (weat_effect_size, None, pooled_std) if return_std else (weat_effect_size, None)
 
         # Permutation Test (Shuffle only target words `X` and `Y`)
-        combined_targets = targ1 + targ2
-        n = len(targ1)
-        permuted_effect_sizes = []
+        combined_targets = targ1_filtered + targ2_filtered
+        n = len(targ1_filtered)
+        permuted_test_statistics = []
 
         for _ in range(num_permutations):
             # Shuffle only the target words (not attributes)
             perm_targ1 = random.sample(combined_targets, n)
             perm_targ2 = [w for w in combined_targets if w not in perm_targ1]
 
-            S_perm_targ1_attr1 = cosine_similarity_list(perm_targ1, attr1)
-            S_perm_targ1_attr2 = cosine_similarity_list(perm_targ1, attr2)
-            S_perm_targ2_attr1 = cosine_similarity_list(perm_targ2, attr1)
-            S_perm_targ2_attr2 = cosine_similarity_list(perm_targ2, attr2)
+            # Compute per-word association scores for permuted targets
+            perm_s_vals_targ1 = [s(x, attr1_filtered, attr2_filtered) for x in perm_targ1]
+            perm_s_vals_targ2 = [s(y, attr1_filtered, attr2_filtered) for y in perm_targ2]
 
-            perm_mean_diff_targ1 = np.mean(S_perm_targ1_attr1) - np.mean(S_perm_targ1_attr2)
-            perm_mean_diff_targ2 = np.mean(S_perm_targ2_attr1) - np.mean(S_perm_targ2_attr2)
+            # Compute test statistic for this permutation
+            perm_test_statistic = np.sum(perm_s_vals_targ1) - np.sum(perm_s_vals_targ2)
+            permuted_test_statistics.append(perm_test_statistic)
 
-            # Compute effect size for this permutation using the original pooled std dev
-            perm_effect_size = (perm_mean_diff_targ1 - perm_mean_diff_targ2) / pooled_std
-            permuted_effect_sizes.append(perm_effect_size)
+        # Compute p-value (two-tailed test) by comparing test statistics
+        p_value = np.mean(np.abs(np.array(permuted_test_statistics)) >= np.abs(observed_test_statistic))
 
-        # Compute p-value
-        p_value = np.mean(np.array(permuted_effect_sizes) >= weat_effect_size)
-
-        # Compute standard deviation of the permuted effect sizes (confidence interval estimate)
-        std_dev = np.std(permuted_effect_sizes, ddof=1) if return_std else None
+        # Compute standard deviation of the permuted test statistics (confidence interval estimate)
+        std_dev = np.std(permuted_test_statistics, ddof=1) if return_std else None
 
         return (weat_effect_size, p_value, std_dev) if return_std else (weat_effect_size, p_value)
 
