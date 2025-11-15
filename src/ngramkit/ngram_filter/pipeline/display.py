@@ -47,7 +47,7 @@ def print_pipeline_header(
     num_initial_work_units = getattr(pipeline_config, 'num_initial_work_units', None) or num_workers
     read_profile = pipeline_config.reader_profile
     write_profile = pipeline_config.writer_profile
-    flush_interval = getattr(pipeline_config, 'flush_interval_s', 5.0)
+    flush_interval = getattr(pipeline_config, 'flush_interval_s', 10.0)
     num_ingest_readers = getattr(pipeline_config, "ingest_num_readers", 4)
     ingest_queue_size = getattr(pipeline_config, "ingest_queue_size", 8)
 
@@ -142,6 +142,18 @@ def _format_whitelist_info(filter_config: FilterConfig, pipeline_config: Pipelin
             lines.append(f"  Top {output_top_n:,} tokens")
         else:
             lines.append("  All tokens")
+
+        # Add spell check info
+        spell_check = getattr(pipeline_config, "output_whitelist_spell_check", False)
+        if spell_check:
+            spell_check_language = getattr(pipeline_config, "output_whitelist_spell_check_language", "en_US")
+            lines.append(f"  Spell checking enabled ({spell_check_language})")
+
+        # Add year range info
+        year_range = getattr(pipeline_config, "output_whitelist_year_range", None)
+        if year_range:
+            start_year, end_year = year_range
+            lines.append(f"  Year range: {start_year}-{end_year} (inclusive)")
     else:
         lines.append("Output whitelist:     None")
 

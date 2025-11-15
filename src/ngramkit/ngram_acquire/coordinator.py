@@ -60,7 +60,7 @@ def select_file_subset(
 
     Args:
         file_urls: All available file URLs
-        file_range: Optional (start_idx, end_idx) tuple
+        file_range: Optional (start_idx, end_idx) tuple. Use None for all files.
 
     Returns:
         Tuple of (selected_urls, start_idx, end_idx)
@@ -68,8 +68,12 @@ def select_file_subset(
     Raises:
         ValueError: If file_range is invalid
     """
+    # Handle "all files" case
     if file_range is None:
-        file_range = (0, len(file_urls) - 1)
+        start_idx, end_idx = 0, len(file_urls) - 1
+        selected = file_urls
+        logger.info("Selected all %d files", len(selected))
+        return selected, start_idx, end_idx
 
     start_idx, end_idx = file_range
 

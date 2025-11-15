@@ -9,7 +9,7 @@ import time
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set, Any
 
 from setproctitle import setproctitle
 
@@ -619,15 +619,173 @@ class PipelineOrchestrator:
 
 
 def build_processed_db(
-    pipeline_config: PipelineConfig,
-    filter_config: FilterConfig,
-) -> None:
+    filter_config: Optional[FilterConfig] = None,
+    pipeline_config: Optional[PipelineConfig] = None,
+    # Path construction parameters (used if pipeline_config not provided)
+    ngram_size: Optional[int] = None,
+    repo_release_id: Optional[str] = None,
+    repo_corpus_id: Optional[str] = None,
+    db_path_stub: Optional[str] = None,
+    # Filter configuration parameters (used if filter_config not provided)
+    stop_set: Optional[Set[str]] = None,
+    lemma_gen: Any = None,
+    # Pipeline execution parameters
+    num_workers: Optional[int] = None,
+    mode: Optional[str] = None,
+    # Work unit partitioning
+    use_smart_partitioning: Optional[bool] = None,
+    num_initial_work_units: Optional[int] = None,
+    cache_partitions: Optional[bool] = None,
+    use_cached_partitions: Optional[bool] = None,
+    samples_per_worker: Optional[int] = None,
+    work_unit_claim_order: Optional[str] = None,
+    # Progress and flushing
+    flush_interval_s: Optional[float] = None,
+    progress_every_s: Optional[float] = None,
+    # Ingestion configuration
+    ingest_num_readers: Optional[int] = None,
+    ingest_batch_items: Optional[int] = None,
+    ingest_queue_size: Optional[int] = None,
+    compact_after_ingest: Optional[bool] = None,
+    # Whitelist generation
+    output_whitelist_top_n: Optional[int] = None,
+    output_whitelist_year_range: Optional[tuple[int, int]] = None,
+    output_whitelist_spell_check: bool = False,
+    output_whitelist_spell_check_language: str = "en_US",
+) -> str:
     """
     Main entry point for the ngram filtering pipeline.
 
+    Can be called in two ways:
+    1. With a PipelineConfig object (for advanced usage)
+    2. With path stub parameters (convenience wrapper like download_and_ingest_to_rocksdb)
+
     Args:
-        pipeline_config: Configuration for pipeline execution
-        filter_config: Configuration for ngram filtering
+        filter_config: Configuration for ngram filtering (uses defaults if not provided)
+        pipeline_config: Pre-configured PipelineConfig (if provided with paths, other parameters are ignored)
+        ngram_size: N-gram size (1-5) - required if pipeline_config not provided
+        repo_release_id: Release date in YYYYMMDD format (e.g., "20200217") - required if pipeline_config not provided
+        repo_corpus_id: Corpus identifier (e.g., "eng", "eng-us") - required if pipeline_config not provided
+        db_path_stub: Base directory for database (will be expanded) - required if pipeline_config not provided
+        stop_set: Set of stopwords to filter (used if filter_config not provided)
+        lemma_gen: Lemmatizer instance (used if filter_config not provided)
+        num_workers: Number of parallel workers (default: cpu_count() - 1 or num_initial_work_units, whichever is lower)
+        mode: "restart" (wipe all), "resume" (continue), or "reprocess" (wipe DB, keep cache)
+        use_smart_partitioning: Use density-based partitioning for better load balancing
+        num_initial_work_units: Initial number of work units (default: num_workers)
+        cache_partitions: Cache smart partitioning results
+        use_cached_partitions: Use cached partitions if available
+        samples_per_worker: Reservoir size per sampling worker
+        work_unit_claim_order: "sequential" or "random"
+        flush_interval_s: How often to flush buffer and check for splits
+        progress_every_s: Progress reporting interval
+        ingest_num_readers: Number of parallel shard reader processes
+        ingest_batch_items: Number of items per batch during ingestion
+        ingest_queue_size: Max shards buffered in memory
+        compact_after_ingest: Perform full compaction after ingestion
+        output_whitelist_top_n: Number of top tokens to include in whitelist
+        output_whitelist_year_range: (start_year, end_year) filter for whitelist
+        output_whitelist_spell_check: Only include correctly spelled words
+        output_whitelist_spell_check_language: Language for spell checking
+
+    Returns:
+        Path to the processed (filtered) database directory
     """
-    orchestrator = PipelineOrchestrator(pipeline_config, filter_config)
+    # Construct FilterConfig if not provided
+    if filter_config is None:
+        # If filter parameters provided, use them; otherwise use defaults
+        if stop_set is not None or lemma_gen is not None:
+            filter_config = FilterConfig(
+                stop_set=stop_set,
+                lemma_gen=lemma_gen,
+            )
+        else:
+            filter_config = FilterConfig()
+
+    # Check if we have a complete pipeline_config with paths
+    has_complete_pipeline_config = (
+        pipeline_config is not None and
+        hasattr(pipeline_config, 'src_db') and
+        hasattr(pipeline_config, 'dst_db') and
+        hasattr(pipeline_config, 'tmp_dir') and
+        pipeline_config.src_db is not None and
+        pipeline_config.dst_db is not None and
+        pipeline_config.tmp_dir is not None
+    )
+
+    # If we have a complete pipeline_config with all required paths, use it directly
+    if has_complete_pipeline_config:
+        orchestrator = PipelineOrchestrator(pipeline_config, filter_config)
+        orchestrator.run()
+        return str(pipeline_config.dst_db)
+
+    # Otherwise, we need path stub parameters to construct/merge the config
+    if ngram_size is None or repo_release_id is None or repo_corpus_id is None or db_path_stub is None:
+        raise ValueError(
+            "Either provide a complete pipeline_config with paths (src_db, dst_db, tmp_dir), "
+            "or provide all path stub parameters (ngram_size, repo_release_id, repo_corpus_id, db_path_stub)"
+        )
+
+    from ngramkit.ngram_acquire.db.build_path import build_db_path
+
+    # Construct paths using same logic as download function
+    raw_db_path = build_db_path(db_path_stub, ngram_size, repo_release_id, repo_corpus_id)
+    base_path = Path(raw_db_path).parent
+
+    # Construct derived paths
+    src_db = Path(raw_db_path)
+    dst_db = base_path / f"{ngram_size}grams_processed.db"
+    tmp_dir = base_path / "processing_tmp"
+    whitelist_path = dst_db / "whitelist.txt"
+
+    # Determine default num_workers if not specified
+    if num_workers is None:
+        import os
+        cpu_count = os.cpu_count() or 1
+        default_workers = max(1, cpu_count - 1)
+        if num_initial_work_units is not None:
+            num_workers = min(default_workers, num_initial_work_units)
+        else:
+            num_workers = default_workers
+
+    # Create pipeline config, only passing non-None parameters to use PipelineConfig defaults
+    config_kwargs = {
+        'src_db': src_db,
+        'dst_db': dst_db,
+        'tmp_dir': tmp_dir,
+        'num_workers': num_workers,
+        'output_whitelist_path': whitelist_path,
+    }
+
+    # Add optional parameters only if explicitly provided
+    optional_params = {
+        'num_initial_work_units': num_initial_work_units,
+        'flush_interval_s': flush_interval_s,
+        'use_smart_partitioning': use_smart_partitioning,
+        'samples_per_worker': samples_per_worker,
+        'cache_partitions': cache_partitions,
+        'use_cached_partitions': use_cached_partitions,
+        'progress_every_s': progress_every_s,
+        'mode': mode,
+        'compact_after_ingest': compact_after_ingest,
+        'work_unit_claim_order': work_unit_claim_order,
+        'ingest_num_readers': ingest_num_readers,
+        'ingest_batch_items': ingest_batch_items,
+        'ingest_queue_size': ingest_queue_size,
+        'output_whitelist_top_n': output_whitelist_top_n,
+        'output_whitelist_year_range': output_whitelist_year_range,
+        'output_whitelist_spell_check': output_whitelist_spell_check,
+        'output_whitelist_spell_check_language': output_whitelist_spell_check_language,
+    }
+
+    for key, value in optional_params.items():
+        if value is not None:
+            config_kwargs[key] = value
+
+    constructed_pipeline_config = PipelineConfig(**config_kwargs)
+
+    # Run the pipeline
+    orchestrator = PipelineOrchestrator(constructed_pipeline_config, filter_config)
     orchestrator.run()
+
+    return str(dst_db)

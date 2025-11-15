@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, Type
 
@@ -22,6 +22,7 @@ from ngramkit.ngram_acquire.utils.cleanup import safe_db_cleanup
 from ngramkit.ngram_acquire.db.build_path import build_db_path
 from ngramkit.ngram_acquire.db.write import DEFAULT_WRITE_BATCH_SIZE
 from ngramkit.common_db.api import open_db
+from ngramkit.common_db.compress import compress_db
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +41,13 @@ def download_and_ingest_to_rocksdb(
         db_path_stub: str,
         file_range: Optional[Tuple[int, int]] = None,
         workers: Optional[int] = None,
-        use_threads: bool = False,
         ngram_type: str = "all",
         overwrite_db: bool = True,
         random_seed: Optional[int] = None,
         write_batch_size: int = DEFAULT_WRITE_BATCH_SIZE,
         open_type: str = "read",
         compact_after_ingest: bool = False,
+        archive_path_stub: Optional[str] = None,
 ) -> None:
     """
     Main pipeline: discover, download, parse, and ingest ngram files into RocksDB.
@@ -58,21 +59,22 @@ def download_and_ingest_to_rocksdb(
     4. Downloads and processes files concurrently
     5. Writes batched results to database
     6. Optionally performs post-ingestion compaction
+    7. Optionally archives (compresses) database to specified directory
 
     Args:
         ngram_size: N-gram size (1-5)
         repo_release_id: Release date in YYYYMMDD format (e.g., "20200217")
         repo_corpus_id: Corpus identifier (e.g., "eng", "eng-us")
         db_path_stub: Base directory for database (will be expanded)
-        file_range: Optional (start_idx, end_idx) to process subset of files
-        workers: Number of concurrent workers (default: min(40, cpu_count * 2))
-        use_threads: If True, use threads; otherwise use processes
+        file_range: Optional (start_idx, end_idx) to process subset of files. Use None for all files.
+        workers: Number of concurrent workers (default: min(cpu_count - 1, num_files))
         ngram_type: Filter type ("all", "tagged", etc.)
         overwrite_db: If True, remove existing database before starting
         random_seed: Optional seed for randomizing file processing order
         write_batch_size: Number of entries per batch write
         open_type: RocksDB profile ("read", "write", "read:packed24", "write:packed24")
         compact_after_ingest: If True, perform full compaction after ingestion
+        archive_path_stub: Optional archive stub directory. Creates structured path: {archive_path_stub}/{release}/{corpus}/{n}gram_files/{n}grams.db.tar.zst
     """
     logger.info("Starting N-gram processing pipeline")
 
@@ -88,11 +90,6 @@ def download_and_ingest_to_rocksdb(
     # Build full database path from stub
     db_path = build_db_path(db_path_stub, ngram_size, repo_release_id, repo_corpus_id)
     logger.info("Database path: %s", db_path)
-
-    # Determine worker count
-    if workers is None:
-        cpu = os.cpu_count() or 4
-        workers = min(40, cpu * 2)
 
     # Handle existing database
     if overwrite_db and os.path.exists(db_path):
@@ -115,6 +112,14 @@ def download_and_ingest_to_rocksdb(
     # Select file subset
     file_urls_to_use, start_idx, end_idx = select_file_subset(file_urls_available, file_range)
 
+    # Determine worker count based on available CPUs and number of files
+    if workers is None:
+        cpu_count = os.cpu_count() or 4
+        # Use CPUs - 1 for overhead, capped by number of files to process
+        workers = min(cpu_count - 1, len(file_urls_to_use))
+        # Ensure at least 1 worker
+        workers = max(1, workers)
+
     # Validate and normalize open_type
     open_type = open_type.lower()
     valid_profiles = {"read", "write", "read:packed24", "write:packed24"}
@@ -133,8 +138,8 @@ def download_and_ingest_to_rocksdb(
         if random_seed is not None:
             randomize_file_order(file_urls_to_use, random_seed)
 
-        # Configure executor
-        executor_class: Type = ThreadPoolExecutor if use_threads else ProcessPoolExecutor
+        # Configure executor (always use processes for better parallelism)
+        executor_class: Type = ProcessPoolExecutor
         filter_pred = make_ngram_type_predicate(ngram_type)
 
         # Print run summary
@@ -170,6 +175,10 @@ def download_and_ingest_to_rocksdb(
         if compact_after_ingest:
             _perform_compaction(db, db_path)
 
+    # Optional archiving: compress DB to archive directory
+    if archive_path_stub is not None:
+        _archive_database(db_path, archive_path_stub, ngram_size, repo_release_id, repo_corpus_id)
+
     # Report final statistics
     end_time = datetime.now()
     print_final_summary(
@@ -181,6 +190,10 @@ def download_and_ingest_to_rocksdb(
         batches=batches,
         uncompressed_bytes=uncompressed_bytes,
     )
+
+    # Return None to avoid Jupyter displaying the path
+    # (the path is already printed in the summary)
+    return None
 
 
 def _perform_compaction(db, db_path: str) -> None:
@@ -232,3 +245,85 @@ def _perform_compaction(db, db_path: str) -> None:
         logger.error(f"Compaction failed: {e}")
         print(f"Compaction failed: {e}")
         print("Database is still usable, but may not be optimally compacted.")
+
+
+def _archive_database(
+    db_path: str,
+    archive_stub: str,
+    ngram_size: int,
+    repo_release_id: str,
+    repo_corpus_id: str
+) -> None:
+    """
+    Archive (compress) the database to a structured directory using zstd.
+
+    Creates archive path following the pattern:
+    {archive_stub}/{release_id}/{corpus_id}/{n}gram_files/{n}grams.db.tar.zst
+
+    The compression is done in a temp directory on /scratch first, then
+    rsync'd to the final destination for better performance.
+
+    Args:
+        db_path: Path to the database directory
+        archive_stub: Base directory for archives (will be expanded with structured path)
+        ngram_size: N-gram size (1-5)
+        repo_release_id: Release date in YYYYMMDD format
+        repo_corpus_id: Corpus identifier (e.g., "eng", "eng-us")
+    """
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    from ngramkit.utilities.display import format_banner, truncate_path_to_fit
+
+    logger.info("Starting database archival")
+    print()
+    print(format_banner("Database Archival"))
+
+    # Build structured archive path (mirrors database structure)
+    archive_base = Path(archive_stub)
+    final_archive = archive_base / repo_release_id / repo_corpus_id / f"{ngram_size}gram_files" / f"{Path(db_path).name}.tar.zst"
+    logger.info(f"Target archive location: {final_archive}")
+
+    # Determine output archive filename
+    db_name = Path(db_path).name
+
+    try:
+        # Create temp directory on /scratch for compression
+        # Use $TMPDIR if set, otherwise try /scratch/edk202, then fall back to default
+        temp_base = os.environ.get('TMPDIR') or '/scratch/edk202'
+        temp_dir = tempfile.mkdtemp(dir=temp_base, prefix="ngram_archive_")
+        temp_archive = Path(temp_dir) / f"{db_name}.tar.zst"
+        logger.info(f"Temporary archive location: {temp_archive}")
+
+        try:
+            # Compress the database to temp location
+            print(f"Compressing database to temporary location: {truncate_path_to_fit(str(temp_archive), 'Compressing database to temporary location: ')}")
+            compress_db(db_path, output_path=temp_archive)
+            logger.info(f"Database compressed successfully to {temp_archive}")
+
+            # Transfer the archive to final destination
+            print(f"Transferring archive to {truncate_path_to_fit(str(final_archive), 'Transferring archive to ')}")
+
+            # Create parent directories for destination
+            final_archive.parent.mkdir(parents=True, exist_ok=True)
+
+            # Copy the archive to final destination
+            import shutil as shutil_copy
+            shutil_copy.copy2(str(temp_archive), str(final_archive))
+
+            logger.info(f"Archive transferred successfully to {final_archive}")
+            print(f"Archive created: {truncate_path_to_fit(str(final_archive), 'Archive created: ')}")
+
+        finally:
+            # Clean up temp directory
+            import shutil
+            try:
+                shutil.rmtree(temp_dir)
+                logger.info(f"Cleaned up temporary directory: {temp_dir}")
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to clean up temp directory {temp_dir}: {cleanup_err}")
+
+    except Exception as e:
+        logger.error(f"Archival failed: {e}")
+        print(f"Archival failed: {e}")
+        raise

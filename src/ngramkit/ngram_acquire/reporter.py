@@ -49,7 +49,7 @@ def print_pipeline_header(
     print()
     print(format_banner("Download Configuration"))
     print(f"Ngram repo:           {truncate_path_to_fit(page_url, 'Ngram repo:           ')}")
-    print(f"DB path:              {db_path}")
+    print(f"DB path:              {truncate_path_to_fit(db_path, 'DB path:              ')}")
     print(f"File range:           {start_idx} to {end_idx}")
     print(f"Total files:          {total_files}")
     print(f"Files to get:         {files_to_get}")

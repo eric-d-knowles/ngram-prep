@@ -46,17 +46,17 @@ class PipelineConfig:
     # Parallelism
     num_workers: int = 8
     num_initial_work_units: Optional[int] = None  # If None, defaults to num_workers
-    flush_interval_s: float = 5.0  # How often to flush buffer and check for splits (0 to disable)
+    flush_interval_s: float = 10.0  # How often to flush buffer
 
     # Work unit partitioning
     use_smart_partitioning: bool = True  # Use density-based partitioning (slower startup, better balance)
     num_sampling_workers: Optional[int] = None  # Parallel workers for sampling (default: min(num_units, 40))
-    samples_per_worker: int = 10_000  # Reservoir size per sampling worker (higher = more accurate)
+    samples_per_worker: int = 50_000  # Reservoir size per sampling worker (higher = more accurate)
     cache_partitions: bool = True  # Cache smart partitioning results to avoid re-sampling
     use_cached_partitions: bool = True  # Use cached partitions if available (otherwise resample)
 
     # Progress reporting
-    progress_every_s: float = 5.0
+    progress_every_s: float = 60.0
 
     # Reader/Writer profiles
     reader_profile: str = "read:packed24"
@@ -75,7 +75,7 @@ class PipelineConfig:
     # Pipeline control
     mode: str = "resume"  # "restart" (wipe all), "resume" (continue), or "reprocess" (wipe DB, keep cache)
     compact_after_ingest: bool = True
-    work_unit_claim_order: str = "sequential"  # "sequential" or "random"
+    work_unit_claim_order: str = "random"  # "sequential" or "random"
 
     # Output whitelist generation (from filtered results)
     output_whitelist_path: Optional[Union[str, Path]] = None
