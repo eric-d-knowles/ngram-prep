@@ -122,10 +122,10 @@ See the `notebooks/` directory for complete examples:
 
 ```python
 from pathlib import Path
-from ngramkit.ngram_acquire import download_and_ingest_to_rocksdb
-from ngramkit.ngram_filter import PipelineConfig, FilterConfig, build_processed_db
-from ngramkit.ngram_pivot import run_pivot_pipeline
-from ngramkit.ngram_pivot.config import PipelineConfig as PivotConfig
+from ngramprep.ngram_acquire import download_and_ingest_to_rocksdb
+from ngramprep.ngram_filter import PipelineConfig, FilterConfig, build_processed_db
+from ngramprep.ngram_pivot import run_pivot_pipeline
+from ngramprep.ngram_pivot.config import PipelineConfig as PivotConfig
 
 # Step 1: Download and ingest n-grams
 download_and_ingest_to_rocksdb(

@@ -28,13 +28,13 @@ class BuildExt(build_ext):
 
 ext_modules = [
     Extension(
-        name="ngramkit.ngram_filter.filters.core_cy",
-        sources=["src/ngramkit/ngram_filter/filters/core_cy.pyx"],
+        name="ngramprep.ngram_filter.filters.core_cy",
+        sources=["src/ngramprep/ngram_filter/filters/core_cy.pyx"],
         include_dirs=[np.get_include()],
     ),
     Extension(
-        name="davieskit.davies_filter.filters.core_cy",
-        sources=["src/davieskit/davies_filter/filters/core_cy.pyx"],
+        name="daviesprep.davies_filter.filters.core_cy",
+        sources=["src/daviesprep/davies_filter/filters/core_cy.pyx"],
         include_dirs=[np.get_include()],
     ),
 ]
