@@ -282,6 +282,17 @@ def run_regression_analysis(
 
             corpus_path = corpus_path.rstrip('/')
             model_base = construct_model_path(corpus_path)
+
+            # Add genre-specific subdirectory for Davies corpora
+            corpus_name = os.path.basename(corpus_path)
+            if genre_focus is not None:
+                genre_suffix = "+".join(sorted(genre_focus))
+                genre_subdir = f"{corpus_name}_{genre_suffix}"
+            else:
+                # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
+                genre_subdir = corpus_name
+            model_base = os.path.join(model_base, genre_subdir)
+
             csv_file = os.path.join(model_base, f"evaluation_results_{dir_suffix}.csv")
         # Old method: ngram_size + repo_release_id + repo_corpus_id + db_path_stub (for ngrams)
         elif all(param is not None for param in [ngram_size, repo_release_id, repo_corpus_id, db_path_stub, dir_suffix]):
@@ -321,7 +332,7 @@ def run_regression_analysis(
 
     # Load and prepare data
     if verbose:
-        print("Loading data...")
+        print(f"Loading data from: {csv_file}")
     df = _prepare_data(csv_file, outcome, predictors)
 
     if verbose:
@@ -489,11 +500,17 @@ def plot_regression_results(
     fe_params = results.fe_params if isinstance(results, MixedLMResults) else results.params
     fe_conf = results.conf_int(alpha=alpha)
 
-    # Remove intercept for cleaner visualization
+    # Remove intercept and variance components for cleaner visualization
     if 'Intercept' in fe_params.index:
         fe_params = fe_params.drop('Intercept')
     if 'Intercept' in fe_conf.index:
         fe_conf = fe_conf.drop('Intercept')
+
+    # Remove variance components (Group Var, etc.) which are not fixed effects
+    variance_terms = [idx for idx in fe_params.index if 'Var' in idx or 'Group' in idx]
+    if variance_terms:
+        fe_params = fe_params.drop(variance_terms)
+        fe_conf = fe_conf.drop(variance_terms)
 
     # Clean up parameter names for better readability
     # Remove 'scale()' and 'C()' wrappers

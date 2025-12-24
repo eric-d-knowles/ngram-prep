@@ -13,6 +13,7 @@ __all__ = [
     "discover_text_files",
     "extract_year_from_filename",
     "extract_genre_from_filename",
+    "extract_year_from_document_filename",
     "read_text_file",
     "read_text_file_with_genre",
 ]
@@ -114,6 +115,32 @@ def extract_genre_from_filename(filename: str) -> Optional[str]:
     return None
 
 
+def extract_year_from_document_filename(filename: str) -> Optional[int]:
+    """
+    Extract specific year from Davies corpus document filename.
+
+    Davies text files follow the pattern: {genre}_{year}_{doc_id}.txt
+    Examples: mag_1815_552651.txt, nf_1816_747562.txt, fic_1920_123456.txt
+
+    Args:
+        filename: Filename to parse (e.g., "mag_1815_552651.txt")
+
+    Returns:
+        Year as integer (e.g., 1815) or None if pattern doesn't match
+
+    Example:
+        >>> extract_year_from_document_filename("mag_1815_552651.txt")
+        1815
+        >>> extract_year_from_document_filename("fic_1920_123456.txt")
+        1920
+    """
+    # Pattern: genre_year_docid.txt
+    match = re.match(r'^[a-z]+_(\d{4})_\d+\.txt$', filename)
+    if match:
+        return int(match.group(1))
+    return None
+
+
 def read_text_file(
     zip_path: Path,
     year: int,
@@ -208,8 +235,14 @@ def read_text_file_with_genre(
 
             for txt_file in txt_files:
                 try:
-                    # Extract genre from filename
-                    genre = extract_genre_from_filename(Path(txt_file).name)
+                    # Extract genre and year from filename
+                    filename = Path(txt_file).name
+                    genre = extract_genre_from_filename(filename)
+                    doc_year = extract_year_from_document_filename(filename)
+
+                    # Fall back to zip-level year if document year can't be extracted
+                    if doc_year is None:
+                        doc_year = year
 
                     # Read file content
                     with zf.open(txt_file) as f:
@@ -225,7 +258,7 @@ def read_text_file_with_genre(
 
                     # Only yield if there's actual content
                     if content.strip():
-                        yield year, content, genre
+                        yield doc_year, content, genre
 
                 except Exception as e:
                     logger.warning(f"Error reading {txt_file} from {zip_path.name}: {e}")

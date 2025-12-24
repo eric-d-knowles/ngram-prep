@@ -69,7 +69,11 @@ class W2VModel:
         Returns:
             W2VModel: The instance itself, for method chaining.
         """
-        self.model.init_sims(replace=True)
+        # Normalize vectors to unit length
+        # Note: In modern gensim, init_sims() is deprecated. We normalize manually.
+        import numpy as np
+        norms = np.linalg.norm(self.model.vectors, axis=1, keepdims=True)
+        self.model.vectors = self.model.vectors / norms
         return self
 
     def extract_vocab(self):
@@ -102,12 +106,15 @@ class W2VModel:
         self.filtered_vocab = shared_vocab
         return self
 
-    def align_to(self, reference_model):
+    def align_to(self, reference_model, weights=None):
         """
         Align this model to a reference model using orthogonal Procrustes.
 
         Args:
             reference_model (W2VModel): The reference W2VModel instance to align to.
+            weights (dict or None): Optional stability weights for words.
+                - If None: Unweighted Procrustes (all shared vocab words contribute equally)
+                - If dict: Weighted Procrustes (words weighted by their stability scores)
 
         Returns:
             W2VModel: The instance itself, for method chaining.
@@ -120,14 +127,42 @@ class W2VModel:
         if not shared_vocab:
             raise ValueError("No shared vocabulary between the models.")
 
+        # Determine whether to use weighted alignment
+        if weights is None:
+            # Unweighted: use all shared vocabulary
+            alignment_vocab = shared_vocab
+            use_weights = False
+        elif isinstance(weights, dict):
+            # Weighted: use words that have weights (should be all shared vocab)
+            alignment_vocab = shared_vocab.intersection(set(weights.keys()))
+            use_weights = True
+        else:
+            raise ValueError("weights must be None or a dict")
+
+        if not alignment_vocab:
+            raise ValueError("No words available for alignment")
+
         # Create aligned matrices
-        X = np.vstack([reference_model.filtered_vectors[word] for word in shared_vocab])
-        Y = np.vstack([self.filtered_vectors[word] for word in shared_vocab])
+        alignment_vocab_list = list(alignment_vocab)
+        X = np.vstack([reference_model.filtered_vectors[word] for word in alignment_vocab_list])
+        Y = np.vstack([self.filtered_vectors[word] for word in alignment_vocab_list])
 
-        # Perform orthogonal Procrustes alignment
-        R, _ = orthogonal_procrustes(Y, X)
+        # Perform orthogonal Procrustes alignment (weighted or unweighted)
+        if use_weights:
+            # Extract weights for alignment words
+            weight_values = np.array([weights[word] for word in alignment_vocab_list])
+            # Create diagonal weight matrix
+            W = np.diag(weight_values)
+            # Weighted Procrustes: R = argmin ||W(YR - X)||^2
+            # Solution: R from SVD of Y^T W^T W X
+            A = Y.T @ W @ W @ X
+            U, _, Vt = np.linalg.svd(A)
+            R = U @ Vt
+        else:
+            # Standard unweighted Procrustes
+            R, _ = orthogonal_procrustes(Y, X)
 
-        # Apply the transformation to the filtered vectors
+        # Apply the transformation to ALL filtered vectors
         for word in self.filtered_vectors:
             self.filtered_vectors[word] = np.dot(self.filtered_vectors[word], R)
 
@@ -293,6 +328,7 @@ class W2VModel:
 
         Args:
             word (str): The word for which to compute the mean similarity.
+            excluded_words (list or set): Words to exclude from similarity calculations.
 
         Returns:
             float: Mean cosine similarity score of the word with all other words in the vocabulary.
@@ -305,6 +341,8 @@ class W2VModel:
 
         total_similarity = 0
         count = 0
+
+        excluded_words = set(excluded_words) if excluded_words else set()
 
         for other_word in self.vocab:
             if other_word == word or other_word in excluded_words:

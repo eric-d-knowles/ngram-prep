@@ -250,14 +250,15 @@ def filter_davies_corpus(
     genre_focus: Optional[List[str]] = None,
     filter_config: Optional[FilterConfig] = None,
     # Filter configuration parameters (used if filter_config not provided)
+    # These use sentinel value to distinguish "not provided" from explicit False/True
     stop_set: Optional[Set[str]] = None,
     lemma_gen: Any = None,
-    lowercase: Optional[bool] = None,
-    alpha_only: Optional[bool] = None,
-    filter_short: Optional[bool] = None,
-    filter_stops: Optional[bool] = None,
-    apply_lemmatization: Optional[bool] = None,
-    min_len: Optional[int] = None,
+    lowercase: object = None,
+    alpha_only: object = None,
+    filter_short: object = None,
+    filter_stops: object = None,
+    apply_lemmatization: object = None,
+    min_len: object = None,
     whitelist: Optional[Set[bytes]] = None,
     always_include: Optional[Set[str]] = None,
     # Processing parameters
@@ -395,33 +396,31 @@ def filter_davies_corpus(
 
     # Construct FilterConfig if not provided
     if filter_config is None:
-        # If filter parameters provided, use them; otherwise use defaults
-        if any(param is not None for param in [stop_set, lemma_gen, lowercase, alpha_only,
-                                                 filter_short, filter_stops, apply_lemmatization, min_len, whitelist, always_include_bytes]):
-            kwargs = {}
-            if stop_set is not None:
-                kwargs['stop_set'] = stop_set
-            if lemma_gen is not None:
-                kwargs['lemma_gen'] = lemma_gen
-            if lowercase is not None:
-                kwargs['lowercase'] = lowercase
-            if alpha_only is not None:
-                kwargs['alpha_only'] = alpha_only
-            if filter_short is not None:
-                kwargs['filter_short'] = filter_short
-            if filter_stops is not None:
-                kwargs['filter_stops'] = filter_stops
-            if apply_lemmatization is not None:
-                kwargs['apply_lemmatization'] = apply_lemmatization
-            if min_len is not None:
-                kwargs['min_len'] = min_len
-            if whitelist is not None:
-                kwargs['whitelist'] = whitelist
-            if always_include_bytes is not None:
-                kwargs['always_include'] = always_include_bytes
-            filter_config = FilterConfig(**kwargs)
-        else:
-            filter_config = FilterConfig()
+        # Start with defaults, then override with any explicitly provided parameters
+        kwargs = {}
+        if stop_set is not None:
+            kwargs['stop_set'] = stop_set
+        if lemma_gen is not None:
+            kwargs['lemma_gen'] = lemma_gen
+        if lowercase is not None:
+            kwargs['lowercase'] = lowercase
+        if alpha_only is not None:
+            kwargs['alpha_only'] = alpha_only
+        if filter_short is not None:
+            kwargs['filter_short'] = filter_short
+        if filter_stops is not None:
+            kwargs['filter_stops'] = filter_stops
+        if apply_lemmatization is not None:
+            kwargs['apply_lemmatization'] = apply_lemmatization
+        if min_len is not None:
+            kwargs['min_len'] = min_len
+        if whitelist is not None:
+            kwargs['whitelist'] = whitelist
+        if always_include_bytes is not None:
+            kwargs['always_include'] = always_include_bytes
+
+        # Always create FilterConfig with provided kwargs - dataclass defaults handle the rest
+        filter_config = FilterConfig(**kwargs)
 
     # Print header
     print(format_banner(f"{corpus_name} CORPUS FILTERING", style="━"))

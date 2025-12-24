@@ -79,7 +79,11 @@ class W2VModel:
         Returns:
             W2VModel: The instance itself, for method chaining.
         """
-        self.model.init_sims(replace=True)
+        # Normalize vectors to unit length
+        # Note: In modern gensim, init_sims() is deprecated. We normalize manually.
+        import numpy as np
+        norms = np.linalg.norm(self.model.vectors, axis=1, keepdims=True)
+        self.model.vectors = self.model.vectors / norms
         return self
 
     def extract_vocab(self):

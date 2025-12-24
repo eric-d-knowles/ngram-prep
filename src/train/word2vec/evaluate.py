@@ -8,6 +8,7 @@ with parallel processing and per-model logging.
 import logging
 import os
 import re
+import shutil
 from datetime import datetime
 from multiprocessing import Pool
 
@@ -24,7 +25,7 @@ __all__ = ["evaluate_models", "evaluate_word2vec_models"]
 LINE_WIDTH = 100
 
 
-def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_dataset):
+def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_dataset, save_mode):
     """
     Set up evaluation paths and validate directories.
 
@@ -34,6 +35,7 @@ def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_datas
         eval_dir (str): Directory to save evaluation results CSV
         similarity_dataset (str): Path to similarity evaluation dataset
         analogy_dataset (str): Path to analogy evaluation dataset
+        save_mode (str): 'append' or 'overwrite'
 
     Returns:
         tuple: (start_time, model_dir, eval_file, log_dir, similarity_dataset, analogy_dataset)
@@ -56,8 +58,17 @@ def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_datas
 
     eval_file = os.path.join(eval_dir, f"evaluation_results_{dir_suffix}.csv")
 
-    # Construct logging path (create if necessary)
+    # Construct logging path
     log_dir = os.path.join(os.path.dirname(model_dir), f"logs_{dir_suffix}", "evaluation")
+
+    # If overwrite mode, wipe the log directory and evaluation CSV
+    if save_mode == 'overwrite':
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
+        if os.path.exists(eval_file):
+            os.remove(eval_file)
+
+    # Create log directory
     os.makedirs(log_dir, exist_ok=True)
 
     # Get similarity and analogy datasets (use gensim defaults if not provided)
@@ -432,8 +443,19 @@ def evaluate_models(
             )
         # Use construct_model_path from config module
         from .config import construct_model_path
+        import os
         corpus_path = corpus_path.rstrip('/')
         model_dir = construct_model_path(corpus_path)
+
+        # Add genre-specific subdirectory for Davies corpora
+        corpus_name = os.path.basename(corpus_path)
+        if genre_focus is not None:
+            genre_suffix = "+".join(sorted(genre_focus))
+            genre_subdir = f"{corpus_name}_{genre_suffix}"
+        else:
+            # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
+            genre_subdir = corpus_name
+        model_dir = os.path.join(model_dir, genre_subdir)
 
     if eval_dir is None:
         eval_dir = model_dir
@@ -443,7 +465,8 @@ def evaluate_models(
         dir_suffix,
         eval_dir,
         similarity_dataset,
-        analogy_dataset
+        analogy_dataset,
+        save_mode
     )
     if not info:
         return

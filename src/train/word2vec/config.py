@@ -72,18 +72,23 @@ def set_info(corpus_path, dir_suffix, genre_focus=None):
         # Ngram corpus: Extract ngram size from corpus path (e.g., '5gram_files' -> 5)
         ngram_size = basename.replace('gram_files', '')
         db_path = os.path.join(corpus_path, f"{ngram_size}grams_pivoted.db")
+        model_base = construct_model_path(corpus_path)
     else:
         # Davies corpus: Build database name based on genre_focus
         corpus_name = basename
 
-        # Determine database name
+        # Determine database name and genre-specific subdirectory
         if genre_focus is not None:
             # Build database name with genre suffix (matching ingestion/filtering)
             genre_suffix = "+".join(sorted(genre_focus))
             db_name = f"{corpus_name}_{genre_suffix}_filtered"
+            # Create genre-specific subdirectory in model path
+            genre_subdir = f"{corpus_name}_{genre_suffix}"
         else:
             # Plain corpus name (no genre filtering)
             db_name = f"{corpus_name}_filtered"
+            # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
+            genre_subdir = corpus_name
 
         db_path = os.path.join(corpus_path, db_name)
 
@@ -93,8 +98,9 @@ def set_info(corpus_path, dir_suffix, genre_focus=None):
                 f"Make sure you ran filter_davies_corpus() with genre_focus={genre_focus} first."
             )
 
-    # Construct parallel model path
-    model_base = construct_model_path(corpus_path)
+        # Construct parallel model path with subdirectory (always includes subdirectory for consistency)
+        model_base = construct_model_path(corpus_path)
+        model_base = os.path.join(model_base, genre_subdir)
 
     # Model directory
     model_dir = os.path.join(model_base, f"models_{dir_suffix}")

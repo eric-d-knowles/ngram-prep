@@ -127,6 +127,17 @@ def plot_evaluation_results(
 
             corpus_path = corpus_path.rstrip('/')
             model_base = construct_model_path(corpus_path)
+
+            # Add genre-specific subdirectory for Davies corpora
+            corpus_name = os.path.basename(corpus_path)
+            if genre_focus is not None:
+                genre_suffix = "+".join(sorted(genre_focus))
+                genre_subdir = f"{corpus_name}_{genre_suffix}"
+            else:
+                # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
+                genre_subdir = corpus_name
+            model_base = os.path.join(model_base, genre_subdir)
+
             csv_file = os.path.join(model_base, f"evaluation_results_{dir_suffix}.csv")
         # Old method: ngram_size + repo_release_id + repo_corpus_id + db_path_stub (for ngrams)
         elif all(param is not None for param in [ngram_size, repo_release_id, repo_corpus_id, db_path_stub, dir_suffix]):
@@ -169,6 +180,8 @@ def plot_evaluation_results(
         label_map = {**default_label_map, **label_map}
 
     # Load CSV
+    if verbose:
+        print(f"Loading evaluation results from: {csv_file}")
     try:
         df = pd.read_csv(csv_file)
     except Exception as e:

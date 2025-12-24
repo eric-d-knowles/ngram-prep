@@ -4,41 +4,64 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 from ngramprep.common.w2v_model import W2VModel
 from multiprocessing import Pool, cpu_count
 
 
-def compute_yearly_mean_similarity(args):
-    """Helper function for multiprocessing: Computes mean cosine similarity of a word to all others."""
-    year, model_path, word, excluded_words = args
+def compute_yearly_word_relatedness(args):
+    """Helper function for multiprocessing: Computes mean cosine similarity of word(s) to all others."""
+    year, model_path, words, excluded_words = args
     try:
         model = W2VModel(model_path)
 
-        # Ensure word exists in vocabulary
-        if word not in model.vocab:
-            raise ValueError(f"Word '{word}' not found in the model for year {year}.")
+        # Handle single word or list of words
+        if isinstance(words, str):
+            words = [words]
 
-        # Filter out excluded words
-        excluded_words = set(excluded_words)  # Ensure it's a set for fast lookup
+        # Compute mean similarity for each word
+        similarities = []
+        missing_words = []
+        for word in words:
+            if word not in model.vocab:
+                missing_words.append(word)
+                continue
+            mean_sim = model.mean_cosine_similarity_to_all(word, excluded_words)
+            similarities.append(mean_sim)
 
-        # Compute mean similarity excluding the unwanted words
-        mean_similarity = model.mean_cosine_similarity_to_all(word, excluded_words)
-        return (year, mean_similarity, 0)  # Standard deviation isn't applicable here
+        if not similarities:
+            raise ValueError(f"None of the words {words} found in the model for year {year}.")
+
+        if missing_words:
+            print(f"⚠️ Year {year}: Words not found: {missing_words}")
+
+        # Return average similarity across all words
+        mean_similarity = np.mean(similarities)
+        return (year, mean_similarity, 0)
 
     except Exception as e:
-        return (year, None, str(e))  # Return None and error message
+        return (year, None, str(e))
 
 
-def track_word_semantic_drift(
+
+
+def track_word_relatedness(
     word, start_year, end_year, model_dir,
     excluded_words=None, year_step=1, plot=True, smooth=False, sigma=2,
-    confidence=0.95, error_type="CI", num_workers=None
+    num_workers=None
 ):
     """
-    Compute and track the yearly mean cosine similarity of a word to all other words.
+    Track the semantic relatedness/centrality of word(s) over time.
+
+    Computes the yearly mean cosine similarity of word(s) to all other words in the vocabulary.
+    This measures how "related" or "central" the word(s) are to the overall vocabulary - higher
+    values indicate the word(s) are more semantically connected to other words.
+
+    If multiple words are provided, computes the average relatedness across all specified words.
 
     Args:
-        word (str): The target word to track across years.
+        word (str or list): The target word(s) to track across years. Can be a single word string
+                           or a list of words (which will be averaged).
         start_year (int): The starting year of the range.
         end_year (int): The ending year of the range.
         model_dir (str): Directory containing yearly .kv model files.
@@ -47,14 +70,12 @@ def track_word_semantic_drift(
         plot (bool or int): If `True`, plots without chunking. If an integer `N`, averages every `N` years.
         smooth (bool): Whether to apply smoothing.
         sigma (float): Standard deviation for Gaussian smoothing.
-        confidence (float): Confidence level for error bands.
-        error_type (str): Either "CI" (confidence intervals) or "SE" (standard error).
         num_workers (int or None): Number of parallel workers (default: max CPU cores).
 
     Returns:
-        dict: A dictionary mapping years to (mean cosine similarity, error measure).
+        dict: A dictionary mapping years to (mean cosine similarity, 0).
     """
-    drift_scores = {}
+    similarity_scores = {}
     missing_years = []
     error_years = {}
 
@@ -75,7 +96,15 @@ def track_word_semantic_drift(
         print("❌ No valid models found in the specified range. Exiting.")
         return {}
 
-    print(f"Tracking semantic drift for word: '{word}' (Excluding: {len(excluded_words)} words)")
+    # Create label for printing and plotting
+    if isinstance(word, str):
+        word_label = f"'{word}'"
+        words_list = [word]
+    else:
+        word_label = f"{len(word)} words"
+        words_list = word
+
+    print(f"Computing mean cosine similarity for {word_label} (Excluding: {len(excluded_words)} words)")
 
     # Prepare multiprocessing arguments
     args = [(year, path, word, excluded_words) for year, path in model_paths.items()]
@@ -83,12 +112,12 @@ def track_word_semantic_drift(
     # Use multiprocessing to compute similarities in parallel
     num_workers = num_workers or min(cpu_count(), len(args))
     with Pool(num_workers) as pool:
-        results = pool.map(compute_yearly_mean_similarity, args)
+        results = pool.map(compute_yearly_word_relatedness, args)
 
     # Process results
     for year, mean_similarity, std_dev in results:
         if mean_similarity is not None:
-            drift_scores[year] = (mean_similarity, std_dev)
+            similarity_scores[year] = (mean_similarity, std_dev)
         else:
             error_years[year] = std_dev  # std_dev contains error message
 
@@ -101,12 +130,12 @@ def track_word_semantic_drift(
             print(f"  {year}: {err}")
 
     # Convert to NumPy arrays for plotting
-    if not drift_scores:
-        print("❌ No valid drift scores computed. Exiting.")
+    if not similarity_scores:
+        print("❌ No valid similarity scores computed. Exiting.")
         return {}
 
-    years = np.array(sorted(drift_scores.keys()))
-    similarities = np.array([drift_scores[year][0] for year in years])
+    years = np.array(sorted(similarity_scores.keys()))
+    similarities = np.array([similarity_scores[year][0] for year in years])
 
     # Apply Smoothing
     smoothed_values = gaussian_filter1d(similarities, sigma=sigma) if smooth else None
@@ -133,17 +162,44 @@ def track_word_semantic_drift(
 
     # ✅ Plot Results
     if plot:
-        plt.figure(figsize=(10, 5))
-        plt.plot(years, similarities, marker='o', linestyle='-', label=f"Semantic Drift of '{word}'", color='blue')
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        # Create appropriate label based on single word or multiple words
+        if isinstance(words_list, list) and len(words_list) == 1:
+            plot_label = f"Relatedness of '{words_list[0]}'"
+            title = f"Semantic Relatedness of '{words_list[0]}' Over Time"
+        else:
+            plot_label = f"Avg. Relatedness of {len(words_list)} words"
+            title = f"Average Semantic Relatedness Over Time ({len(words_list)} words)"
+
+        ax.scatter(years, similarities, color='blue', alpha=0.2, label=plot_label)
+        ax.plot(years, similarities, marker='o', linestyle='-', color='blue', alpha=0.3)
 
         if smooth and smoothed_values is not None:
-            plt.plot(years, smoothed_values, linestyle='--', color='red', label='Smoothed Trend')
+            ax.plot(years, smoothed_values, linestyle='--', color='red', linewidth=2, label=f"Smoothed (σ={sigma})")
 
-        plt.xlabel("Year")
-        plt.ylabel("Mean Cosine Similarity")
-        plt.title(f"Semantic Drift of '{word}' Over Time")
-        plt.legend()
-        plt.grid(True)
+            # Compute first derivative
+            window_length = min(11, len(smoothed_values) if len(smoothed_values) % 2 == 1 else len(smoothed_values) - 1)
+            polyorder = min(3, window_length - 1)
+            derivative = savgol_filter(smoothed_values, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(years)))
+
+            ax2 = ax.twinx()
+            ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+            ax2.set_ylabel("Rate of Change")
+            ax2.set_ylim(-0.005, 0.003)
+
+            ax.legend(loc="upper left")
+            ax2.legend(loc="upper right")
+        else:
+            ax.legend()
+
+        # Set x-axis limits for consistency with other plots
+        ax.set_xlim(start_year - year_step * 0.5, end_year + year_step * 0.5)
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Mean Cosine Similarity to All Vocabulary")
+        ax.set_title(title)
+        ax.grid(True)
+        plt.tight_layout()
         plt.show()
 
-    return drift_scores
+    return similarity_scores

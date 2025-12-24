@@ -3,15 +3,19 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 from gensim.models import KeyedVectors
 
 def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, year_step=1, plot=True, smooth=False, sigma=2):
     """
-    Compute the cosine similarity between two words across a range of yearly models.
+    Compute the cosine similarity between two words (or word groups) across a range of yearly models.
+
+    If lists are provided for word1 and/or word2, computes all pairwise similarities and returns
+    the average similarity.
 
     Args:
-        word1 (str): The first word.
-        word2 (str): The second word.
+        word1 (str or list): The first word or list of words.
+        word2 (str or list): The second word or list of words.
         start_year (int): The starting year of the range.
         end_year (int): The ending year of the range.
         model_dir (str): Directory containing yearly .kv model files.
@@ -26,6 +30,10 @@ def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, 
     if not os.path.exists(model_dir):
         print(f"Model directory '{model_dir}' does not exist. Please check the path.")
         return {}
+
+    # Convert to lists if needed
+    words1 = [word1] if isinstance(word1, str) else word1
+    words2 = [word2] if isinstance(word2, str) else word2
 
     similarities = {}
     missing_models = []
@@ -43,9 +51,29 @@ def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, 
         try:
             yearly_model = KeyedVectors.load(model_path, mmap="r")
 
-            if word1 in yearly_model.key_to_index and word2 in yearly_model.key_to_index:
-                sim = yearly_model.similarity(word1, word2)
-                similarities[year] = sim
+            # Compute all pairwise similarities
+            pairwise_sims = []
+            missing_words = []
+
+            for w1 in words1:
+                for w2 in words2:
+                    if w1 in yearly_model.key_to_index and w2 in yearly_model.key_to_index:
+                        sim = yearly_model.similarity(w1, w2)
+                        pairwise_sims.append(sim)
+                    else:
+                        if w1 not in yearly_model.key_to_index:
+                            missing_words.append(w1)
+                        if w2 not in yearly_model.key_to_index:
+                            missing_words.append(w2)
+
+            if pairwise_sims:
+                # Average all pairwise similarities
+                similarities[year] = np.mean(pairwise_sims)
+                if missing_words:
+                    print(f"⚠️ Year {year}: Some words not found: {set(missing_words)}")
+            else:
+                print(f"⚠️ Year {year}: No valid word pairs found")
+
         except Exception as e:
             print(f"Skipping {year} due to error: {e}")
             continue
@@ -92,18 +120,49 @@ def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, 
 
     # ✅ Plot the Results
     if plot:
-        plt.figure(figsize=(10, 5))
-        plt.plot(all_years, similarity_values, marker='o', linestyle='-', label=f"Similarity ({word1}, {word2})", color='blue')
+        # Create appropriate labels
+        if isinstance(words1, list) and len(words1) == 1:
+            label1 = f"'{words1[0]}'"
+        else:
+            label1 = f"{len(words1)} words"
 
-        # ✅ Overlay Smoothing Line (If Enabled)
+        if isinstance(words2, list) and len(words2) == 1:
+            label2 = f"'{words2[0]}'"
+        else:
+            label2 = f"{len(words2)} words"
+
+        plot_label = f"Similarity ({label1}, {label2})"
+        title = f"Cosine Similarity: {label1} and {label2} Over Time"
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.scatter(all_years, similarity_values, color='blue', alpha=0.2, label=plot_label)
+        ax.plot(all_years, similarity_values, marker='o', linestyle='-', color='blue', alpha=0.3)
+
         if smooth and smoothed_values is not None:
-            plt.plot(all_years, smoothed_values, linestyle='--', color='red', label=f'Smoothed (σ={sigma})')
+            ax.plot(all_years, smoothed_values, linestyle='--', color='red', linewidth=2, label=f'Smoothed (σ={sigma})')
 
-        plt.xlabel("Year")
-        plt.ylabel("Cosine Similarity")
-        plt.title(f"Cosine Similarity of '{word1}' and '{word2}' Over Time")
-        plt.legend()
-        plt.grid(True)
+            # Compute first derivative
+            window_length = min(11, len(smoothed_values) if len(smoothed_values) % 2 == 1 else len(smoothed_values) - 1)
+            polyorder = min(3, window_length - 1)
+            derivative = savgol_filter(smoothed_values, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(all_years)))
+
+            ax2 = ax.twinx()
+            ax2.plot(all_years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+            ax2.set_ylabel("Rate of Change")
+            ax2.set_ylim(-0.005, 0.003)
+
+            ax.legend(loc="upper left")
+            ax2.legend(loc="upper right")
+        else:
+            ax.legend()
+
+        # Set x-axis limits for consistency with other plots
+        ax.set_xlim(start_year - year_step * 0.5, end_year + year_step * 0.5)
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Cosine Similarity")
+        ax.set_title(title)
+        ax.grid(True)
+        plt.tight_layout()
         plt.show()
 
     return similarities

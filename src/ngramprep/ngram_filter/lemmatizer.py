@@ -159,3 +159,17 @@ class CachedSpacyLemmatizer(SpacyLemmatizer):
     def clear_cache(self):
         """Clear the lemmatization cache."""
         self._cached_lemmatize.cache_clear()
+
+    def __getstate__(self):
+        """Custom pickling to handle lru_cache."""
+        state = self.__dict__.copy()
+        # Remove the cached function (can't be pickled)
+        state.pop('_cached_lemmatize', None)
+        return state
+
+    def __setstate__(self, state):
+        """Custom unpickling to recreate lru_cache."""
+        self.__dict__.update(state)
+        # Recreate the cached function
+        cache_size = 100000  # Default cache size
+        self._cached_lemmatize = lru_cache(maxsize=cache_size)(self._lemmatize_internal)

@@ -7,6 +7,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from itertools import product
+from typing import Optional, List
 
 from gensim.models import KeyedVectors
 from tqdm import tqdm
@@ -152,7 +153,7 @@ def train_models(
         temp_dir=None,
         debug_sample=0,
         debug_interval=0,
-        genre_focus=None
+        genre_focus: Optional[List[str]] = None
 ):
     """
     Train Word2Vec models for multiple years from RocksDB.
@@ -252,6 +253,13 @@ def train_models(
             robust_rmtree(model_dir)
         if os.path.exists(log_dir):
             robust_rmtree(log_dir)
+
+        # Remove evaluation results file if it exists
+        model_base = os.path.dirname(model_dir)
+        eval_file = os.path.join(model_base, f"evaluation_results_{dir_suffix}.csv")
+        if os.path.exists(eval_file):
+            os.remove(eval_file)
+
         # Recreate directories
         os.makedirs(model_dir, exist_ok=True)
         os.makedirs(log_dir, exist_ok=True)

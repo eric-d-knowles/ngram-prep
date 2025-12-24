@@ -35,6 +35,7 @@ def process_single_file(
     worker_id: int = 0,
     combined_bigrams: Optional[set] = None,
     genre_focus: Optional[List[str]] = None,
+    bin_size: int = 1,
 ) -> Tuple[str, int, int, Dict, Dict[str, int]]:
     """
     Process a single text file: read, tokenize, accumulate sentence counts.
@@ -50,6 +51,8 @@ def process_single_file(
                          (e.g., {"working class", "middle class"})
         genre_focus: Optional list of genres to include (e.g., ["fic", "mag"]).
                     If None, include all genres.
+        bin_size: Year bin size for aggregation (default: 1 for yearly granularity).
+                 For example, bin_size=10 groups 1810-1819 as 1810.
 
     Returns:
         Tuple of (filename, sentence_count, error_count, sentence_data, genre_stats)
@@ -79,12 +82,15 @@ def process_single_file(
                 continue
 
             try:
+                # Apply year binning
+                binned_year = (doc_year // bin_size) * bin_size
+
                 # Tokenize into sentences (with optional bigram combination)
                 for tokens in tokenize_sentences(text, combined_bigrams=combined_bigrams):
                     sentence_str = ' '.join(tokens)
 
                     # Include genre in key: (genre, year, sentence_str)
-                    sentence_data[(genre_key, doc_year, sentence_str)] += 1
+                    sentence_data[(genre_key, binned_year, sentence_str)] += 1
                     genre_stats[genre_key] += 1
 
                     sentence_count += 1
@@ -155,6 +161,7 @@ def ingest_davies_corpus(
     compact_after: bool = False,
     combined_bigrams: Optional[set] = None,
     genre_focus: Optional[List[str]] = None,
+    bin_size: int = 1,
 ) -> None:
     """
     Main pipeline: read Davies corpus text files and ingest into RocksDB.
@@ -191,6 +198,8 @@ def ingest_davies_corpus(
         genre_focus: Optional list of genres to ingest (e.g., ["fic", "mag"]). If None, ingest all
                     genres with genre-prefixed keys. If specified, only ingest those genres and use
                     year-only keys for direct training compatibility.
+        bin_size: Year bin size for aggregation (default: 1 for yearly granularity).
+                 For example, bin_size=10 groups years into decades (1810-1819 → 1810).
     """
     # Set main process title if available
     if _setproctitle is not None:
@@ -272,6 +281,7 @@ def ingest_davies_corpus(
     else:
         print(f"Genre focus:          All genres")
         print(f"Key format:           Genre-prefixed (archival)")
+    print(f"Year bin size:        {bin_size}")
     print(f"Workers:              {workers}")
     print(f"Batch size:           {write_batch_size:,}")
     print()
@@ -281,17 +291,10 @@ def ingest_davies_corpus(
     # Open database and create writer
     logger.info("Opening database...")
     with open_db(db_path, profile="write:packed24", create_if_missing=True) as db:
-        # Choose writer based on genre_focus parameter
-        if genre_focus is None:
-            # Archival mode: use genre-prefixed keys
-            from .writer import SentenceBatchWriterWithGenre
-            writer = SentenceBatchWriterWithGenre(db, batch_size=write_batch_size)
-            use_genre_keys = True
-        else:
-            # Training mode: use year-only keys (genre already filtered)
-            from .writer import SentenceBatchWriter
-            writer = SentenceBatchWriter(db, batch_size=write_batch_size)
-            use_genre_keys = False
+        # Always use year-only keys for consistency and training compatibility
+        from .writer import SentenceBatchWriter
+        writer = SentenceBatchWriter(db, batch_size=write_batch_size)
+        use_genre_keys = False
 
         total_sentences = 0
         total_errors = 0
@@ -309,7 +312,7 @@ def ingest_davies_corpus(
             with ProcessPoolExecutor(max_workers=workers) as executor:
                 # Submit all files for processing with worker IDs
                 future_to_file = {
-                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus): (text_file, year)
+                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus, bin_size): (text_file, year)
                     for worker_id, (text_file, year) in enumerate(file_year_pairs)
                 }
 
