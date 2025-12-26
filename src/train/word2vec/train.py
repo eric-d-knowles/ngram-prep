@@ -404,7 +404,9 @@ def train_models(
     corpus_file_map = {}  # Maps (year, weight_by) -> corpus_file_path
     if use_corpus_file and tasks_by_year_weight:
         print("Creating corpus files in parallel...", flush=True)
-        with ProcessPoolExecutor(max_workers=len(tasks_by_year_weight)) as executor:
+        # Limit parallel corpus file creation to avoid overwhelming system
+        max_corpus_workers = min(len(tasks_by_year_weight), 48)
+        with ProcessPoolExecutor(max_workers=max_corpus_workers) as executor:
             corpus_futures = {
                 executor.submit(
                     create_corpus_file,

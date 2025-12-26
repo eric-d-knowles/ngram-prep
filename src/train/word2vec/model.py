@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 
-def calculate_weight(freq, base=10):
+def calculate_weight(freq, base=5):
     """
     Calculate the weight of an n-gram using logarithmic scaling.
 
@@ -66,7 +66,7 @@ class SentencesIterable:
     Streams data from the database each epoch, or caches in memory for faster repeated access.
     """
 
-    def __init__(self, db_path, year, weight_by="freq", log_base=10, unk_mode='reject',
+    def __init__(self, db_path, year, weight_by="freq", log_base=5, unk_mode='reject',
                  debug_sample=0, debug_interval=0, cache_in_memory=False):
         """
         Initialize the iterable.
@@ -172,7 +172,7 @@ class SentencesIterable:
 
 
 def create_corpus_file(db_path, year, weight_by, unk_mode='reject',
-                       temp_dir=None, log_base=10):
+                       temp_dir=None, log_base=5):
     """
     Create a corpus file from RocksDB for a specific year.
 
@@ -290,7 +290,7 @@ def train_word2vec(
         db_path=db_path,
         year=year,
         weight_by=weight_by,
-        log_base=10,
+        log_base=5,
         unk_mode=unk_mode,
         cache_in_memory=cache_corpus if not use_corpus_file else False,
         debug_sample=debug_sample,

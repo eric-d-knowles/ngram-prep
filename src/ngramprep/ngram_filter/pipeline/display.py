@@ -99,6 +99,16 @@ def print_pipeline_header(
         "",
     ]
 
+    # Add filter options
+    filter_lines = _format_filter_options(filter_config)
+    if filter_lines:
+        lines.extend([
+            "Filter Options",
+            "─" * LINE_WIDTH,
+        ])
+        lines.extend(filter_lines)
+        lines.append("")
+
     # Add whitelist information
     whitelist_lines = _format_whitelist_info(filter_config, pipeline_config)
     if whitelist_lines:
@@ -110,6 +120,62 @@ def print_pipeline_header(
         lines.append("")
 
     print("\n".join(lines), flush=True)
+
+
+def _format_filter_options(filter_config: FilterConfig) -> list[str]:
+    """Format filter options information.
+
+    Args:
+        filter_config: Filter configuration
+
+    Returns:
+        List of formatted lines for filter options
+    """
+    lines = []
+
+    # Normalization options
+    lowercase = getattr(filter_config, "lowercase", True)
+    lines.append(f"Lowercase:            {lowercase}")
+
+    alpha_only = getattr(filter_config, "alpha_only", True)
+    lines.append(f"Alpha only:           {alpha_only}")
+
+    # Length filtering
+    filter_short = getattr(filter_config, "filter_short", False)
+    if filter_short:
+        min_len = getattr(filter_config, "min_len", 3)
+        lines.append(f"Min token length:     {min_len}")
+    else:
+        lines.append(f"Min token length:     disabled")
+
+    # Stopword filtering
+    filter_stops = getattr(filter_config, "filter_stops", True)
+    stop_set = getattr(filter_config, "stop_set", None)
+    if filter_stops and stop_set:
+        lines.append(f"Stopword filtering:   enabled ({len(stop_set)} stopwords)")
+    elif filter_stops:
+        lines.append(f"Stopword filtering:   enabled (no stopwords loaded)")
+    else:
+        lines.append(f"Stopword filtering:   disabled")
+
+    # Lemmatization
+    apply_lemmatization = getattr(filter_config, "apply_lemmatization", True)
+    lemma_gen = getattr(filter_config, "lemma_gen", None)
+    if apply_lemmatization and lemma_gen:
+        lines.append(f"Lemmatization:        enabled")
+    elif apply_lemmatization:
+        lines.append(f"Lemmatization:        enabled (no lemmatizer loaded)")
+    else:
+        lines.append(f"Lemmatization:        disabled")
+
+    # Always-include tokens
+    always_include = getattr(filter_config, "always_include", None)
+    if always_include:
+        lines.append(f"Always include:       {len(always_include)} token(s)")
+    else:
+        lines.append(f"Always include:       none")
+
+    return lines
 
 
 def _format_whitelist_info(filter_config: FilterConfig, pipeline_config: PipelineConfig) -> list[str]:
