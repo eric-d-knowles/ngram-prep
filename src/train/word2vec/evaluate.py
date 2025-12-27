@@ -64,7 +64,9 @@ def _set_info(model_dir, dir_suffix, eval_dir, similarity_dataset, analogy_datas
     # If overwrite mode, wipe the log directory and evaluation CSV
     if save_mode == 'overwrite':
         if os.path.exists(log_dir):
-            shutil.rmtree(log_dir)
+            # Use ignore_errors=True to handle NFS "silly rename" files (.nfsXXXX)
+            # that can't be deleted while still held open by stale processes
+            shutil.rmtree(log_dir, ignore_errors=True)
         if os.path.exists(eval_file):
             os.remove(eval_file)
 
@@ -373,6 +375,41 @@ def _evaluate_models_in_directory(
         print("\n⚠️ Warning: No valid results were returned after evaluation.\n")
 
 
+def _setup_logging(log_dir):
+    """
+    Set up logging for the evaluation pipeline if not already configured.
+
+    Args:
+        log_dir: Directory to store log files
+    """
+    # Check if logging is already configured
+    root_logger = logging.getLogger()
+    if root_logger.hasHandlers():
+        # Logging already configured, don't override
+        return
+
+    # Set up logging to log directory
+    from ngramprep.ngram_acquire.logger import setup_logger
+
+    log_file = setup_logger(
+        db_path=str(log_dir),
+        filename_prefix="word2vec_evaluation",
+        console=False,
+        rotate=True,
+        max_bytes=100_000_000,
+        backup_count=5,
+        force=False  # Don't override if already configured
+    )
+
+    # Log initial context
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 80)
+    logger.info("Word2Vec Evaluation Pipeline")
+    logger.info(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Log file: {log_file}")
+    logger.info("=" * 80)
+
+
 def evaluate_models(
     model_dir=None,
     dir_suffix=None,
@@ -480,6 +517,9 @@ def evaluate_models(
         analogy_dataset
     ) = info
 
+    # Set up logging AFTER _set_info has handled overwrite cleanup
+    _setup_logging(log_dir)
+
     _print_info(
         start_time,
         model_dir,
@@ -501,41 +541,6 @@ def evaluate_models(
         run_similarity=run_similarity,
         run_analogy=run_analogy
     )
-
-
-def _setup_logging(log_dir):
-    """
-    Set up logging for the evaluation pipeline if not already configured.
-
-    Args:
-        log_dir: Directory to store log files
-    """
-    # Check if logging is already configured
-    root_logger = logging.getLogger()
-    if root_logger.hasHandlers():
-        # Logging already configured, don't override
-        return
-
-    # Set up logging to log directory
-    from ngramprep.ngram_acquire.logger import setup_logger
-
-    log_file = setup_logger(
-        db_path=str(log_dir),
-        filename_prefix="word2vec_evaluation",
-        console=False,
-        rotate=True,
-        max_bytes=100_000_000,
-        backup_count=5,
-        force=False  # Don't override if already configured
-    )
-
-    # Log initial context
-    logger = logging.getLogger(__name__)
-    logger.info("=" * 80)
-    logger.info("Word2Vec Evaluation Pipeline")
-    logger.info(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info(f"Log file: {log_file}")
-    logger.info("=" * 80)
 
 
 def evaluate_word2vec_models(
@@ -605,12 +610,7 @@ def evaluate_word2vec_models(
     from .config import construct_model_path
     model_base = construct_model_path(str(base_path))
 
-    # Set up logging internally
-    log_dir = os.path.join(model_base, f"logs_{dir_suffix}", "evaluation")
-    os.makedirs(log_dir, exist_ok=True)
-    _setup_logging(log_dir)
-
-    # Call the main evaluation function
+    # Call the main evaluation function (it handles log directory setup internally)
     evaluate_models(
         model_dir=model_base,
         dir_suffix=dir_suffix,

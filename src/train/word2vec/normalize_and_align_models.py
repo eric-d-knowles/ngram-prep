@@ -50,25 +50,37 @@ def process_model(args):
     model.save(output_path)
 
 
-def normalize_and_align_vectors(proj_dir=None, dir_suffix=None, anchor_year=None,
-                                ngram_size=None, workers=None, corpus_path=None,
-                                genre_focus=None, weighted_alignment=False,
-                                stability_method='local_stability',
-                                include_frequency=True, frequency_weight=0.3):
+def normalize_and_align_vectors(
+        proj_dir=None,
+        dir_suffix=None,
+        anchor_year=None,
+        ngram_size=None,
+        workers=None,
+        corpus_path=None,
+        genre_focus=None,
+        weighted_alignment=False,
+        stability_method='local_stability',
+        include_frequency=True,
+        frequency_weight=0.3,
+        # New ngram-specific parameters
+        repo_release_id=None,
+        repo_corpus_id=None,
+        db_path_stub=None
+):
     """
     Normalize and align Word2Vec models in the given project directory.
 
-    Can be called in three ways:
+    Can be called in four ways:
     1. Explicit path mode: Provide proj_dir directly
     2. Auto-detect mode (Davies): Provide corpus_path, dir_suffix (and optionally genre_focus)
-    3. Auto-detect mode (ngrams): Provide corpus_path with ngram_size
+    3. Auto-detect mode (ngrams with corpus_path): Provide corpus_path with ngram_size
+    4. Auto-detect mode (ngrams with stubs): Provide ngram_size, repo_release_id, repo_corpus_id, db_path_stub
 
     Args:
-        proj_dir: Project directory path (will be auto-derived if corpus_path provided)
+        proj_dir: Project directory path (will be auto-derived if corpus_path or db_path_stub provided)
         dir_suffix: Directory suffix (e.g., 'final', 'test')
         anchor_year: Year to use as anchor for alignment
-        ngram_size: Optional. If provided, uses ngram structure (e.g., '5gram_files/models_{suffix}').
-                    If None, uses flat structure (e.g., 'models_{suffix}')
+        ngram_size: N-gram size (e.g., 5 for 5grams). Required for ngram mode.
         workers: Number of parallel workers (defaults to CPU count)
         corpus_path: Path to corpus directory (e.g., '/scratch/edk202/NLP_corpora/COHA') - used for auto-detection
         genre_focus: List of genres for Davies corpora (e.g., ['fic']) - used for Davies auto-detection
@@ -81,18 +93,38 @@ def normalize_and_align_vectors(proj_dir=None, dir_suffix=None, anchor_year=None
         frequency_weight: Weight for frequency component (0.0-1.0). Default 0.3 gives 70% weight to stability,
                          30% to frequency. Only used if weighted_alignment=True and include_frequency=True
 
+        # Ngram-specific parameters (alternative to corpus_path for Google Books, etc.)
+        repo_release_id: Release date in YYYYMMDD format (e.g., "20200217")
+        repo_corpus_id: Corpus identifier (e.g., "eng", "eng-fiction")
+        db_path_stub: Base directory for data (e.g., "/scratch/edk202/NLP_corpora/Google_Books/")
+
     Example:
-        >>> # Basic usage: unweighted alignment (default)
+        >>> # Google Books ngram mode (using stub parameters):
         >>> normalize_and_align_vectors(
-        ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
+        ...     ngram_size=5,
+        ...     repo_release_id='20200217',
+        ...     repo_corpus_id='eng',
+        ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
         ...     dir_suffix='final',
         ...     anchor_year=2000,
         ...     workers=50
         ... )
         >>>
-        >>> # Stability-weighted alignment with frequency (recommended)
+        >>> # Davies corpus mode (COHA, COCA, etc.):
         >>> normalize_and_align_vectors(
         ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
+        ...     dir_suffix='final',
+        ...     anchor_year=2000,
+        ...     genre_focus=['fic'],
+        ...     workers=50
+        ... )
+        >>>
+        >>> # Stability-weighted alignment with frequency (recommended)
+        >>> normalize_and_align_vectors(
+        ...     ngram_size=5,
+        ...     repo_release_id='20200217',
+        ...     repo_corpus_id='eng',
+        ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
         ...     dir_suffix='final',
         ...     anchor_year=2000,
         ...     weighted_alignment=True,
@@ -102,15 +134,11 @@ def normalize_and_align_vectors(proj_dir=None, dir_suffix=None, anchor_year=None
         ...     workers=50
         ... )
         >>>
-        >>> # Using combined stability metric with custom frequency weight
+        >>> # Explicit path mode (backwards compatible):
         >>> normalize_and_align_vectors(
-        ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
+        ...     proj_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng/5gram_files',
         ...     dir_suffix='final',
         ...     anchor_year=2000,
-        ...     weighted_alignment=True,
-        ...     stability_method='combined',
-        ...     include_frequency=True,
-        ...     frequency_weight=0.4,
         ...     workers=50
         ... )
     """
@@ -118,26 +146,54 @@ def normalize_and_align_vectors(proj_dir=None, dir_suffix=None, anchor_year=None
     if workers is None:
         workers = os.cpu_count()
 
-    # Auto-derive proj_dir if corpus_path provided
+    # Auto-derive proj_dir based on provided parameters
     if proj_dir is None:
-        if corpus_path is None:
-            raise ValueError(
-                "Either proj_dir or corpus_path must be provided. "
-                "For Davies corpora, use: corpus_path='/path/to/COHA', dir_suffix='final'"
-            )
-        from .config import construct_model_path
-        corpus_path = corpus_path.rstrip('/')
-        proj_dir = construct_model_path(corpus_path)
+        # Check if using ngram stub parameters
+        if db_path_stub is not None:
+            if ngram_size is None or repo_release_id is None or repo_corpus_id is None:
+                raise ValueError(
+                    "When using db_path_stub, all ngram parameters are required: "
+                    "ngram_size, repo_release_id, repo_corpus_id, db_path_stub"
+                )
+            # Construct path from stub parameters
+            from ngramprep.ngram_acquire.db.build_path import build_db_path
 
-        # Add genre-specific subdirectory for Davies corpora
-        corpus_name = os.path.basename(corpus_path)
-        if genre_focus is not None:
-            genre_suffix = "+".join(sorted(genre_focus))
-            genre_subdir = f"{corpus_name}_{genre_suffix}"
+            # Normalize the stub path (handle trailing slashes)
+            db_path_stub = db_path_stub.rstrip('/')
+
+            # build_db_path returns full path to db file, .parent gets the Ngram_files directory
+            db_full_path = build_db_path(db_path_stub, ngram_size, repo_release_id, repo_corpus_id)
+            base_path = str(Path(db_full_path).parent)
+
+            # For ngrams, just swap NLP_corpora for NLP_models directly
+            # (construct_model_path adds corpus subdirectories which causes duplication)
+            proj_dir = base_path.replace('NLP_corpora', 'NLP_models')
+
+            # ngram_size is handled via the path construction, set to None to avoid double-nesting
+            ngram_size = None
+
+        elif corpus_path is not None:
+            # Davies corpus mode
+            from .config import construct_model_path
+            corpus_path = corpus_path.rstrip('/')
+            proj_dir = construct_model_path(corpus_path)
+
+            # Add genre-specific subdirectory for Davies corpora
+            corpus_name = os.path.basename(corpus_path)
+            if genre_focus is not None:
+                genre_suffix = "+".join(sorted(genre_focus))
+                genre_subdir = f"{corpus_name}_{genre_suffix}"
+            else:
+                # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
+                genre_subdir = corpus_name
+            proj_dir = os.path.join(proj_dir, genre_subdir)
         else:
-            # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
-            genre_subdir = corpus_name
-        proj_dir = os.path.join(proj_dir, genre_subdir)
+            raise ValueError(
+                "Either proj_dir, corpus_path, or db_path_stub must be provided.\n"
+                "For Google Books: db_path_stub='/path/to/Google_Books/', ngram_size=5, "
+                "repo_release_id='20200217', repo_corpus_id='eng'\n"
+                "For Davies corpora: corpus_path='/path/to/COHA', genre_focus=['fic']"
+            )
 
     # Validate required parameters
     if dir_suffix is None:
@@ -216,16 +272,17 @@ def normalize_and_align_vectors(proj_dir=None, dir_suffix=None, anchor_year=None
     anchor_model.save(output_anchor_path)
 
     # Prepare non-anchor models for multiprocessing
-    tasks = [(y, p, (anchor_year, anchor_model), dir_suffix, stability_weights) for y, p in model_paths if y != anchor_year]
+    tasks = [(y, p, (anchor_year, anchor_model), dir_suffix, stability_weights) for y, p in model_paths if
+             y != anchor_year]
 
     print("Processing Models")
     print("═" * 100)
     with Pool(processes=workers) as pool:
         for _ in tqdm(
-            pool.imap_unordered(process_model, tasks),
-            total=len(tasks),
-            desc="Aligning models",
-            unit=" models"
+                pool.imap_unordered(process_model, tasks),
+                total=len(tasks),
+                desc="Aligning models",
+                unit=" models"
         ):
             pass
 
