@@ -4,7 +4,7 @@
 
 A comprehensive platform for semantic change research combining data preparation, text processing, and word embedding analysis. Supports both Google Ngrams (1-5 grams) and Mark Davies' corpora (COHA, COCA, etc.). Ideal for large datasets consisting of millions or billions of text examples. Provides efficient pipelines for acquiring, filtering, transforming, and organizing raw data—and for training and evaluating `word2vec` models to track semantic change over time.
 
-While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
+While `chrono-text` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
 
 ## Capabilities
 
