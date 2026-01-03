@@ -33,8 +33,7 @@ dependencies:
   - notebook>=6.4
   
   # System libraries (for pyenchant)
-  - enchant-2
-  - hunspell-en
+  - enchant
   
   # pip-only packages
   - pip
