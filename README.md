@@ -1,19 +1,21 @@
-# ngram-kit
+# chrono-text
 
-**Scalable tools to prepare Google Books Ngrams data for semantic analysis**
+**Scalable tools for temporal linguistic analysis using Google Books Ngrams and Davies Corpora**
 
-Data preparation and model training tools for the study diachronic semantic change using Google Ngrams corpora. Ideal for large datasets consisting of millions or billions of n-grams. Provides efficient pipelines for filtering, transforming, and organizing the raw data—and for using the processed data to train and evaluate `word2vec` models.
+A comprehensive platform for semantic change research combining data preparation, text processing, and word embedding analysis. Supports both Google Ngrams (1-5 grams) and Mark Davies' corpora (COHA, COCA, etc.). Ideal for large datasets consisting of millions or billions of text examples. Provides efficient pipelines for acquiring, filtering, transforming, and organizing raw data—and for training and evaluating `word2vec` models to track semantic change over time.
 
-While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud computing infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
+While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
 
 ## Capabilities
 
 ### Data Preparation
-- **Data acquisition:** Download n-gram datasets (1- through 5-grams). Immediately ingest into a queryable RockDB database. 
-- **Language support**. Work with any language supported by Google Books Ngrams: English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish. 
+- **Data acquisition:** Download n-gram datasets (1- through 5-grams) or access Davies corpora. (Davies datasets must be licensed and downloaded by the user). Immediately ingest data into a queryable RockDB database.
+- **Language support**. N-gram pipelines support English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish.
 - **Configurable processing:** Apply any or all of the following transformations: case normalization, stopword removal, short word removal, non-alphabetic token removal, and lemmatization. Discarded tokens are replaced in the corpus with `<UNK>`.
-- **Whitelist creation:** Output the top-N most frequent unigrams, applying optional spell-checking, and then use this whitelist to efficiently filter multigrams. Processing multigrams using a spell-checked whitelist reduces processing time by bypassing other filters, discards misspelled words, and discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded).
-- **Temporal analysis support:** Reorganize data to a format suitable for time-series analyses:
+- **Whitelist creation:** Output the top-N most frequent unigrams, applying optional spell-checking, then use this whitelist to efficiently filter text examples. Spell-checking discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded). A year range can be defined to ensure that the whitelist contains only tokens found in all specified years. 
+- **Bigram hyphenation:** Automatically convert semantically interesting bigrams into hyphenated unigrams (e.g., "working class" → "working-class", "nuclear family" → "nuclear-family"), preserving multiword concepts as single tokens for downstream analysis.
+- **Token immunity:** Define tokens that should always be preserved during filtering, immune to exclusion rules. Useful for domain-specific terms, names or proper nouns, historical keywords, or particular multiword expressions that you want to ensure remain in your corpus regardless of other filtering criteria.
+- **Temporal analysis support:** Reorganize n-gram data into a format suitable for time-series analyses:
   - BEFORE: `n-gram → (year1, count1, volumes1) (year2, count2, volumes2) ... (yearn, countn, volumesn)`
   - AFTER:
     - `[year1] n-gram → (count1, volumes1)`
@@ -34,11 +36,23 @@ While `ngram-kit` can be tuned to run on systems with fewer CPUs and less RAM, t
 
 ## Workflow
 
-Three modules are provided for downloading and processing n-grams:
+The toolkit provides two parallel pipelines for different data sources:
 
-1. `ngram_acuire`: Fetch raw n-gram files from the Google Books repository and store in a RocksDB database for fast querying.
-2. `ngram_filter`: Apply linguistic transformations (e.g., case normalization, lemmatization, and stopword removal) to focus on relevant data
-3. `ngram_pivot`: Reorganize data from "wide" (per-ngram) to "long" (per-year) format for time-series analysis.
+### Google Ngrams Pipeline
+
+1. **`ngram_acquire`**: Fetch raw n-gram files (1-5 grams) from the Google Books repository and store in a RocksDB database for fast querying.
+2. **`ngram_filter`**: Apply linguistic transformations (case normalization, lemmatization, stopword removal, spell-checking, bigram hyphenation) to prepare data. Optionally generate vocabulary whitelists.
+3. **`ngram_pivot`**: Reorganize data from "wide" (per-ngram) to "long" (per-year) format for time-series analysis.
+4. **`ngram_analyze`**: Track semantic drift and similarity changes across time using trained word embeddings.
+
+### Davies Corpora Pipeline
+
+1. **`davies_acquire`**: Ingest Davies corpus files (COHA, COCA, etc.) with genre and year information into RocksDB.
+2. **`davies_filter`**: Apply the same filtering and preprocessing transformations as ngram_filter for consistency.
+
+### Model Training
+
+**`train/word2vec`**: Train per-year word2vec models, evaluate across intrinsic benchmarks, align models across years, and analyze hyperparameter impact via regression.
 
 ## System Requirements
 
@@ -50,63 +64,74 @@ Three modules are provided for downloading and processing n-grams:
 
 ## Installation
 
-### Option 1: Apptainer Container (Recommended for HPC)
+### Prerequisites
 
-Build the pre-configured container with all dependencies:
+- Git
+- Conda or Miniconda
+
+### Conda Setup (Recommended)
+
+**Step 1: Clone the repository**
 
 ```bash
-./build/build_container.sh
+git clone https://github.com/eric-d-knowles/chrono-text.git
+cd chrono-text
 ```
 
-This builds the container on a compute node to avoid memory issues. The container provides the environment but the package is installed from the source directory:
+**Step 2: Create and activate the conda environment**
 
 ```bash
-# Install the package (run once, from the project root)
-apptainer exec --nv ngram-kit.sif pip install -e .
+# Create the conda environment from the provided environment.yml
+conda env create -f environment.yml
 
-# Run Python scripts with the container environment
-apptainer exec --nv ngram-kit.sif python your_script.py
-
-# Interactive Python session
-apptainer exec --nv ngram-kit.sif python
-
-# Run Jupyter notebooks
-apptainer exec --nv ngram-kit.sif jupyter notebook
+# Activate the environment
+conda activate chrono-text
 ```
 
-The container includes:
-- CUDA 12.6.2 + cuDNN
-- Python 3.11 with all required packages
-- spaCy with 7 language models (en, zh, fr, de, it, ru, es)
-- rocks-shim for high-speed database access
-- All system dependencies pre-installed
+**Step 2b: Install hunspell dictionaries for spell-checking**
+
+The environment includes `enchant` for spell-checking support, but you also need hunspell dictionaries:
+
+```bash
+# Minimal installation (English only)
+conda install -c conda-forge enchant hunspell-en
+
+# Or install all languages supported by the ngram pipeline (recommended)
+conda install -c conda-forge enchant hunspell-en hunspell-fr hunspell-de hunspell-he hunspell-it hunspell-ru hunspell-es hunspell-zh
+```
+
+**Step 3: Install the package**
+
+```bash
+# Install in editable mode from the project root
+pip install -e .
+```
 
 The `-e` flag installs the package in editable mode, so changes to the source code are immediately available.
 
-### Option 2: Direct Installation
+**Automatic initialization:** On first import, the package will automatically download any missing spaCy language models and configure enchant library paths.
+
+### Alternative: Apptainer Container (For HPC)
+
+If you prefer a containerized approach for HPC clusters with GPU support:
 
 ```bash
-pip install git+https://github.com/eric-d-knowles/ngram-prep.git
+# Clone the repository first
+git clone https://github.com/eric-d-knowles/chrono-text.git
+cd chrono-text
+
+# Build the container on a compute node
+./build/build_container.sh
+
+# Install the package (run once, from the project root)
+apptainer exec --nv chrono-text.sif pip install -e .
+
+# Run notebooks or scripts with the container
+apptainer exec --nv chrono-text.sif jupyter notebook
+apptainer exec --nv chrono-text.sif python your_script.py
 ```
 
-**Python Dependencies (installed automatically):**
-- Python 3.11+
-- `rocks-shim` for database access
-- `Cython` for compilation
-- `numpy` for Cython extensions
-- `spacy` for lemmatization
-- `spacy-lookups-data` for lemma lookup tables
-- `stop-words` for stopword filtering
-- `pyenchant` for spell checking
-- `setproctitle` for process naming
-- `tqdm` for progress display
-
-**System Dependencies:**
-- `libenchant` C library for spell checking (likely already installed on HPC clusters)
-  - Ubuntu/Debian: `apt-get install libenchant-2-dev`
-  - RHEL/CentOS: `yum install enchant-devel`
-  - macOS: `brew install enchant`
-- Compatible HPC systems: Works with Slurm job schedulers
+The container includes CUDA 12.6.2, cuDNN, and all system dependencies pre-installed.
 
 ## Quick Start
 
