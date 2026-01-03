@@ -9,7 +9,7 @@ While `chrono-text` can be tuned to run on systems with fewer CPUs and less RAM,
 ## Capabilities
 
 ### Data Preparation
-- **Data acquisition:** Download n-gram datasets (1- through 5-grams) or access Davies corpora. (Davies datasets must be licensed and downloaded by the user). Immediately ingest data into a queryable RockDB database.
+- **Data acquisition:** Download n-gram datasets (1- through 5-grams) or access Davies corpora. (Davies datasets must be licensed and downloaded by the user.) Immediately ingest data into a queryable RockDB database.
 - **Language support**. N-gram pipelines support English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish.
 - **Configurable processing:** Apply any or all of the following transformations: case normalization, stopword removal, short word removal, non-alphabetic token removal, and lemmatization. Discarded tokens are replaced in the corpus with `<UNK>`.
 - **Whitelist creation:** Output the top-N most frequent unigrams, applying optional spell-checking, then use this whitelist to efficiently filter text examples. Spell-checking discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded). A year range can be defined to ensure that the whitelist contains only tokens found in all specified years. 
@@ -135,15 +135,28 @@ The container includes CUDA 12.6.2, cuDNN, and all system dependencies pre-insta
 
 ## Quick Start
 
-See the `notebooks/` directory for complete examples:
+See the `notebooks/` directory for complete workflow examples:
 
-- **`download_unigrams.ipynb`** - Download and ingest 1-grams, apply filtering, generate vocabulary whitelist
-- **`download_multigrams.ipynb`** - Download and filter 2-grams through 5-grams using whitelist
-- **`pivot_unigrams.ipynb`** - Reorganize 1-grams for time-series analysis
-- **`pivot_multigrams.ipynb`** - Reorganize multi-grams for temporal analysis
-- **`train_word2vec.ipynb`** - Train word embeddings on processed n-grams
+### Google Ngrams Workflows
 
-### Basic Usage
+- **`eng_unigrams_workflow.ipynb`** - Download and ingest 1-grams, apply filtering and preprocessing, generate vocabulary whitelist (English)
+- **`eng_multigrams_workflow.ipynb`** - Download and filter 2-5 grams using whitelist (English)
+- **`rus_unigrams_workflow.ipynb`** - Same as English unigrams but for Russian
+- **`rus_multigrams_workflow.ipynb`** - Same as English multigrams but for Russian
+- **`ngrams_change_analysis_workflow.ipynb`** - Analyze semantic drift and track meaning changes over time
+
+### Davies Corpora Workflows
+
+- **`davies_acquisition_workflow.ipynb`** - Ingest Davies corpus files with genre and year information
+- **`coha_training_workflow.ipynb`** - Train word2vec models on COHA corpus data
+- **`coha_change_analysis_workflow.ipynb`** - Analyze semantic change in historical English (COHA)
+
+### Model Training & Evaluation
+
+- **`training_workflow.ipynb`** - Train word embeddings on processed n-grams
+- **`ngram_training_workflow.ipynb`** - End-to-end word2vec training pipeline for n-grams
+
+### Basic Usage Example
 
 ```python
 from pathlib import Path
