@@ -203,62 +203,7 @@ pivot_config = PivotConfig(
 run_pivot_pipeline(pivot_config)
 ```
 
-See notebooks for detailed configuration options, temporal analysis workflows, and querying examples.
-
-## Configuration Reference
-
-### Filter Pipeline (`ngram_filter.PipelineConfig`)
-
-**Core parameters:**
-- `src_db`, `dst_db`: Input and output database paths
-- `tmp_dir`: Working directory for temporary files
-- `num_workers`: Number of parallel processing workers (default: 8, adjust based on CPU cores)
-- `mode`: Execution mode options:
-  - `"resume"`: Continue interrupted jobs (preserves all state)
-  - `"restart"`: Start completely fresh (wipes output DB and cache)
-  - `"reprocess"`: Rebuild output DB while reusing cached partitions
-
-**Performance tuning:**
-- `num_initial_work_units`: Initial data partitions for load balancing (default: same as `num_workers`)
-- `max_split_depth`: How much to subdivide work for load balancing (default: 5)
-- `compact_after_ingest`: Optimize final database size (recommended: `True` for long-term storage)
-- `progress_every_s`: Progress update interval in seconds
-
-**Advanced options:**
-- `writer_read_profile`, `writer_write_profile`: Database I/O optimization profiles
-- `ingest_num_readers`, `ingest_queue_size`: Control memory vs. throughput during final merge
-- `output_whitelist_path`: Generate frequency list of retained n-grams
-
-### Filter Configuration (`ngram_filter.FilterConfig`)
-
-**Text transformations (all optional):**
-- `lowercase`: Normalize to lowercase (recommended for most analyses)
-- `alpha_only`: Remove punctuation and numbers (keep only letters)
-- `filter_short`: Remove very short tokens (default: < 3 characters)
-- `filter_stops`: Remove common function words (requires `stop_set`)
-- `apply_lemmatization`: Reduce words to root forms—e.g., "running"→"run" (requires `lemma_gen`)
-
-**Resources:**
-- `stop_set`: Set of stopwords to remove (e.g., `set(stopwords.words("english"))` from NLTK)
-- `lemma_gen`: Lemmatizer object (e.g., `WordNetLemmatizer()` from NLTK)
-- `whitelist_path`: Pre-filter input using existing vocabulary list (saves processing time)
-
-### Pivot Pipeline (`ngram_pivot.PipelineConfig`)
-
-**Core parameters:**
-- `src_db`, `dst_db`: Input and output database paths
-- `tmp_dir`: Working directory for temporary files
-- `num_workers`: Number of parallel workers (typically higher than filter, e.g., 30)
-- `mode`: Execution mode options:
-  - `"resume"`: Continue interrupted jobs (preserves all state)
-  - `"restart"`: Start completely fresh (wipes output DB and cache)
-  - `"reprocess"`: Rebuild output DB while reusing cached partitions
-
-**Performance tuning:**
-- `num_initial_work_units`: Initial partitions (often higher than workers, e.g., 40-80)
-- `max_split_depth`: Maximum subdivisions for load balancing (default: 5, increase for very large datasets)
-- `enable_ingest`: Merge temporary files into final database (set `False` to inspect intermediate outputs)
-- `compact_after_ingest`: Optimize database size (recommended for production use)
+For detailed configuration options, see the docstrings in `ngramprep.ngram_filter.config`, `ngramprep.ngram_pivot.config`, and `daviesprep.davies_filter.config`, or refer to the example notebooks.
 
 ## Output Files
 
@@ -272,11 +217,11 @@ After running the pipelines, you'll have:
 - `tmp_dir/worker_outputs/`: Intermediate processing shards
 - `tmp_dir/work_tracker.db`: Progress tracking database (useful for debugging interrupted jobs)
 
-## Monitoring Progress
+## Advanced: Monitoring and Architecture
 
 ### Real-time Progress Display
 
-The pipelines print periodic updates showing:
+The filter and pivot pipelines print periodic updates showing:
 
 ```
      ngrams           exp            units           splits           rate          elapsed
@@ -284,7 +229,7 @@ The pipelines print periodic updates showing:
     128.56M          42.3x          310·24·1237        1260          214.2k/s         10m00s
 ```
 
-**What each column means:**
+**Column meanings:**
 - **ngrams/items**: Total records processed so far
 - **exp/kept%**: Data expansion ratio (pivot) or percentage of n-grams retained after filtering
 - **units**: Work distribution status as `pending·processing·completed` (shows load balancing)
@@ -292,33 +237,15 @@ The pipelines print periodic updates showing:
 - **rate**: Processing throughput (n-grams per second)
 - **elapsed**: Total time since pipeline started
 
-### Checking Status Manually
+### Two-Stage Pipeline Architecture
 
-For long-running jobs on HPC clusters, check progress from the command line:
-
-```bash
-# From your tmp_dir location
-python3 -c "
-import sqlite3
-conn = sqlite3.connect('work_tracker.db')
-cur = conn.cursor()
-results = cur.execute('SELECT status, COUNT(*) FROM work_units GROUP BY status').fetchall()
-status_dict = dict(results)
-total = sum(status_dict.values())
-completed = status_dict.get('completed', 0)
-print(f'Progress: {completed}/{total} work units completed ({100*completed/total:.1f}%)')
-print(f'Pending: {status_dict.get(\"pending\", 0)}, Processing: {status_dict.get(\"processing\", 0)}')
-"
-```
-
-### Understanding the Two-Stage Architecture
-
-Both filter and pivot pipelines work in two phases:
+Both filter and pivot pipelines work in two phases for memory efficiency and fault tolerance:
 
 1. **Processing stage**: Workers divide the input data into chunks, process them in parallel, and write results to temporary files (`tmp_dir/worker_outputs/`)
-2. **Ingestion stage**: Temporary files are merged into the final database using parallel streaming (controlled by `enable_ingest`)
+2. **Ingestion stage**: Temporary files are merged into the final database using parallel streaming
 
 This design enables:
 - **Resume capability**: Interrupted jobs pick up where they left off
 - **Load balancing**: Work units automatically split when some workers finish early
 - **Memory efficiency**: Large datasets don't need to fit in RAM
+- **Predictable resource usage**: Memory consumption is bounded regardless of corpus size
