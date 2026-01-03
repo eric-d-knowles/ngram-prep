@@ -221,25 +221,25 @@ After running the pipelines, you'll have:
 
 ### Real-time Progress Display
 
-The filter and pivot pipelines print periodic updates showing:
+The ngram_filter and ngram_pivot pipelines print periodic updates showing:
 
 ```
-     ngrams           exp            units           splits           rate          elapsed
-────────────────────────────────────────────────────────────────────────────────────────────────
-    128.56M          42.3x          310·24·1237        1260          214.2k/s         10m00s
+      items         kept%         workers         units          rate          elapsed
+────────────────────────────────────────────────────────────────────────────────────
+    128.56M         85.4%          8/40          10·24·1237     214.2k/s        10m00s
 ```
 
 **Column meanings:**
-- **ngrams/items**: Total records processed so far
-- **exp/kept%**: Data expansion ratio (pivot) or percentage of n-grams retained after filtering
+- **items**: Total records processed so far
+- **kept%**: Percentage of n-grams retained after filtering (100% for pivot)
+- **workers**: Active workers / total workers (shows load distribution)
 - **units**: Work distribution status as `pending·processing·completed` (shows load balancing)
-- **splits**: Number of times work was subdivided to balance load across workers
-- **rate**: Processing throughput (n-grams per second)
+- **rate**: Processing throughput (records per second)
 - **elapsed**: Total time since pipeline started
 
 ### Two-Stage Pipeline Architecture
 
-Both filter and pivot pipelines work in two phases for memory efficiency and fault tolerance:
+The ngram_filter and ngram_pivot pipelines use a two-phase design for memory efficiency and fault tolerance:
 
 1. **Processing stage**: Workers divide the input data into chunks, process them in parallel, and write results to temporary files (`tmp_dir/worker_outputs/`)
 2. **Ingestion stage**: Temporary files are merged into the final database using parallel streaming
@@ -249,3 +249,5 @@ This design enables:
 - **Load balancing**: Work units automatically split when some workers finish early
 - **Memory efficiency**: Large datasets don't need to fit in RAM
 - **Predictable resource usage**: Memory consumption is bounded regardless of corpus size
+
+*Note: Davies acquisition pipelines use simpler direct ingestion and do not employ the two-stage architecture.*
