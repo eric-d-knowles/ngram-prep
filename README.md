@@ -6,6 +6,22 @@ A comprehensive platform for semantic change research combining data preparation
 
 While `chrono-text` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
 
+## Citation
+
+If you use chrono-text in your research, please cite it:
+
+```bibtex
+@software{knowles2026chronotext,
+  author = {Knowles, Eric D.},
+  title = {chrono-text: Scalable tools for temporal linguistic analysis},
+  year = {2026},
+  url = {https://github.com/eric-d-knowles/chrono-text},
+  version = {0.1.0}
+}
+```
+
+Alternatively, you can click "Cite this repository" in the GitHub sidebar for additional citation formats.
+
 ## Capabilities
 
 ### Data Preparation
