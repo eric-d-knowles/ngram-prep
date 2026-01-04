@@ -1,21 +1,21 @@
-# chrono-text
+# lexichron
 
 **Scalable tools for temporal linguistic analysis using Google Books Ngrams and Davies Corpora**
 
 A comprehensive platform for semantic change research combining data preparation, text processing, and word embedding analysis. Supports both Google Ngrams (1-5 grams) and Mark Davies' corpora (COHA, COCA, etc.). Ideal for large datasets consisting of millions or billions of text examples. Provides efficient pipelines for acquiring, filtering, transforming, and organizing raw data—and for training and evaluating `word2vec` models to track semantic change over time.
 
-While `chrono-text` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pilelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
+While `lexichron` can be tuned to run on systems with fewer CPUs and less RAM, the package truly shines on High Performance Computing (HPC) or cloud infrastructures. Processing pipelines that might take days or weeks on a laptop can be completed in hours on a cluster or cloud platform.
 
 ## Citation
 
-If you use chrono-text in your research, please cite it:
+If you use lexichron in your research, please cite it:
 
 ```bibtex
-@software{knowles2026chronotext,
+@software{knowles2026lexichron,
   author = {Knowles, Eric D.},
-  title = {chrono-text: Scalable tools for temporal linguistic analysis},
+  title = {lexichron: Scalable tools for temporal linguistic analysis},
   year = {2026},
-  url = {https://github.com/eric-d-knowles/chrono-text},
+  url = {https://github.com/eric-d-knowles/lexichron},
   version = {0.1.0}
 }
 ```
@@ -90,8 +90,8 @@ The toolkit provides two parallel pipelines for different data sources:
 **Step 1: Clone the repository**
 
 ```bash
-git clone https://github.com/eric-d-knowles/chrono-text.git
-cd chrono-text
+git clone https://github.com/eric-d-knowles/lexichron.git
+cd lexichron
 ```
 
 **Step 2: Create and activate the conda environment**
@@ -101,7 +101,7 @@ cd chrono-text
 conda env create -f environment.yml
 
 # Activate the environment
-conda activate chrono-text
+conda activate lexichron
 ```
 
 **Step 2b: Install hunspell dictionaries for spell-checking**
@@ -133,10 +133,10 @@ To use the notebooks in the `notebooks/` directory, register the conda environme
 
 ```bash
 # Register the kernel (while the conda environment is active)
-python -m ipykernel install --user --name=chrono-text --display-name="Python (chrono-text)"
+python -m ipykernel install --user --name=lexichron --display-name="Python (lexichron)"
 ```
 
-Now when you launch Jupyter, you'll be able to select the "Python (chrono-text)" kernel for your notebooks.
+Now when you launch Jupyter, you'll be able to select the "Python (lexichron)" kernel for your notebooks.
 
 ### Alternative: Apptainer Container (For HPC)
 
@@ -144,18 +144,18 @@ If you prefer a containerized approach for HPC clusters with GPU support:
 
 ```bash
 # Clone the repository first
-git clone https://github.com/eric-d-knowles/chrono-text.git
-cd chrono-text
+git clone https://github.com/eric-d-knowles/lexichron.git
+cd lexichron
 
 # Build the container on a compute node
 ./build/build_container.sh
 
 # Install the package (run once, from the project root)
-apptainer exec --nv chrono-text.sif pip install -e .
+apptainer exec --nv lexichron.sif pip install -e .
 
 # Run notebooks or scripts with the container
-apptainer exec --nv chrono-text.sif jupyter notebook
-apptainer exec --nv chrono-text.sif python your_script.py
+apptainer exec --nv lexichron.sif jupyter notebook
+apptainer exec --nv lexichron.sif python your_script.py
 ```
 
 The container includes CUDA 12.6.2, cuDNN, and all system dependencies pre-installed.
@@ -278,3 +278,9 @@ This design enables:
 - **Predictable resource usage**: Memory consumption is bounded regardless of corpus size
 
 *Note: Davies acquisition pipelines use simpler direct ingestion and do not employ the two-stage architecture.*
+
+## Support and Maintenance
+
+This project is provided as-is for research and development purposes. While issues and pull requests are welcome, there is no guarantee of response time or ongoing maintenance. The code is shared in the spirit of open science, but support is provided on a best-effort basis only.
+
+For critical production use, consider forking and maintaining your own version.

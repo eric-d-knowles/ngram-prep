@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Build script for chrono-text Apptainer container
+# Build script for lexichron Apptainer container
 # This script uses sbatch to run on a compute node.
 #
 
 set -e
 
 DEFINITION_FILE="environment.def"
-OUTPUT_IMAGE="chrono-text.sif"
+OUTPUT_IMAGE="lexichron.sif"
 ACCOUNT_ARG=""
 
 # Prompt for account if needed (e.g., for NYU Torch cluster)

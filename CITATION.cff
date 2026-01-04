@@ -3,11 +3,11 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: "Knowles"
     given-names: "Eric D."
-title: "chrono-text: Scalable tools for temporal linguistic analysis"
+title: "lexichron: Scalable tools for temporal linguistic analysis"
 version: 0.1.0
 date-released: 2026-01-03
-url: "https://github.com/eric-d-knowles/chrono-text"
-repository-code: "https://github.com/eric-d-knowles/chrono-text"
+url: "https://github.com/eric-d-knowles/lexichron"
+repository-code: "https://github.com/eric-d-knowles/lexichron"
 license: MIT
 keywords:
   - natural language processing

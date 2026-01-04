@@ -1,4 +1,4 @@
-name: chrono-text
+name: lexichron
 channels:
   - conda-forge
   - defaults
