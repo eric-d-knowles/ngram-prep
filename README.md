@@ -111,6 +111,17 @@ The `-e` flag installs the package in editable mode, so changes to the source co
 
 **Automatic initialization:** On first import, the package will automatically download any missing spaCy language models and configure enchant library paths.
 
+**Step 4: Register the Jupyter kernel**
+
+To use the notebooks in the `notebooks/` directory, register the conda environment as a Jupyter kernel:
+
+```bash
+# Register the kernel (while the conda environment is active)
+python -m ipykernel install --user --name=chrono-text --display-name="Python (chrono-text)"
+```
+
+Now when you launch Jupyter, you'll be able to select the "Python (chrono-text)" kernel for your notebooks.
+
 ### Alternative: Apptainer Container (For HPC)
 
 If you prefer a containerized approach for HPC clusters with GPU support:
