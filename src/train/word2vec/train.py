@@ -307,6 +307,15 @@ def train_models(
             f"Invalid mode: '{mode}'. Must be 'resume', 'restart', or 'new'."
         )
 
+    # Handle temp_dir setup: create if missing, clear if exists
+    if temp_dir:
+        temp_dir = os.path.abspath(os.path.expanduser(temp_dir))
+        if os.path.exists(temp_dir):
+            # Clear existing temp directory
+            shutil.rmtree(temp_dir, ignore_errors=False)
+        os.makedirs(temp_dir, exist_ok=True)
+        print(f"Temporary corpus directory: {temp_dir}\n")
+
     # Format grid parameters with step information
     total_years = len(range(years[0], years[1] + 1, year_step))
     if year_step == 1:
@@ -468,6 +477,13 @@ def train_models(
                             os.unlink(corpus_file_path)
                         except Exception:
                             pass  # Silently ignore cleanup errors
+
+            # Clean up temp directory after all processing is complete
+            if temp_dir and os.path.exists(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir, ignore_errors=False)
+                except Exception:
+                    pass  # Silently ignore cleanup errors
 
     # Print completion banner
     print_completion_banner(model_dir, models_trained)
