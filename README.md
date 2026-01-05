@@ -273,7 +273,7 @@ The ngram_filter and ngram_pivot pipelines use a two-phase design for memory eff
 
 This design enables:
 - **Resume capability**: Interrupted jobs pick up where they left off
-- **Load balancing**: Work units automatically split when some workers finish early
+ - **Load balancing**: Work units are pre-balanced via density-based sampling; workers steal remaining units as they finish
 - **Balanced work units**: Density-based sampling scans the corpus to estimate token frequency distributions, then partitions work so each unit has similar total token mass, reducing straggler workers and keeping throughput consistent
 - **Memory efficiency**: Large datasets don't need to fit in RAM
 - **Predictable resource usage**: Memory consumption is bounded regardless of corpus size
