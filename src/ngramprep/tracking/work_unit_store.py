@@ -65,68 +65,79 @@ class WorkUnitStore:
     def claim_work_unit(self, worker_id: str, max_retries: int = 15) -> Optional[WorkUnit]:
         """
         Atomically claim the next available work unit.
+        
+        Now uses fail-fast approach: if DB is locked, return None immediately
+        and let worker-level backoff handle retries.
 
         Args:
             worker_id: Identifier for the worker claiming the unit
-            max_retries: Maximum number of retry attempts for database locks
+            max_retries: Ignored - kept for API compatibility
 
         Returns:
-            The claimed WorkUnit or None if no work is available
+            The claimed WorkUnit or None if no work is available or DB is locked
         """
         import random
 
         # Determine ORDER BY clause based on claim_order
         order_clause = "RANDOM()" if self.claim_order == "random" else "unit_id"
 
-        for attempt in range(max_retries):
-            try:
-                with self._connect(timeout=60.0) as conn:
-                    cursor = conn.execute(
-                        f"""
-                        UPDATE work_units
-                        SET status = 'processing',
-                            claimed_by = ?,
-                            claimed_at = ?
-                        WHERE unit_id = (
-                            SELECT unit_id
-                            FROM work_units
-                            WHERE status = 'pending'
-                            ORDER BY {order_clause}
-                            LIMIT 1
-                        )
-                        RETURNING unit_id, start_key, end_key, parent_id, current_position
-                        """,
-                        (worker_id, time.time())
-                    )
-
-                    row = cursor.fetchone()
-                    if row:
-                        return WorkUnit(
-                            unit_id=row[0],
-                            start_key=row[1],
-                            end_key=row[2],
-                            parent_id=row[3],
-                            current_position=row[4],
-                        )
-                    # No work available - add small delay to reduce thundering herd
-                    # This spreads out retry attempts from multiple workers
-                    time.sleep(random.uniform(0.01, 0.05))
+        try:
+            # Use very short timeout - fail immediately if locked
+            with self._connect(timeout=0.1) as conn:
+                # Use immediate transaction to claim lock or fail instantly
+                try:
+                    conn.execute("BEGIN IMMEDIATE")
+                except sqlite3.OperationalError:
+                    # DB is locked - fail fast, let worker retry
                     return None
+                
+                # First check if there's any pending work at all
+                check_cursor = conn.execute(
+                    "SELECT COUNT(*) FROM work_units WHERE status = 'pending'"
+                )
+                pending_count = check_cursor.fetchone()[0]
+                
+                if pending_count == 0:
+                    # No pending work - exit immediately
+                    conn.rollback()
+                    return None
+                
+                cursor = conn.execute(
+                    f"""
+                    UPDATE work_units
+                    SET status = 'processing',
+                        claimed_by = ?,
+                        claimed_at = ?
+                    WHERE unit_id = (
+                        SELECT unit_id
+                        FROM work_units
+                        WHERE status = 'pending'
+                        ORDER BY {order_clause}
+                        LIMIT 1
+                    )
+                    RETURNING unit_id, start_key, end_key, parent_id, current_position
+                    """,
+                    (worker_id, time.time())
+                )
 
-            except sqlite3.OperationalError as e:
-                if "locked" in str(e) and attempt < max_retries - 1:
-                    # Exponential backoff with more jitter for high contention
-                    base_delay = 0.2 * (1.5 ** attempt)
-                    jitter = random.uniform(0, base_delay * 0.8)
-                    time.sleep(base_delay + jitter)
-                    continue
-                # Log error and return None instead of crashing
-                import sys
-                print(f"Warning: Failed to claim work unit for {worker_id} after {max_retries} attempts",
-                      file=sys.stderr)
+                row = cursor.fetchone()
+                if row:
+                    # Success - commit and return
+                    conn.commit()
+                    return WorkUnit(
+                        unit_id=row[0],
+                        start_key=row[1],
+                        end_key=row[2],
+                        parent_id=row[3],
+                        current_position=row[4],
+                    )
+                # No work claimed (race condition)
+                conn.rollback()
                 return None
 
-        return None  # All retries exhausted
+        except sqlite3.OperationalError:
+            # Any database error - fail fast
+            return None
 
     def get_work_unit(self, unit_id: str) -> Optional[WorkUnit]:
         """

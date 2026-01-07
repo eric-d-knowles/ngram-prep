@@ -24,3 +24,6 @@ vast_data
 logs/
 logs_*/
 models_*/
+
+# Temporary corpus files
+temp_corpus/

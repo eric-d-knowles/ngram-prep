@@ -11,7 +11,7 @@ from typing import Optional, Set, Dict, Any, Union
 class FilterConfig:
     lowercase: bool = True
     alpha_only: bool = True
-    filter_short: bool = False
+    filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
     min_len: int = 3
@@ -75,7 +75,7 @@ class PipelineConfig:
     ingest_write_profile: str = 'write:packed24'
     ingest_batch_items: int = 2_000_000
     ingest_disable_wal: bool = True
-    ingest_num_readers: int = 4  # Number of parallel shard reader processes
+    ingest_num_readers: int = 8  # Number of parallel shard reader processes
     ingest_queue_size: int = 8  # Max shards buffered in memory (controls memory usage)
 
     # Pipeline control

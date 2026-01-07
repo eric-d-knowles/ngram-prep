@@ -61,6 +61,13 @@ def worker_process(
         # Set process title for system monitoring
         setproctitle(f"ngf:worker[{worker_id:03d}]")
 
+        # Add startup jitter to avoid thundering herd on initial claims
+        # Spread workers out over ~2 seconds at startup
+        import random
+        import time
+        startup_delay = random.uniform(0, min(2.0, worker_id * 0.15))
+        time.sleep(startup_delay)
+
         # Initialize work tracker and processor
         work_tracker = WorkTracker(
             work_tracker_path,
@@ -85,15 +92,15 @@ def worker_process(
                 # No work available - use exponential backoff to reduce thundering herd
                 consecutive_no_work += 1
 
-                # Exponential backoff: 0.5s, 1s, 2s, 4s, 8s (max)
-                # Add jitter to avoid synchronized retries
-                base_delay = min(0.5 * (2 ** (consecutive_no_work - 1)), 8.0)
+                # Reduced backoff: 0.1s, 0.2s, 0.4s (max)
+                # Exit quickly when no work remains
+                base_delay = min(0.1 * (2 ** (consecutive_no_work - 1)), 0.4)
                 jitter = random.uniform(0, base_delay * 0.3)
                 delay = base_delay + jitter
 
-                # Exit after several failed attempts to avoid infinite waiting
-                if consecutive_no_work >= 5:
-                    # No work for 5 attempts - likely all work is done
+                # Exit after 3 failed attempts - work tracker now detects completion faster
+                if consecutive_no_work >= 3:
+                    # No work for 3 attempts - likely all work is done
                     break
 
                 time.sleep(delay)

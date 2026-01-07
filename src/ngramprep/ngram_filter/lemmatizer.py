@@ -129,10 +129,19 @@ class CachedSpacyLemmatizer(SpacyLemmatizer):
             model: Explicit spaCy model name
             cache_size: Maximum number of (word, pos) pairs to cache
         """
-        super().__init__(language=language, model=model)
-
-        # Create cached version of _lemmatize_internal
-        self._cached_lemmatize = lru_cache(maxsize=cache_size)(self._lemmatize_internal)
+        # Store config for lazy loading (avoids pickling the model)
+        self._language = language
+        self._model = model
+        self._cache_size = cache_size
+        self._initialized = False
+        
+    def _ensure_initialized(self):
+        """Lazy-initialize the spaCy model on first use in each process."""
+        if not self._initialized:
+            super().__init__(language=self._language, model=self._model)
+            # Create cached version of _lemmatize_internal
+            self._cached_lemmatize = lru_cache(maxsize=self._cache_size)(self._lemmatize_internal)
+            self._initialized = True
 
     def _lemmatize_internal(self, word: str, pos: str) -> str:
         """Internal lemmatization (gets cached)."""
@@ -150,26 +159,28 @@ class CachedSpacyLemmatizer(SpacyLemmatizer):
 
     def lemmatize(self, word: str, pos: str = "NOUN") -> str:
         """Lemmatize with caching."""
+        self._ensure_initialized()
         return self._cached_lemmatize(word, pos)
 
     def cache_info(self):
         """Return cache statistics."""
+        self._ensure_initialized()
         return self._cached_lemmatize.cache_info()
 
     def clear_cache(self):
         """Clear the lemmatization cache."""
-        self._cached_lemmatize.cache_clear()
+        if self._initialized:
+            self._cached_lemmatize.cache_clear()
 
     def __getstate__(self):
-        """Custom pickling to handle lru_cache."""
-        state = self.__dict__.copy()
-        # Remove the cached function (can't be pickled)
-        state.pop('_cached_lemmatize', None)
-        return state
+        """Custom pickling - only pickle config, not the loaded model."""
+        return {
+            '_language': self._language,
+            '_model': self._model,
+            '_cache_size': self._cache_size,
+            '_initialized': False  # Force reload in each process
+        }
 
     def __setstate__(self, state):
-        """Custom unpickling to recreate lru_cache."""
+        """Custom unpickling - just restore config, model loads on first use."""
         self.__dict__.update(state)
-        # Recreate the cached function
-        cache_size = 100000  # Default cache size
-        self._cached_lemmatize = lru_cache(maxsize=cache_size)(self._lemmatize_internal)
