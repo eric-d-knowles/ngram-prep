@@ -120,12 +120,6 @@ def worker_process_sst(
                     counters
                 )
 
-                # Commit counters for the work we completed
-                if counters and local_counters:
-                    increment_counter(counters.items_scanned, local_counters['scanned'])
-                    increment_counter(counters.items_decoded, local_counters['decoded'])
-                    increment_counter(counters.items_written, local_counters['written'])
-
                 processed_units += 1
 
             except Exception as e:
@@ -226,12 +220,6 @@ def worker_process(
                     work_tracker,
                     counters
                 )
-
-                # Commit counters for the work we completed
-                if counters and local_counters:
-                    increment_counter(counters.items_scanned, local_counters['scanned'])
-                    increment_counter(counters.items_decoded, local_counters['decoded'])
-                    increment_counter(counters.items_written, local_counters['written'])
 
                 processed_units += 1
 
