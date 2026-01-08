@@ -418,7 +418,10 @@ def plot_regression_results(
     output_file: Optional[str] = None,
     figsize: Tuple[int, int] = (12, 6),
     alpha: float = 0.05,
-    plot_random_effects: bool = True
+    plot_random_effects: bool = True,
+    predictors_order: Optional[List[str]] = None,
+    color_mode: str = 'uniform',
+    display_dpi: int = 160
 ) -> None:
     """
     Visualize regression results with coefficient plots.
@@ -433,6 +436,13 @@ def plot_regression_results(
         figsize: Figure size as (width, height)
         alpha: Significance level for confidence intervals (default: 0.05)
         plot_random_effects: Whether to plot random effects (default: True)
+        predictors_order: Optional list specifying the order of predictors to display.
+            If provided, fixed-effects terms are ordered to match this list (with
+            categorical levels grouped under their base predictor). If not provided,
+            the order from the fitted model's design matrix (formula order) is used.
+        color_mode: 'uniform' (default) for a single color across coefficients, or
+            'sign' to color by sign (positive vs negative) for point markers.
+        display_dpi: DPI for figure creation (affects inline sharpness). Defaults to 150.
 
     Example:
         >>> from train.word2vec import run_regression_analysis, plot_regression_results
@@ -492,98 +502,186 @@ def plot_regression_results(
     else:
         adjusted_figsize = figsize
 
-    fig, axes = plt.subplots(1, n_subplots, figsize=adjusted_figsize, dpi=100)
+    fig, axes = plt.subplots(1, n_subplots, figsize=adjusted_figsize, dpi=display_dpi)
+    fig.patch.set_facecolor('#f9fafb')
     if n_subplots == 1:
         axes = [axes]
+
+    # Compute text scale factor based on original figsize (before adjustment) relative to default (12, 6)
+    # This ensures text scales based on the user's requested figure size, not the adjusted layout size
+    default_figsize = (12, 6)
+    text_scale = np.sqrt((figsize[0] * figsize[1]) / (default_figsize[0] * default_figsize[1]))
 
     # Extract coefficients (OLS uses 'params', mixed models use 'fe_params')
     fe_params = results.fe_params if isinstance(results, MixedLMResults) else results.params
     fe_conf = results.conf_int(alpha=alpha)
 
+    # Get p-values aligned with fixed effects only
+    fe_pvalues = results.pvalues if hasattr(results, 'pvalues') else None
+    if isinstance(fe_pvalues, np.ndarray):
+        fe_pvalues = pd.Series(fe_pvalues, index=fe_params.index)
+    elif fe_pvalues is not None:
+        fe_pvalues = fe_pvalues.copy()
+
     # Remove intercept and variance components for cleaner visualization
     if 'Intercept' in fe_params.index:
         fe_params = fe_params.drop('Intercept')
-    if 'Intercept' in fe_conf.index:
         fe_conf = fe_conf.drop('Intercept')
+        if fe_pvalues is not None and 'Intercept' in fe_pvalues.index:
+            fe_pvalues = fe_pvalues.drop('Intercept')
 
-    # Remove variance components (Group Var, etc.) which are not fixed effects
     variance_terms = [idx for idx in fe_params.index if 'Var' in idx or 'Group' in idx]
     if variance_terms:
         fe_params = fe_params.drop(variance_terms)
         fe_conf = fe_conf.drop(variance_terms)
+        if fe_pvalues is not None:
+            fe_pvalues = fe_pvalues.drop([term for term in variance_terms if term in fe_pvalues.index], errors='ignore')
 
     # Clean up parameter names for better readability
-    # Remove 'scale()' and 'C()' wrappers
     def clean_name(name):
         cleaned = re.sub(r'scale\((.*?)\)', r'\1', name)
         cleaned = re.sub(r'C\((.*?)\)\[(.*?)\]', r'\1: \2', cleaned)
         return cleaned
 
-    fe_params.index = [clean_name(name) for name in fe_params.index]
-    fe_conf.index = [clean_name(name) for name in fe_conf.index]
+    cleaned_names = [clean_name(name) for name in fe_params.index]
+    fe_params.index = cleaned_names
+    fe_conf.index = cleaned_names
+    if fe_pvalues is not None:
+        fe_pvalues.index = cleaned_names
 
-    # Sort by coefficient magnitude
-    sort_idx = fe_params.abs().sort_values(ascending=True).index
-    fe_params = fe_params[sort_idx]
-    fe_conf = fe_conf.loc[sort_idx]
+    # Order coefficients by provided predictor order or model exogenous order
+    order_names = None
+    if predictors_order is not None:
+        base_order = [re.sub(r'scale\((.*?)\)', r'\1', x) for x in predictors_order]
 
-    # Plot 1: Fixed effects
+        def base_of(name: str) -> str:
+            # Categorical level terms formatted as "var: level"
+            if ': ' in name:
+                return name.split(': ')[0]
+            return name
+
+        ordered = []
+        for base in base_order:
+            matches = [name for name in fe_params.index if base_of(name) == base]
+            ordered.extend(matches)
+        remaining = [name for name in fe_params.index if name not in ordered]
+        order_names = ordered + remaining
+    elif hasattr(results, 'model') and hasattr(results.model, 'exog_names'):
+        exog_order = [clean_name(n) for n in results.model.exog_names]
+        exog_order = [n for n in exog_order if n != 'Intercept' and n in fe_params.index]
+        if exog_order:
+            order_names = exog_order
+
+    if order_names:
+        fe_params = fe_params.loc[order_names]
+        fe_conf = fe_conf.loc[order_names]
+        if fe_pvalues is not None:
+            fe_pvalues = fe_pvalues.loc[order_names]
+
+    # Build plotting dataframe
+    coef_df = pd.DataFrame({
+        'predictor': fe_params.index,
+        'coef': fe_params.values,
+        'lower': fe_conf.iloc[:, 0].values,
+        'upper': fe_conf.iloc[:, 1].values,
+        'pval': fe_pvalues.values if fe_pvalues is not None else [np.nan] * len(fe_params)
+    })
+
+    def add_stars(p):
+        if pd.isna(p):
+            return ''
+        if p < 0.001:
+            return '***'
+        if p < 0.01:
+            return '**'
+        if p < 0.05:
+            return '*'
+        return ''
+
+    coef_df['Sig'] = coef_df['pval'].apply(add_stars)
+    if color_mode == 'sign':
+        coef_df['color'] = np.where(coef_df['coef'] >= 0, colorblind_palette[0], colorblind_palette[3])
+    else:
+        # Uniform color to match evaluation plots styling
+        coef_df['color'] = colorblind_palette[0]
+
+    # Plot 1: Fixed effects (modern ladder style)
     ax = axes[0]
-    y_pos = np.arange(len(fe_params))
+    y_pos = np.arange(len(coef_df))
+    span = coef_df[['lower', 'upper']].stack().abs().max()
 
-    # Plot coefficients with colorblind-friendly color
-    ax.scatter(fe_params.values, y_pos, s=120, color=colorblind_palette[0],
-               zorder=3, alpha=0.8, edgecolors='white', linewidth=1)
+    # Subtle CI bands
+    ax.barh(y_pos, coef_df['upper'] - coef_df['lower'], left=coef_df['lower'],
+            height=0.58, color=colorblind_palette[0], alpha=0.12, edgecolor='none', zorder=1)
 
-    # Plot confidence intervals
-    for i, param_name in enumerate(fe_params.index):
-        lower = fe_conf.loc[param_name, 0]
-        upper = fe_conf.loc[param_name, 1]
-        ax.plot([lower, upper], [i, i], color='#333333', linewidth=2.5, zorder=2, alpha=0.7)
+    # CI lines and point estimates
+    ax.hlines(y_pos, coef_df['lower'], coef_df['upper'], color='#2f2f2f', linewidth=2.4, alpha=0.8, zorder=2)
+    ax.scatter(coef_df['coef'], y_pos, s=120, color=coef_df['color'],
+               zorder=3, alpha=0.9, edgecolors='white', linewidth=1)
 
-    # Add vertical line at zero
-    ax.axvline(x=0, color='#DC267F', linestyle='--', alpha=0.6, linewidth=1.5)
+    # Annotate significance stars just beyond the CI
+    for idx, row in coef_df.iterrows():
+        if row['Sig']:
+            offset = 0.04 * (span if span else 1)
+            ax.text(row['upper'] + offset, y_pos[idx], row['Sig'], va='center', ha='left',
+                    fontsize=int(11 * text_scale), color='#444444', fontweight='bold')
+
+    # Add vertical reference line at zero
+    ax.axvline(x=0, color='#DC267F', linestyle='--', alpha=0.65, linewidth=1.6)
 
     # Formatting
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(fe_params.index)
-    ax.set_xlabel('Coefficient Estimate', fontsize=13, labelpad=10)
-    ax.set_title('Fixed Effects Coefficients\n(with {}% CI)'.format(int((1-alpha)*100)),
-                fontsize=14, fontweight='bold', pad=15)
-    ax.grid(axis='x', alpha=0.3, linestyle='-', linewidth=0.8)
+    ax.set_yticklabels(coef_df['predictor'])
+    # Show first predictor at the top for intuitive reading
+    ax.invert_yaxis()
+    ax.set_xlabel('Coefficient Estimate', fontsize=int(13 * text_scale), labelpad=int(10 * text_scale))
+    ax.set_title('Fixed Effects ({}% CI)'.format(int((1-alpha)*100)),
+                fontsize=int(14 * text_scale), fontweight='bold', pad=int(15 * text_scale))
+    ax.grid(axis='x', alpha=0.35, linestyle='-', linewidth=0.8)
+    ax.set_facecolor('#f9fafb')
+    # Scale tick label sizes proportionally
+    ax.tick_params(axis='both', which='major', labelsize=int(10 * text_scale))
     sns.despine(ax=ax)
 
     # Plot 2: Random effects (if applicable)
     if has_random_effects:
         ax = axes[1]
 
-        # Extract random effects
+        # Extract and sort random effects for a tidy ladder plot
         rand_effects = results.random_effects
         re_groups = sorted(rand_effects.keys())
         re_values = [rand_effects[group]['Group'] for group in re_groups]
+        re_df = pd.DataFrame({'group': re_groups, 'value': re_values}).sort_values('value')
 
-        # Plot random intercepts with colorblind-friendly color
-        y_pos = np.arange(len(re_groups))
-        ax.scatter(re_values, y_pos, s=80, color=colorblind_palette[1],
-                   alpha=0.7, edgecolors='white', linewidth=0.5)
+        y_pos = np.arange(len(re_df))
 
-        # Add vertical line at zero
+        # Stem lines from zero to each group value
+        ax.hlines(y_pos, 0, re_df['value'], color='#4c4c4c', linewidth=1.4, alpha=0.65, zorder=2)
+        ax.scatter(re_df['value'], y_pos, s=95, color=colorblind_palette[1],
+                   alpha=0.85, edgecolors='white', linewidth=0.8, zorder=3)
+
+        # Add vertical reference at zero
         ax.axvline(x=0, color='#DC267F', linestyle='--', alpha=0.6, linewidth=1.5)
 
         # Formatting
         ax.set_yticks(y_pos)
-        ax.set_yticklabels([str(g) for g in re_groups])
-        ax.set_xlabel('Random Intercept', fontsize=13, labelpad=10)
-        ax.set_ylabel('Year', fontsize=13, labelpad=10)
-        ax.set_title('Random Effects by Year', fontsize=14, fontweight='bold', pad=15)
-        ax.grid(axis='x', alpha=0.3, linestyle='-', linewidth=0.8)
+        ax.set_yticklabels([str(g) for g in re_df['group']])
+        # Show highest random effect at the top for readability
+        ax.invert_yaxis()
+        ax.set_xlabel('Random Intercept', fontsize=int(13 * text_scale), labelpad=int(10 * text_scale))
+        ax.set_ylabel('Group', fontsize=int(13 * text_scale), labelpad=int(10 * text_scale))
+        ax.set_title('Random Effects', fontsize=int(14 * text_scale), fontweight='bold', pad=int(15 * text_scale))
+        ax.grid(axis='x', alpha=0.35, linestyle='-', linewidth=0.8)
+        ax.set_facecolor('#f9fafb')
+        # Scale tick label sizes proportionally
+        ax.tick_params(axis='both', which='major', labelsize=int(10 * text_scale))
         sns.despine(ax=ax)
 
     plt.tight_layout()
 
     # Save or show
     if output_file:
-        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor=fig.get_facecolor())
         print(f"Figure saved to: {output_file}")
 
     plt.show()
