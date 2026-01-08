@@ -281,26 +281,10 @@ def train_models(
         invalid_models = []
 
     elif mode == 'resume':
-        # Scan for existing valid models
-        print("\nScanning for existing models...")
-        existing_valid, invalid_models = _scan_existing_models(model_dir)
-        print(f"  Valid models found:    {len(existing_valid)}")
-        print(f"  Invalid/partial:       {len(invalid_models)}")
-
-        # Remove invalid models to retrain them
-        if invalid_models:
-            print(f"\nRemoving {len(invalid_models)} invalid/partial model files...")
-            for path in invalid_models:
-                try:
-                    os.remove(path)
-                    print(f"  Removed: {os.path.basename(path)}")
-                except Exception as e:
-                    print(f"  Warning: Could not remove {os.path.basename(path)}: {e}")
-            print("")
-
         # Ensure directories exist
         os.makedirs(model_dir, exist_ok=True)
         os.makedirs(log_dir, exist_ok=True)
+        # Will scan for existing models after printing the banner
 
     else:
         raise ValueError(
@@ -358,6 +342,27 @@ def train_models(
         grid_params
     )
 
+    # Scan for existing models in resume mode (after banner)
+    if mode == 'resume':
+        print("Scanning for existing models...")
+        existing_valid, invalid_models = _scan_existing_models(model_dir)
+        print(f"  Valid models found:    {len(existing_valid)}")
+        print(f"  Invalid/partial:       {len(invalid_models)}")
+
+        # Remove invalid models to retrain them
+        if invalid_models:
+            print(f"\nRemoving {len(invalid_models)} invalid/partial model files...")
+            for path in invalid_models:
+                try:
+                    os.remove(path)
+                    print(f"  Removed: {os.path.basename(path)}")
+                except Exception as e:
+                    print(f"  Warning: Could not remove {os.path.basename(path)}: {e}")
+            print("")
+    else:
+        existing_valid = set()
+        invalid_models = []
+
     param_combinations = list(
         product(weight_by, vector_size, window, min_count, approach, epochs)
     )
@@ -389,6 +394,7 @@ def train_models(
     total_models_in_grid = len(all_tasks)
     models_to_train = len(tasks)
 
+    print("")
     print("Execution")
     print("─" * LINE_WIDTH)
     print(f"Total models in grid: {total_models_in_grid}")

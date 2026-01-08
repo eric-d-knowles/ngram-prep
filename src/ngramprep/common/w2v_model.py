@@ -502,6 +502,726 @@ class W2VModel:
         else:
             return (weat_effect_size, p_value, std_dev) if return_std else (weat_effect_size, p_value)
 
+    def compute_pca_dimension(self, token_contrasts, ensure_sign_positive=None, n_components_diagnostic=None):
+        """
+        Compute a semantic dimension via PCA on contrast pair difference vectors.
+
+        Args:
+            token_contrasts (list of tuples): List of (token1, token2) pairs defining contrasts.
+                Example: [('he', 'she'), ('him', 'her'), ('man', 'woman'), ...]
+            ensure_sign_positive (bool, list, or None): Controls sign orientation of PC1.
+                - If True: infer positive tokens from pair order (second element of each pair)
+                - If list of str: use specified tokens as positive pole
+                - If None/False: no sign consistency enforcement (arbitrary orientation)
+                Example: True or ['she', 'her', 'woman', ...] ensures feminine tokens project positively.
+            n_components_diagnostic (int, optional): If provided, fit this many components for diagnostics
+                (scree plot, variance breakdown). If None, only PC1 is computed.
+
+        Returns:
+            dict: A dictionary containing:
+                - 'dimension': numpy array of shape (vector_size,) representing PC1 (the semantic dimension)
+                - 'variance_explained': float, fraction of total variance explained by PC1
+                - 'component_loadings': dict mapping each contrast pair to its cosine similarity with PC1
+                - 'pca_object': sklearn PCA object (fitted with n_components_diagnostic if provided)
+                - 'all_variance_explained': array of variance fractions for all components (if n_components_diagnostic provided)
+        
+        Raises:
+            ValueError: If contrast pairs contain words not in vocabulary.
+        """
+        from sklearn.decomposition import PCA
+        
+        # Extract and validate contrast pairs
+        if isinstance(token_contrasts, list):
+            pairs = token_contrasts
+        elif isinstance(token_contrasts, dict):
+            # Handle dict format: {pair_id: [token1, token2]} or similar
+            pairs = list(token_contrasts.values()) if token_contrasts else []
+        else:
+            raise TypeError("token_contrasts must be a list of tuples or dict of pairs")
+        
+        # Check vocabulary and compute difference vectors
+        difference_vectors = []
+        valid_pairs = []
+        missing_pairs = []
+        
+        for pair in pairs:
+            if isinstance(pair, (tuple, list)) and len(pair) == 2:
+                token1, token2 = pair
+                if token1 in self.vocab and token2 in self.vocab:
+                    # Difference vector: token2 - token1
+                    diff = self.model[token2] - self.model[token1]
+                    difference_vectors.append(diff)
+                    valid_pairs.append(pair)
+                else:
+                    missing_pairs.append(pair)
+            else:
+                raise ValueError(f"Invalid pair format: {pair}. Expected (token1, token2) tuple.")
+        
+        if missing_pairs:
+            print(f"⚠️ Warning: The following pairs contain words not in vocabulary and will be skipped:")
+            for pair in missing_pairs:
+                print(f"  {pair}")
+        
+        if not valid_pairs:
+            raise ValueError("No valid contrast pairs found in vocabulary.")
+        
+        # Run PCA on difference vectors
+        X = np.array(difference_vectors)
+        
+        # Determine number of components to fit
+        n_components = n_components_diagnostic if n_components_diagnostic else 1
+        n_components = min(n_components, X.shape[0], X.shape[1])  # Can't exceed data dimensions
+        
+        pca = PCA(n_components=n_components)
+        pca.fit(X)
+        
+        # Extract the dimension (PC1)
+        dimension = pca.components_[0]  # Shape: (vector_size,)
+        variance_explained = pca.explained_variance_ratio_[0]
+        
+        # Store all variance explained if diagnostics were requested
+        all_variance_explained = pca.explained_variance_ratio_ if n_components_diagnostic else None
+        
+        # Ensure consistent sign orientation
+        if ensure_sign_positive:
+            # If True, infer positive tokens from pair order (second element)
+            if isinstance(ensure_sign_positive, bool):
+                positive_tokens = [pair[1] for pair in valid_pairs]
+            else:
+                positive_tokens = ensure_sign_positive
+            
+            # Check which tokens should be positive
+            positive_projections = []
+            positive_tokens_found = []
+            for token in positive_tokens:
+                if token in self.vocab:
+                    proj = np.dot(self.model[token], dimension)
+                    positive_projections.append(proj)
+                    positive_tokens_found.append((token, proj))
+            
+            # If mean projection is negative, flip the dimension
+            if positive_projections:
+                mean_proj = np.mean(positive_projections)
+                if mean_proj < 0:
+                    dimension = -dimension
+                    # Update projections for display
+                    positive_tokens_found = [(t, -p) for t, p in positive_tokens_found]
+        
+        # Compute loadings (how much each pair aligns with PC1)
+        component_loadings = {}
+        for pair in valid_pairs:
+            diff_vec = self.model[pair[1]] - self.model[pair[0]]
+            # Normalize both vectors for cosine similarity
+            diff_norm = diff_vec / (np.linalg.norm(diff_vec) + 1e-10)
+            dim_norm = dimension / (np.linalg.norm(dimension) + 1e-10)
+            cosine_sim = np.dot(diff_norm, dim_norm)
+            component_loadings[f"{pair[0]}→{pair[1]}"] = cosine_sim
+        
+        return {
+            'dimension': dimension,
+            'variance_explained': variance_explained,
+            'component_loadings': component_loadings,
+            'pca_object': pca,
+            'all_variance_explained': all_variance_explained
+        }
+
+    def compute_meandiff_dimension(self, token_contrasts, verbose=False):
+        """
+        Compute a semantic dimension via mean of contrast pair difference vectors.
+
+        This is a simple supervised approach that averages all pair difference vectors,
+        guaranteeing sign consistency and equal weighting for all pairs. Unlike PCA,
+        this method does not maximize variance but provides a stable, interpretable
+        dimension especially useful when working with few pairs (2-5).
+
+        Args:
+            token_contrasts (list of tuples): List of (token1, token2) pairs defining contrasts.
+                Example: [('he', 'she'), ('him', 'her'), ('man', 'woman'), ...]
+                The dimension will point from token1 → token2 by construction.
+            verbose (bool): If True, prints summary to console. Default False.
+
+        Returns:
+            dict: A dictionary containing:
+                - 'dimension': numpy array of shape (vector_size,) representing the mean-difference dimension
+                - 'component_loadings': dict mapping each contrast pair to its cosine similarity with the dimension
+                - 'n_pairs': int, number of valid pairs used
+
+        Raises:
+            ValueError: If no valid contrast pairs found in vocabulary.
+        """
+        # Extract and validate contrast pairs
+        if isinstance(token_contrasts, list):
+            pairs = token_contrasts
+        elif isinstance(token_contrasts, dict):
+            pairs = list(token_contrasts.values()) if token_contrasts else []
+        else:
+            raise TypeError("token_contrasts must be a list of tuples or dict of pairs")
+        
+        # Collect difference vectors
+        difference_vectors = []
+        valid_pairs = []
+        missing_pairs = []
+        
+        for pair in pairs:
+            if isinstance(pair, (tuple, list)) and len(pair) == 2:
+                token1, token2 = pair
+                if token1 in self.vocab and token2 in self.vocab:
+                    # Difference vector: token2 - token1
+                    diff = self.model[token2] - self.model[token1]
+                    difference_vectors.append(diff)
+                    valid_pairs.append(pair)
+                else:
+                    missing_pairs.append(pair)
+            else:
+                raise ValueError(f"Invalid pair format: {pair}. Expected (token1, token2) tuple.")
+        
+        if missing_pairs:
+            print(f"⚠️ Warning: The following pairs contain words not in vocabulary and will be skipped:")
+            for pair in missing_pairs:
+                print(f"  {pair}")
+        
+        if not valid_pairs:
+            raise ValueError("No valid contrast pairs found in vocabulary.")
+        
+        # Compute mean difference vector
+        mean_diff = np.mean(difference_vectors, axis=0)
+        
+        # Normalize to unit length
+        dimension = mean_diff / (np.linalg.norm(mean_diff) + 1e-10)
+        
+        # Compute loadings (how much each pair aligns with the mean-diff dimension)
+        component_loadings = {}
+        for pair in valid_pairs:
+            diff_vec = self.model[pair[1]] - self.model[pair[0]]
+            # Normalize both vectors for cosine similarity
+            diff_norm = diff_vec / (np.linalg.norm(diff_vec) + 1e-10)
+            cosine_sim = np.dot(diff_norm, dimension)
+            component_loadings[f"{pair[0]}→{pair[1]}"] = cosine_sim
+        
+        if verbose:
+            print("\n" + "═" * 100)
+            print("MEAN-DIFFERENCE DIMENSION")
+            print("═" * 100)
+            print(f"Valid pairs: {len(valid_pairs)}\n")
+            print("Pair Loadings")
+            print("─" * 100)
+            print(f"{'Pair':<30} {'Loading':>15}")
+            print("─" * 100)
+            for pair, loading in sorted(component_loadings.items(), key=lambda x: x[1], reverse=True):
+                print(f"{pair:<30} {loading:>15.4f}")
+        
+        return {
+            'dimension': dimension,
+            'component_loadings': component_loadings,
+            'n_pairs': len(valid_pairs)
+        }
+
+    def project_onto_dimension(self, word, dimension):
+        """
+        Project a word onto a semantic dimension via cosine similarity.
+
+        Args:
+            word (str): The word to project.
+            dimension (np.ndarray): The dimension vector (output from compute_pca_dimension or compute_meandiff_dimension).
+
+        Returns:
+            float: Cosine similarity between the word vector and dimension (in range [-1, 1]).
+                   Positive values indicate alignment with the dimension's positive pole.
+
+        Raises:
+            ValueError: If word is not in vocabulary.
+        """
+        if word not in self.vocab:
+            raise ValueError(f"Word '{word}' not in model vocabulary.")
+        
+        word_vec = self.model[word]
+        # Cosine similarity
+        projection = np.dot(word_vec, dimension) / (np.linalg.norm(word_vec) * np.linalg.norm(dimension) + 1e-10)
+        return projection
+
+    def compare_dimension_methods(self, token_contrasts, test_words=None, ensure_sign_positive=True, 
+                                   n_components_diagnostic=None, verbose=True):
+        """
+        Compare mean-difference and PCA methods for extracting semantic dimensions.
+
+        This method computes dimensions using both approaches and returns comprehensive
+        comparison metrics including angle between dimensions, pair loadings, and word
+        projections. Useful for determining which method is more appropriate for a
+        given set of contrast pairs.
+
+        Args:
+            token_contrasts (list of tuples): List of (token1, token2) pairs defining contrasts.
+                Example: [('he', 'she'), ('him', 'her'), ('man', 'woman'), ...]
+            test_words (list of str, optional): Words to project onto both dimensions for comparison.
+                If None, uses all tokens from the contrast pairs.
+            ensure_sign_positive (bool or list, optional): Sign control for PCA (see compute_pca_dimension).
+                Default True uses pair order to infer positive pole.
+            n_components_diagnostic (int, optional): Number of PCA components for diagnostics.
+                If None, uses the number of contrast pairs.
+            verbose (bool): If True, prints comparison summary to console.
+
+        Returns:
+            dict: A dictionary containing:
+                - 'meandiff_result': Full result from compute_meandiff_dimension()
+                - 'pca_result': Full result from compute_pca_dimension()
+                - 'angle_degrees': Angle between the two dimension vectors (0-180°)
+                - 'cosine_similarity': Cosine similarity between dimensions (-1 to 1)
+                - 'pair_loadings': DataFrame comparing loadings for each pair on both methods
+                - 'word_projections': DataFrame comparing projections for test words (if provided)
+                - 'agreement': str, qualitative assessment ('nearly identical', 'similar', or 'different')
+        """
+        # Compute both dimensions
+        meandiff_result = self.compute_meandiff_dimension(token_contrasts)
+        
+        # Use number of pairs for diagnostics if not specified
+        if n_components_diagnostic is None:
+            n_components_diagnostic = min(meandiff_result['n_pairs'], 10)
+        
+        pca_result = self.compute_pca_dimension(
+            token_contrasts, 
+            ensure_sign_positive=ensure_sign_positive,
+            n_components_diagnostic=n_components_diagnostic
+        )
+        
+        # Normalize dimensions for comparison
+        meandiff_dim = meandiff_result['dimension']
+        pca_dim = pca_result['dimension']
+        
+        # Compute angle between dimensions
+        cos_sim = float(np.dot(meandiff_dim, pca_dim) / 
+                       (np.linalg.norm(meandiff_dim) * np.linalg.norm(pca_dim) + 1e-10))
+        angle_deg = float(np.degrees(np.arccos(np.clip(cos_sim, -1, 1))))
+        
+        # Determine agreement level
+        if angle_deg < 10:
+            agreement = 'nearly identical'
+        elif angle_deg < 30:
+            agreement = 'similar'
+        else:
+            agreement = 'different'
+        
+        # Compare pair loadings
+        import pandas as pd
+        pair_loadings_data = []
+        for pair_name in meandiff_result['component_loadings'].keys():
+            pair_loadings_data.append({
+                'pair': pair_name,
+                'meandiff_loading': meandiff_result['component_loadings'][pair_name],
+                'pca_loading': pca_result['component_loadings'][pair_name],
+                'loading_diff': abs(meandiff_result['component_loadings'][pair_name] - 
+                                   pca_result['component_loadings'][pair_name])
+            })
+        pair_loadings_df = pd.DataFrame(pair_loadings_data)
+        pair_loadings_df = pair_loadings_df.sort_values('meandiff_loading', ascending=False)
+        
+        # Compare word projections if test words provided
+        word_projections_df = None
+        if test_words is None:
+            # Use all tokens from contrast pairs
+            test_words = sorted(set([t for pair in token_contrasts 
+                                    for t in pair if isinstance(pair, (tuple, list))]))
+        
+        if test_words:
+            word_proj_data = []
+            for word in test_words:
+                if word in self.vocab:
+                    proj_md = self.project_onto_dimension(word, meandiff_dim)
+                    proj_pca = self.project_onto_dimension(word, pca_dim)
+                    word_proj_data.append({
+                        'word': word,
+                        'meandiff_proj': proj_md,
+                        'pca_proj': proj_pca,
+                        'proj_diff': abs(proj_md - proj_pca)
+                    })
+            if word_proj_data:
+                word_projections_df = pd.DataFrame(word_proj_data)
+                word_projections_df = word_projections_df.sort_values('meandiff_proj', ascending=False)
+        
+        # Print summary if verbose
+        if verbose:
+            print("\n" + "═" * 100)
+            print("DIMENSION METHOD COMPARISON")
+            print("═" * 100)
+            print(f"Contrast pairs:          {meandiff_result['n_pairs']}")
+            print(f"Angle between dimensions: {angle_deg:.2f}°")
+            print(f"Cosine similarity:       {cos_sim:+.4f}")
+            print(f"Assessment:              Dimensions are {agreement}")
+            print(f"PCA variance explained:  {pca_result['variance_explained']*100:.1f}%")
+
+            print("\n" + "─" * 100)
+            print("PAIR LOADINGS COMPARISON")
+            print("─" * 100)
+            print(f"{'Pair':<30} {'MeanDiff':>15} {'PCA':>15} {'|Diff|':>15}")
+            print("─" * 100)
+            for _, row in pair_loadings_df.iterrows():
+                print(f"{row['pair']:<30} {row['meandiff_loading']:>15.4f} "
+                      f"{row['pca_loading']:>15.4f} {row['loading_diff']:>15.4f}")
+
+            if word_projections_df is not None and len(word_projections_df) > 0:
+                print("\n" + "─" * 100)
+                print("WORD PROJECTIONS COMPARISON")
+                print("─" * 100)
+                print(f"{'Word':<20} {'MeanDiff':>20} {'PCA':>20} {'|Diff|':>15}")
+                print("─" * 100)
+                for _, row in word_projections_df.iterrows():
+                    print(f"{row['word']:<20} {row['meandiff_proj']:>20.4f} "
+                          f"{row['pca_proj']:>20.4f} {row['proj_diff']:>15.4f}")
+        
+        return {
+            'meandiff_result': meandiff_result,
+            'pca_result': pca_result,
+            'angle_degrees': angle_deg,
+            'cosine_similarity': cos_sim,
+            'agreement': agreement,
+            'pair_loadings': pair_loadings_df,
+            'word_projections': word_projections_df
+        }
+
+    @staticmethod
+    def plot_pca_diagnostics(pca_result, figsize=(12, 5), display_dpi=160):
+        """
+        Plot diagnostic visualizations for PCA dimension analysis.
+
+        Creates a figure with:
+        1. Scree plot: variance explained by each component
+        2. Cumulative variance plot: cumulative variance explained
+
+        Args:
+            pca_result (dict): Output from compute_pca_dimension() with n_components_diagnostic.
+            figsize (tuple): Figure size (width, height) in inches.
+            display_dpi (int): DPI for rendering.
+
+        Returns:
+            matplotlib.figure.Figure: The diagnostic figure.
+
+        Raises:
+            ValueError: If pca_result doesn't contain all_variance_explained (need diagnostics enabled).
+        """
+        import matplotlib.pyplot as plt
+        
+        all_var = pca_result.get('all_variance_explained')
+        if all_var is None:
+            raise ValueError(
+                "PCA diagnostics not available. Re-run compute_pca_dimension() with "
+                "n_components_diagnostic=<number of components> to enable diagnostics."
+            )
+        
+        # Compute text scale for proportional sizing
+        text_scale = np.sqrt((figsize[0] * figsize[1]) / (12 * 6))
+        
+        fig, axes = plt.subplots(1, 2, figsize=figsize, dpi=display_dpi)
+        fig.suptitle('PCA Dimension Diagnostics', fontsize=int(16*text_scale), fontweight='bold')
+        
+        # Scree plot
+        ax = axes[0]
+        n_components = len(all_var)
+        ax.bar(range(1, n_components + 1), all_var, color='steelblue', alpha=0.7, edgecolor='black')
+        ax.set_xlabel('Component', fontsize=int(13*text_scale))
+        ax.set_ylabel('Variance Explained', fontsize=int(13*text_scale))
+        ax.set_title('Scree Plot', fontsize=int(14*text_scale))
+        ax.set_xticks(range(1, min(n_components + 1, 11)))
+        ax.tick_params(axis='both', which='major', labelsize=int(10*text_scale))
+        ax.grid(axis='y', alpha=0.3)
+        
+        # Cumulative variance
+        ax = axes[1]
+        cumsum = np.cumsum(all_var)
+        ax.plot(range(1, n_components + 1), cumsum, 'o-', linewidth=2.5, 
+                markersize=8, color='darkgreen', label='Cumulative')
+        ax.axhline(y=0.8, color='red', linestyle='--', linewidth=2, alpha=0.7, label='80% threshold')
+        ax.axhline(y=0.9, color='orange', linestyle='--', linewidth=2, alpha=0.7, label='90% threshold')
+        ax.set_xlabel('Number of Components', fontsize=int(13*text_scale))
+        ax.set_ylabel('Cumulative Variance Explained', fontsize=int(13*text_scale))
+        ax.set_title('Cumulative Variance', fontsize=int(14*text_scale))
+        ax.set_xticks(range(1, min(n_components + 1, 11)))
+        ax.set_ylim([0, 1.05])
+        ax.tick_params(axis='both', which='major', labelsize=int(10*text_scale))
+        ax.legend(fontsize=int(11*text_scale), loc='lower right')
+        ax.grid(alpha=0.3)
+        
+        fig.tight_layout(h_pad=5.0, w_pad=3.0)
+        
+        return fig
+    
+    @staticmethod
+    def print_pca_variance_summary(pca_result, n_show=5):
+        """
+        Print a text summary of PCA variance breakdown.
+
+        Args:
+            pca_result (dict): Output from compute_pca_dimension() with n_components_diagnostic.
+            n_show (int): Number of top components to display in summary table.
+
+        Raises:
+            ValueError: If pca_result doesn't contain all_variance_explained.
+        """
+        all_var = pca_result.get('all_variance_explained')
+        if all_var is None:
+            raise ValueError(
+                "PCA diagnostics not available. Re-run compute_pca_dimension() with "
+                "n_components_diagnostic=<number of components> to enable diagnostics."
+            )
+        
+        cumsum = np.cumsum(all_var)
+        n_show = min(n_show, len(all_var))
+        
+        print("\n" + "═" * 100)
+        print("PCA VARIANCE BREAKDOWN")
+        print("═" * 100)
+        print(f"{'Component':<20} {'Variance':>20} {'Cumulative':>20} {'% of Total':>20}")
+        print("─" * 100)
+        
+        for i in range(n_show):
+            var_pct = all_var[i] * 100
+            cum_pct = cumsum[i] * 100
+            print(f"PC{i+1:<18} {all_var[i]:>20.4f}  {cumsum[i]:>20.4f}  {var_pct:>18.2f}%")
+        
+        if len(all_var) > n_show:
+            remaining_var = 1.0 - cumsum[n_show-1]
+            print(f"{'Others':<20} {remaining_var:>20.4f}  {1.0:>20.4f}  {remaining_var*100:>18.2f}%")
+        
+        print("═" * 100)
+        print(f"\nPC1 explains {all_var[0]*100:.2f}% of total variance")
+        
+        # Show how many components needed for different thresholds
+        n_80 = np.argmax(cumsum >= 0.80) + 1
+        n_90 = np.argmax(cumsum >= 0.90) + 1
+        n_95 = np.argmax(cumsum >= 0.95) + 1
+        
+        print(f"  → {n_80} components for 80% variance")
+        print(f"  → {n_90} components for 90% variance")
+        if n_95 <= len(all_var):
+            print(f"  → {n_95} components for 95% variance")
+    
+    @staticmethod
+    def print_meandiff_summary(meandiff_result):
+        """
+        Print a text summary of mean-difference dimension quality and alignment.
+
+        Unlike PCA which maximizes variance, mean-difference equally weights all pairs.
+        This summary shows loading statistics and pair alignment coherence.
+
+        Args:
+            meandiff_result (dict): Output from compute_meandiff_dimension().
+
+        Raises:
+            ValueError: If meandiff_result doesn't contain required fields.
+        """
+        loadings = meandiff_result.get('component_loadings')
+        n_pairs = meandiff_result.get('n_pairs')
+        
+        if loadings is None or n_pairs is None:
+            raise ValueError(
+                "component_loadings or n_pairs not found in meandiff_result. "
+                "Ensure compute_meandiff_dimension() was called successfully."
+            )
+        
+        loading_values = np.array(list(loadings.values()))
+        
+        # Compute statistics
+        mean_loading = np.mean(loading_values)
+        std_loading = np.std(loading_values)
+        min_loading = np.min(loading_values)
+        max_loading = np.max(loading_values)
+        
+        # Assess coherence (how tight are the loadings?)
+        cv = std_loading / mean_loading if mean_loading > 0 else np.inf  # Coefficient of variation
+        
+        # Determine quality assessment
+        if cv < 0.15:
+            quality = "EXCELLENT (highly coherent pairs)"
+        elif cv < 0.25:
+            quality = "GOOD (coherent pairs)"
+        elif cv < 0.40:
+            quality = "MODERATE (mixed semantic domains)"
+        else:
+            quality = "POOR (heterogeneous pairs)"
+        
+        print("\n" + "═" * 100)
+        print("MEAN-DIFFERENCE DIMENSION SUMMARY")
+        print("═" * 100)
+        print(f"Valid pairs:             {n_pairs}")
+        print(f"\nPair Loading Statistics:")
+        print("─" * 100)
+        print(f"Mean loading:            {mean_loading:>20.4f}")
+        print(f"Std deviation:           {std_loading:>20.4f}")
+        print(f"Min loading:             {min_loading:>20.4f}")
+        print(f"Max loading:             {max_loading:>20.4f}")
+        print(f"Loading range:           {max_loading - min_loading:>20.4f}")
+        print(f"Coeff. of variation:     {cv:>20.4f}")
+        
+        print(f"\n{'─' * 100}")
+        print(f"Pair Coherence:          {quality}")
+        print(f"{'─' * 100}")
+        
+        if std_loading > 0:
+            print(f"\nAll {n_pairs} pair loadings are positive by construction.")
+            print(f"Loading range of {min_loading:.4f}–{max_loading:.4f} suggests")
+            if cv < 0.25:
+                print("pairs form a coherent semantic dimension.")
+            else:
+                print("pairs may span heterogeneous semantic subdomains.")
+        
+        print("═" * 100)
+
+    @staticmethod
+    def print_component_loadings(pca_result, title="COMPONENT LOADINGS"):
+        """
+        Print component loadings showing how well each contrast pair aligns with PC1.
+
+        Args:
+            pca_result (dict): Output from compute_pca_dimension().
+            title (str): Title for the output section.
+        """
+        loadings = pca_result.get('component_loadings')
+        if loadings is None:
+            raise ValueError("component_loadings not found in pca_result.")
+        
+        print("\n" + "─" * 100)
+        print(title)
+        print("─" * 100)
+        print(f"{'Pair':<35} {'Loading':>20}")
+        print("─" * 100)
+        for pair, loading in sorted(loadings.items(), key=lambda x: x[1], reverse=True):
+            print(f"  {pair:<33} {loading:>20.4f}")
+    
+    @staticmethod
+    def print_word_projections(model, dimension, test_words=None, title=None):
+        """
+        Print word projections on a semantic dimension with visual bar representation.
+
+        Args:
+            model (W2VModel): The model instance to project words from.
+            dimension (np.ndarray): The dimension vector from compute_pca_dimension().
+            test_words (list of str, optional): Words to project. If None, uses gender-related words.
+            title (str, optional): Custom title for output. If None, uses generic title.
+        
+        Returns:
+            dict: Dictionary mapping words to their projection values (only for words in vocabulary).
+        """
+        if test_words is None:
+            test_words = [
+                'she', 'he', 'woman', 'man', 'queen', 'king', 'nurse', 'doctor',
+                'mother', 'father', 'princess', 'prince', 'actress', 'actor'
+            ]
+        
+        if title is None:
+            title = "WORD PROJECTIONS ON DIMENSION"
+        
+        # Project words
+        projections = {}
+        for word in test_words:
+            try:
+                proj = model.project_onto_dimension(word, dimension)
+                projections[word] = proj
+            except ValueError:
+                # Word not in vocabulary
+                pass
+        
+        # Print sorted by projection value
+        print("\n" + "─" * 100)
+        print(title)
+        print("─" * 100)
+        print(f"{'Word':<20} {'Projection':>20} {'Visualization':>55}")
+        print("─" * 100)
+        for word, proj in sorted(projections.items(), key=lambda x: x[1], reverse=True):
+            bar_length = int(abs(proj) * 30)
+            if proj > 0:
+                bar = '█' * bar_length
+            else:
+                bar = '░' * bar_length
+            print(f"  {word:<18} {proj:>20.4f}  {bar:>50}")
+        
+        return projections
+    
+    @staticmethod
+    def diagnose_pca_sign(pca_result, model, title="PCA SIGN DIAGNOSIS"):
+        """
+        Diagnose the sign orientation of the PCA dimension by examining positive token projections.
+        
+        Args:
+            pca_result (dict): Output from compute_pca_dimension().
+            model (W2VModel): The model instance (to access vocab and vectors).
+            title (str): Title for output.
+        """
+        dimension = pca_result['dimension']
+        loadings = pca_result.get('component_loadings', {})
+        
+        print("\n" + "─" * 100)
+        print(title)
+        print("─" * 100)
+        
+        # Show contrast pair loadings sorted by sign
+        print("\nContrast pair loadings (sorted by value):")
+        print("─" * 100)
+        print(f"{'Pair':<40} {'Loading':>25}")
+        print("─" * 100)
+        if loadings:
+            for pair, loading in sorted(loadings.items(), key=lambda x: x[1], reverse=True):
+                direction = "+" if loading > 0 else "-"
+                print(f"  {direction} {pair:<37} {loading:>25.4f}")
+        
+        # Estimate which side is "positive" from the pair order
+        print("\nSign Alignment Analysis:")
+        print("─" * 100)
+        
+        # Infer from loadings which tokens tend to be positive
+        positive_side_tokens = set()
+        negative_side_tokens = set()
+        
+        for pair, loading in loadings.items():
+            parts = pair.split('→')
+            if len(parts) == 2:
+                token1, token2 = parts[0].strip(), parts[1].strip()
+                if loading > 0:
+                    positive_side_tokens.add(token2)
+                    negative_side_tokens.add(token1)
+                else:
+                    positive_side_tokens.add(token1)
+                    negative_side_tokens.add(token2)
+        
+        if positive_side_tokens:
+            print(f"\nTokens on POSITIVE side: {', '.join(sorted(positive_side_tokens))}")
+        if negative_side_tokens:
+            print(f"Tokens on NEGATIVE side: {', '.join(sorted(negative_side_tokens))}")
+        
+        # Calculate mean projection for each side
+        pos_projs = []
+        neg_projs = []
+        
+        for token in positive_side_tokens:
+            if token in model.vocab:
+                proj = np.dot(model.model[token], dimension)
+                pos_projs.append((token, proj))
+        
+        for token in negative_side_tokens:
+            if token in model.vocab:
+                proj = np.dot(model.model[token], dimension)
+                neg_projs.append((token, proj))
+        
+        if pos_projs:
+            mean_pos = np.mean([p for _, p in pos_projs])
+            print(f"\nMean projection (positive side): {mean_pos:+.4f}")
+            print(f"  Sample words: {', '.join([t for t, _ in pos_projs[:5]])}")
+        
+        if neg_projs:
+            mean_neg = np.mean([p for _, p in neg_projs])
+            print(f"Mean projection (negative side): {mean_neg:+.4f}")
+            print(f"  Sample words: {', '.join([t for t, _ in neg_projs[:5]])}")
+        
+        if pos_projs and neg_projs:
+            mean_pos = np.mean([p for _, p in pos_projs])
+            mean_neg = np.mean([p for _, p in neg_projs])
+            if mean_pos < mean_neg:
+                print("\n⚠️  WARNING: Sign may be FLIPPED!")
+                print(f"   Positive side tokens project to {mean_pos:+.4f}")
+                print(f"   Negative side tokens project to {mean_neg:+.4f}")
+            else:
+                print("\n✓ Sign orientation appears correct")
+                print(f"  Positive side at {mean_pos:+.4f}, negative side at {mean_neg:+.4f}")
+
+
+
     def save(self, output_path):
         """
         Save the filtered and aligned model to the specified path.
