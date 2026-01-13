@@ -97,6 +97,7 @@ cpdef bytes process_tokens(
     bytes ngram,
     bint opt_lower = False,
     bint opt_alpha = False,
+    bint opt_ascii_alpha_only = False,
     bint opt_shorts = False,
     bint opt_stops = False,
     bint opt_lemmas = False,
@@ -210,17 +211,24 @@ cpdef bytes process_tokens(
                 # Check if token is alphabetic (language-agnostic)
                 # Try fast ASCII check first, then Unicode check for non-ASCII
                 if not _is_ascii_alpha_bytes(normalized_token):
-                    # Contains non-ASCII bytes, decode and check with Unicode isalpha()
-                    try:
-                        tok_s = _decode_token(normalized_token)
-                        if not _is_unicode_alpha(tok_s):
-                            is_unk = 1
-                    except:
-                        # Decoding failed, mark as invalid
+                    # Contains non-ASCII bytes
+                    if opt_ascii_alpha_only:
+                        # If ascii_alpha_only=True, reject any non-ASCII bytes
+                        # (even if they're valid Unicode alpha chars)
                         is_unk = 1
+                    else:
+                        # Otherwise, accept all Unicode alphabetic characters
+                        # (including accented letters, Greek, Cyrillic, Chinese, etc.)
+                        try:
+                            tok_s = _decode_token(normalized_token)
+                            if not _is_unicode_alpha(tok_s):
+                                is_unk = 1
+                        except:
+                            # Decoding failed, mark as invalid
+                            is_unk = 1
             if not is_unk and do_shorts and normalized_token.__len__() < min_len:
                 is_unk = 1
-            elif not is_unk and do_stops and normalized_token in stop_set:
+            if not is_unk and do_stops and normalized_token in stop_set:
                 is_unk = 1
 
             if is_unk:

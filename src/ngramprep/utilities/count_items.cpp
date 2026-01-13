@@ -1524,7 +1524,7 @@ static const char* const __pyx_f[] = {
 /*--- Type declarations ---*/
 struct __pyx_obj_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items;
 
-/* "src/ngramprep/utilities/count_items.pyx":89
+/* "src/ngramprep/utilities/count_items.pyx":61
  * 
  * 
  * def count_db_items(db_path, long progress_interval = 10_000_000, grouping=None):             # <<<<<<<<<<<<<<
@@ -2034,10 +2034,6 @@ static CYTHON_INLINE PyObject *__Pyx_PyObject_GetItem(PyObject *obj, PyObject *k
 #define __Pyx_PyObject_GetItem(obj, key)  PyObject_GetItem(obj, key)
 #endif
 
-/* PyObject_Unicode.proto */
-#define __Pyx_PyObject_Unicode(obj)\
-    (likely(PyUnicode_CheckExact(obj)) ? __Pyx_NewRef(obj) : PyObject_Str(obj))
-
 /* RaiseClosureNameError.proto */
 static void __Pyx_RaiseClosureNameError(const char *varname);
 
@@ -2209,66 +2205,12 @@ static CYTHON_INLINE PyObject* __Pyx__PyObject_LookupSpecial(PyObject* obj, PyOb
 #define __Pyx_PyObject_LookupSpecial(o,n) __Pyx_PyObject_GetAttrStr(o,n)
 #endif
 
-/* RaiseUnexpectedTypeError.proto */
-static int __Pyx_RaiseUnexpectedTypeError(const char *expected, PyObject *obj);
-
-/* decode_c_string_utf16.proto (used by decode_c_bytes) */
-static CYTHON_INLINE PyObject *__Pyx_PyUnicode_DecodeUTF16(const char *s, Py_ssize_t size, const char *errors) {
-    int byteorder = 0;
-    return PyUnicode_DecodeUTF16(s, size, errors, &byteorder);
-}
-static CYTHON_INLINE PyObject *__Pyx_PyUnicode_DecodeUTF16LE(const char *s, Py_ssize_t size, const char *errors) {
-    int byteorder = -1;
-    return PyUnicode_DecodeUTF16(s, size, errors, &byteorder);
-}
-static CYTHON_INLINE PyObject *__Pyx_PyUnicode_DecodeUTF16BE(const char *s, Py_ssize_t size, const char *errors) {
-    int byteorder = 1;
-    return PyUnicode_DecodeUTF16(s, size, errors, &byteorder);
-}
-
-/* decode_c_bytes.proto (used by decode_bytes) */
-static CYTHON_INLINE PyObject* __Pyx_decode_c_bytes(
-         const char* cstring, Py_ssize_t length, Py_ssize_t start, Py_ssize_t stop,
-         const char* encoding, const char* errors,
-         PyObject* (*decode_func)(const char *s, Py_ssize_t size, const char *errors));
-
-/* decode_bytes.proto */
-static CYTHON_INLINE PyObject* __Pyx_decode_bytes(
-         PyObject* string, Py_ssize_t start, Py_ssize_t stop,
-         const char* encoding, const char* errors,
-         PyObject* (*decode_func)(const char *s, Py_ssize_t size, const char *errors)) {
-    char* as_c_string;
-    Py_ssize_t size;
-#if CYTHON_ASSUME_SAFE_MACROS && CYTHON_ASSUME_SAFE_SIZE
-    as_c_string = PyBytes_AS_STRING(string);
-    size = PyBytes_GET_SIZE(string);
-#else
-    if (PyBytes_AsStringAndSize(string, &as_c_string, &size) < 0) {
-        return NULL;
-    }
-#endif
-    return __Pyx_decode_c_bytes(
-        as_c_string, size,
-        start, stop, encoding, errors, decode_func);
-}
-
 /* PyLongBinop.proto */
 #if !CYTHON_COMPILING_IN_PYPY
 static CYTHON_INLINE PyObject* __Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check);
 #else
 #define __Pyx_PyLong_AddObjC(op1, op2, intval, inplace, zerodivision_check)\
     (inplace ? PyNumber_InPlaceAdd(op1, op2) : PyNumber_Add(op1, op2))
-#endif
-
-/* DictGetItem.proto */
-#if !CYTHON_COMPILING_IN_PYPY
-static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key);
-#define __Pyx_PyObject_Dict_GetItem(obj, name)\
-    (likely(PyDict_CheckExact(obj)) ?\
-     __Pyx_PyDict_GetItem(obj, name) : PyObject_GetItem(obj, name))
-#else
-#define __Pyx_PyDict_GetItem(d, key) PyObject_GetItem(d, key)
-#define __Pyx_PyObject_Dict_GetItem(obj, name)  PyObject_GetItem(obj, name)
 #endif
 
 /* GetTopmostException.proto (used by SaveResetException) */
@@ -2419,9 +2361,6 @@ static CYTHON_INLINE long __Pyx_PyLong_As_long(PyObject *);
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value);
 
-/* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyLong_From_unsigned_int(unsigned int value);
-
 /* FormatTypeName.proto */
 #if CYTHON_COMPILING_IN_LIMITED_API
 typedef PyObject *__Pyx_TypeName;
@@ -2530,7 +2469,6 @@ static int __Pyx_State_RemoveModule(void*);
 
 
 /* Module declarations from "src.ngramprep.utilities.count_items" */
-static PyObject *__pyx_f_3src_9ngramprep_9utilities_11count_items__extract_year_bin(PyObject *); /*proto*/
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
 #define __Pyx_MODULE_NAME "src.ngramprep.utilities.count_items"
@@ -2541,7 +2479,6 @@ int __pyx_module_is_main_src__ngramprep__utilities__count_items = 0;
 /* #### Code section: global_var ### */
 static PyObject *__pyx_builtin_print;
 /* #### Code section: string_decls ### */
-static const char __pyx_k_replace[] = "replace";
 /* #### Code section: decls ### */
 static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_banner(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_db_path, PyObject *__pyx_v_progress_interval, PyObject *__pyx_v_grouping); /* proto */
 static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progress(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_count, PyObject *__pyx_v_elapsed); /* proto */
@@ -2577,7 +2514,7 @@ typedef struct {
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_values;
   PyObject *__pyx_tuple[3];
   PyObject *__pyx_codeobj_tab[6];
-  PyObject *__pyx_string_tab[144];
+  PyObject *__pyx_string_tab[139];
   PyObject *__pyx_number_tab[5];
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
@@ -2647,13 +2584,13 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_kp_u__6 __pyx_string_tab[20]
 #define __pyx_kp_u__7 __pyx_string_tab[21]
 #define __pyx_kp_u__9 __pyx_string_tab[22]
-#define __pyx_kp_u_count_db_items_line_89 __pyx_string_tab[23]
+#define __pyx_kp_u_count_db_items_line_61 __pyx_string_tab[23]
 #define __pyx_kp_u_count_items_pyx __pyx_string_tab[24]
 #define __pyx_kp_u_disable __pyx_string_tab[25]
 #define __pyx_kp_u_elapsed_2 __pyx_string_tab[26]
 #define __pyx_kp_u_enable __pyx_string_tab[27]
 #define __pyx_kp_u_gc __pyx_string_tab[28]
-#define __pyx_kp_u_grouping_must_be_None_year_bin_s __pyx_string_tab[29]
+#define __pyx_kp_u_grouping_must_be_None_str_regex __pyx_string_tab[29]
 #define __pyx_kp_u_isenabled __pyx_string_tab[30]
 #define __pyx_kp_u_items __pyx_string_tab[31]
 #define __pyx_kp_u_s_rate __pyx_string_tab[32]
@@ -2698,76 +2635,71 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_frame __pyx_string_tab[71]
 #define __pyx_n_u_func __pyx_string_tab[72]
 #define __pyx_n_u_group __pyx_string_tab[73]
-#define __pyx_n_u_group_bytes __pyx_string_tab[74]
-#define __pyx_n_u_group_counts __pyx_string_tab[75]
-#define __pyx_n_u_grouping __pyx_string_tab[76]
-#define __pyx_n_u_grouping_fn __pyx_string_tab[77]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[78]
-#define __pyx_n_u_items_2 __pyx_string_tab[79]
-#define __pyx_n_u_iterator __pyx_string_tab[80]
-#define __pyx_n_u_key __pyx_string_tab[81]
-#define __pyx_n_u_keys __pyx_string_tab[82]
-#define __pyx_n_u_lastindex __pyx_string_tab[83]
-#define __pyx_n_u_main __pyx_string_tab[84]
-#define __pyx_n_u_match __pyx_string_tab[85]
-#define __pyx_n_u_mode __pyx_string_tab[86]
-#define __pyx_n_u_module __pyx_string_tab[87]
-#define __pyx_n_u_name __pyx_string_tab[88]
-#define __pyx_n_u_next __pyx_string_tab[89]
-#define __pyx_n_u_next_progress __pyx_string_tab[90]
-#define __pyx_n_u_ngramprep_utilities_display __pyx_string_tab[91]
-#define __pyx_n_u_ngramprep_utilities_progress __pyx_string_tab[92]
-#define __pyx_n_u_open __pyx_string_tab[93]
-#define __pyx_n_u_pattern __pyx_string_tab[94]
-#define __pyx_n_u_perf_counter __pyx_string_tab[95]
-#define __pyx_n_u_pop __pyx_string_tab[96]
-#define __pyx_n_u_print __pyx_string_tab[97]
-#define __pyx_n_u_print_progress __pyx_string_tab[98]
-#define __pyx_n_u_print_start_banner __pyx_string_tab[99]
-#define __pyx_n_u_print_summary __pyx_string_tab[100]
-#define __pyx_n_u_print_summary_box __pyx_string_tab[101]
-#define __pyx_n_u_progress_interval __pyx_string_tab[102]
-#define __pyx_n_u_qualname __pyx_string_tab[103]
-#define __pyx_n_u_r __pyx_string_tab[104]
-#define __pyx_n_u_rate_str __pyx_string_tab[105]
-#define __pyx_n_u_re __pyx_string_tab[106]
-#define __pyx_n_u_replace __pyx_string_tab[107]
-#define __pyx_n_u_rocks_shim __pyx_string_tab[108]
-#define __pyx_n_u_rs __pyx_string_tab[109]
-#define __pyx_n_u_s __pyx_string_tab[110]
-#define __pyx_n_u_search __pyx_string_tab[111]
-#define __pyx_n_u_seek __pyx_string_tab[112]
-#define __pyx_n_u_set_name __pyx_string_tab[113]
-#define __pyx_n_u_setdefault __pyx_string_tab[114]
-#define __pyx_n_u_signal __pyx_string_tab[115]
-#define __pyx_n_u_signal_handler __pyx_string_tab[116]
-#define __pyx_n_u_signum __pyx_string_tab[117]
-#define __pyx_n_u_src_ngramprep_utilities_count_it __pyx_string_tab[118]
-#define __pyx_n_u_start_time __pyx_string_tab[119]
-#define __pyx_n_u_struct __pyx_string_tab[120]
-#define __pyx_n_u_style __pyx_string_tab[121]
-#define __pyx_n_u_summary_items __pyx_string_tab[122]
-#define __pyx_n_u_sys __pyx_string_tab[123]
-#define __pyx_n_u_test __pyx_string_tab[124]
-#define __pyx_n_u_time __pyx_string_tab[125]
-#define __pyx_n_u_title __pyx_string_tab[126]
-#define __pyx_n_u_total_time __pyx_string_tab[127]
-#define __pyx_n_u_total_width __pyx_string_tab[128]
-#define __pyx_n_u_truncate_path_to_fit __pyx_string_tab[129]
-#define __pyx_n_u_unknown __pyx_string_tab[130]
-#define __pyx_n_u_use_fast_year_bin __pyx_string_tab[131]
-#define __pyx_n_u_valid __pyx_string_tab[132]
-#define __pyx_n_u_values __pyx_string_tab[133]
-#define __pyx_n_u_width __pyx_string_tab[134]
-#define __pyx_n_u_year_bin __pyx_string_tab[135]
-#define __pyx_kp_b__8 __pyx_string_tab[136]
-#define __pyx_kp_b_iso88591_4A_9N_a_q_1_fA_Q_7q_q_QoQa_q_F __pyx_string_tab[137]
-#define __pyx_kp_b_iso88591_A_D_a_a_1_y_q_1_9Cq_q_b_Zq_R_Qa __pyx_string_tab[138]
-#define __pyx_kp_b_iso88591_A_Q_auA_5 __pyx_string_tab[139]
-#define __pyx_kp_b_iso88591_A_waq_1_5_ar_M_bbhhiikkrrss_q __pyx_string_tab[140]
-#define __pyx_kp_b_iso88591_l_7_1_Qe2Q_6awoQlZ_a __pyx_string_tab[141]
-#define __pyx_kp_b_iso88591_q_l_7_a_9N_a_1E_2Qj_A_A_q_Ql_AS __pyx_string_tab[142]
-#define __pyx_n_b_unknown __pyx_string_tab[143]
+#define __pyx_n_u_group_counts __pyx_string_tab[74]
+#define __pyx_n_u_grouping __pyx_string_tab[75]
+#define __pyx_n_u_grouping_fn __pyx_string_tab[76]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[77]
+#define __pyx_n_u_items_2 __pyx_string_tab[78]
+#define __pyx_n_u_iterator __pyx_string_tab[79]
+#define __pyx_n_u_key __pyx_string_tab[80]
+#define __pyx_n_u_keys __pyx_string_tab[81]
+#define __pyx_n_u_lastindex __pyx_string_tab[82]
+#define __pyx_n_u_main __pyx_string_tab[83]
+#define __pyx_n_u_match __pyx_string_tab[84]
+#define __pyx_n_u_mode __pyx_string_tab[85]
+#define __pyx_n_u_module __pyx_string_tab[86]
+#define __pyx_n_u_name __pyx_string_tab[87]
+#define __pyx_n_u_next __pyx_string_tab[88]
+#define __pyx_n_u_next_progress __pyx_string_tab[89]
+#define __pyx_n_u_ngramprep_utilities_display __pyx_string_tab[90]
+#define __pyx_n_u_ngramprep_utilities_progress __pyx_string_tab[91]
+#define __pyx_n_u_open __pyx_string_tab[92]
+#define __pyx_n_u_pattern __pyx_string_tab[93]
+#define __pyx_n_u_perf_counter __pyx_string_tab[94]
+#define __pyx_n_u_pop __pyx_string_tab[95]
+#define __pyx_n_u_print __pyx_string_tab[96]
+#define __pyx_n_u_print_progress __pyx_string_tab[97]
+#define __pyx_n_u_print_start_banner __pyx_string_tab[98]
+#define __pyx_n_u_print_summary __pyx_string_tab[99]
+#define __pyx_n_u_print_summary_box __pyx_string_tab[100]
+#define __pyx_n_u_progress_interval __pyx_string_tab[101]
+#define __pyx_n_u_qualname __pyx_string_tab[102]
+#define __pyx_n_u_r __pyx_string_tab[103]
+#define __pyx_n_u_rate_str __pyx_string_tab[104]
+#define __pyx_n_u_re __pyx_string_tab[105]
+#define __pyx_n_u_replace __pyx_string_tab[106]
+#define __pyx_n_u_rocks_shim __pyx_string_tab[107]
+#define __pyx_n_u_rs __pyx_string_tab[108]
+#define __pyx_n_u_s __pyx_string_tab[109]
+#define __pyx_n_u_search __pyx_string_tab[110]
+#define __pyx_n_u_seek __pyx_string_tab[111]
+#define __pyx_n_u_set_name __pyx_string_tab[112]
+#define __pyx_n_u_setdefault __pyx_string_tab[113]
+#define __pyx_n_u_signal __pyx_string_tab[114]
+#define __pyx_n_u_signal_handler __pyx_string_tab[115]
+#define __pyx_n_u_signum __pyx_string_tab[116]
+#define __pyx_n_u_src_ngramprep_utilities_count_it __pyx_string_tab[117]
+#define __pyx_n_u_start_time __pyx_string_tab[118]
+#define __pyx_n_u_style __pyx_string_tab[119]
+#define __pyx_n_u_summary_items __pyx_string_tab[120]
+#define __pyx_n_u_sys __pyx_string_tab[121]
+#define __pyx_n_u_test __pyx_string_tab[122]
+#define __pyx_n_u_time __pyx_string_tab[123]
+#define __pyx_n_u_title __pyx_string_tab[124]
+#define __pyx_n_u_total_time __pyx_string_tab[125]
+#define __pyx_n_u_total_width __pyx_string_tab[126]
+#define __pyx_n_u_truncate_path_to_fit __pyx_string_tab[127]
+#define __pyx_n_u_unknown __pyx_string_tab[128]
+#define __pyx_n_u_valid __pyx_string_tab[129]
+#define __pyx_n_u_values __pyx_string_tab[130]
+#define __pyx_n_u_width __pyx_string_tab[131]
+#define __pyx_kp_b__8 __pyx_string_tab[132]
+#define __pyx_kp_b_iso88591_4A_9N_a_q_1_fA_Q_7q_q_QoQa_q_F __pyx_string_tab[133]
+#define __pyx_kp_b_iso88591_A_Q_auA_5 __pyx_string_tab[134]
+#define __pyx_kp_b_iso88591_A_a_a_1_y_q_1_Qj_b_Zq_R_Qa_A_TT __pyx_string_tab[135]
+#define __pyx_kp_b_iso88591_A_waq_1_5_ar_M_bbhhiikkrrss_q __pyx_string_tab[136]
+#define __pyx_kp_b_iso88591_l_7_1_Qe2Q_6awoQlZ_a __pyx_string_tab[137]
+#define __pyx_kp_b_iso88591_q_l_7_a_9N_a_1E_2Qj_A_A_q_Ql_AS __pyx_string_tab[138]
 #define __pyx_int_0 __pyx_number_tab[0]
 #define __pyx_int_1 __pyx_number_tab[1]
 #define __pyx_int_15 __pyx_number_tab[2]
@@ -2791,7 +2723,7 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items);
   for (int i=0; i<3; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<6; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<144; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<139; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
   for (int i=0; i<5; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_clear_contents ### */
 /* CommonTypesMetaclass.module_state_clear */
@@ -2819,7 +2751,7 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   Py_VISIT(traverse_module_state->__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items);
   for (int i=0; i<3; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<6; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<144; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<139; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
   for (int i=0; i<5; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_traverse_contents ### */
 /* CommonTypesMetaclass.module_state_traverse */
@@ -2834,7 +2766,7 @@ return 0;
 #endif
 /* #### Code section: module_code ### */
 
-/* "src/ngramprep/utilities/count_items.pyx":17
+/* "src/ngramprep/utilities/count_items.pyx":16
  * 
  * 
  * def _print_start_banner(db_path, progress_interval, grouping=None):             # <<<<<<<<<<<<<<
@@ -2883,41 +2815,41 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_db_path,&__pyx_mstate_global->__pyx_n_u_progress_interval,&__pyx_mstate_global->__pyx_n_u_grouping,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 17, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 16, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 16, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 16, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 16, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_start_banner", 0) < (0)) __PYX_ERR(0, 17, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_start_banner", 0) < (0)) __PYX_ERR(0, 16, __pyx_L3_error)
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject *)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_start_banner", 0, 2, 3, i); __PYX_ERR(0, 17, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_start_banner", 0, 2, 3, i); __PYX_ERR(0, 16, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 16, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 16, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 17, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 16, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
@@ -2929,7 +2861,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_print_start_banner", 0, 2, 3, __pyx_nargs); __PYX_ERR(0, 17, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_print_start_banner", 0, 2, 3, __pyx_nargs); __PYX_ERR(0, 16, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -2969,7 +2901,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_print_start_banner", 0);
 
-  /* "src/ngramprep/utilities/count_items.pyx":18
+  /* "src/ngramprep/utilities/count_items.pyx":17
  * 
  * def _print_start_banner(db_path, progress_interval, grouping=None):
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=DISPLAY_WIDTH)             # <<<<<<<<<<<<<<
@@ -2977,9 +2909,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
  *     print(db_line)
 */
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_truncate_path_to_fit); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_truncate_path_to_fit); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -2995,21 +2927,21 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
   #endif
   {
     PyObject *__pyx_callargs[3 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_2, __pyx_v_db_path, __pyx_mstate_global->__pyx_kp_u_Database};
-    __pyx_t_6 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 18, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 17, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_total_width, __pyx_t_4, __pyx_t_6, __pyx_callargs+3, 0) < (0)) __PYX_ERR(0, 18, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_total_width, __pyx_t_4, __pyx_t_6, __pyx_callargs+3, 0) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_3, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_6);
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 18, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 17, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __pyx_v_db_line = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":19
+  /* "src/ngramprep/utilities/count_items.pyx":18
  * def _print_start_banner(db_path, progress_interval, grouping=None):
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=DISPLAY_WIDTH)
  *     print(format_banner("DATABASE ITEM COUNTER", width=DISPLAY_WIDTH, style=""))             # <<<<<<<<<<<<<<
@@ -3018,9 +2950,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
 */
   __pyx_t_3 = NULL;
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 19, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 18, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 19, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 18, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -3036,16 +2968,16 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 2 : 0)] = {__pyx_t_4, __pyx_mstate_global->__pyx_kp_u_DATABASE_ITEM_COUNTER};
-    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 19, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 18, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_7, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u_, __pyx_t_8, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_7, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 18, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u_, __pyx_t_8, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 18, __pyx_L1_error)
     __pyx_t_6 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 19, __pyx_L1_error)
+    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 18, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
   }
   __pyx_t_5 = 1;
@@ -3054,12 +2986,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 19, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 18, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":20
+  /* "src/ngramprep/utilities/count_items.pyx":19
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=DISPLAY_WIDTH)
  *     print(format_banner("DATABASE ITEM COUNTER", width=DISPLAY_WIDTH, style=""))
  *     print(db_line)             # <<<<<<<<<<<<<<
@@ -3072,12 +3004,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
     PyObject *__pyx_callargs[2] = {__pyx_t_6, __pyx_v_db_line};
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 19, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":21
+  /* "src/ngramprep/utilities/count_items.pyx":20
  *     print(format_banner("DATABASE ITEM COUNTER", width=DISPLAY_WIDTH, style=""))
  *     print(db_line)
  *     print(f"Progress interval: every {progress_interval:,} items")             # <<<<<<<<<<<<<<
@@ -3085,13 +3017,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
  *         print(f"Grouping by: {grouping}")
 */
   __pyx_t_6 = NULL;
-  __pyx_t_3 = __Pyx_PyObject_Format(__pyx_v_progress_interval, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 21, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Format(__pyx_v_progress_interval, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_9[0] = __pyx_mstate_global->__pyx_kp_u_Progress_interval_every;
   __pyx_t_9[1] = __pyx_t_3;
   __pyx_t_9[2] = __pyx_mstate_global->__pyx_kp_u_items;
   __pyx_t_2 = __Pyx_PyUnicode_Join(__pyx_t_9, 3, 25 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_3) + 6, 127 | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_3));
-  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 21, __pyx_L1_error)
+  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_5 = 1;
@@ -3100,22 +3032,22 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 21, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":22
+  /* "src/ngramprep/utilities/count_items.pyx":21
  *     print(db_line)
  *     print(f"Progress interval: every {progress_interval:,} items")
  *     if grouping:             # <<<<<<<<<<<<<<
  *         print(f"Grouping by: {grouping}")
  *     print()
 */
-  __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_v_grouping); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(0, 22, __pyx_L1_error)
+  __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_v_grouping); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(0, 21, __pyx_L1_error)
   if (__pyx_t_10) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":23
+    /* "src/ngramprep/utilities/count_items.pyx":22
  *     print(f"Progress interval: every {progress_interval:,} items")
  *     if grouping:
  *         print(f"Grouping by: {grouping}")             # <<<<<<<<<<<<<<
@@ -3123,9 +3055,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
  *     print(format_banner("COUNTING", width=DISPLAY_WIDTH, style=""), flush=True)
 */
     __pyx_t_2 = NULL;
-    __pyx_t_6 = __Pyx_PyObject_FormatSimple(__pyx_v_grouping, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 23, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_FormatSimple(__pyx_v_grouping, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 22, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_3 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Grouping_by, __pyx_t_6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 23, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Grouping_by, __pyx_t_6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 22, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_5 = 1;
@@ -3134,12 +3066,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
       __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
     }
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":22
+    /* "src/ngramprep/utilities/count_items.pyx":21
  *     print(db_line)
  *     print(f"Progress interval: every {progress_interval:,} items")
  *     if grouping:             # <<<<<<<<<<<<<<
@@ -3148,7 +3080,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":24
+  /* "src/ngramprep/utilities/count_items.pyx":23
  *     if grouping:
  *         print(f"Grouping by: {grouping}")
  *     print()             # <<<<<<<<<<<<<<
@@ -3161,12 +3093,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
     PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":25
+  /* "src/ngramprep/utilities/count_items.pyx":24
  *         print(f"Grouping by: {grouping}")
  *     print()
  *     print(format_banner("COUNTING", width=DISPLAY_WIDTH, style=""), flush=True)             # <<<<<<<<<<<<<<
@@ -3175,9 +3107,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
 */
   __pyx_t_3 = NULL;
   __pyx_t_6 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -3193,34 +3125,34 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 2 : 0)] = {__pyx_t_6, __pyx_mstate_global->__pyx_n_u_COUNTING};
-    __pyx_t_4 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 25, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_7, __pyx_t_4, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 25, __pyx_L1_error)
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u__3, __pyx_t_4, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 25, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_7, __pyx_t_4, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u__3, __pyx_t_4, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
     __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_8, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_4);
     __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 25, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __pyx_t_5 = 1;
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_3, __pyx_t_2};
-    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 25, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_flush, Py_True, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 25, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_flush, Py_True, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 25, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 24, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":17
+  /* "src/ngramprep/utilities/count_items.pyx":16
  * 
  * 
  * def _print_start_banner(db_path, progress_interval, grouping=None):             # <<<<<<<<<<<<<<
@@ -3248,7 +3180,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items__print_start_
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":28
+/* "src/ngramprep/utilities/count_items.pyx":27
  * 
  * 
  * def _print_progress(count, elapsed):             # <<<<<<<<<<<<<<
@@ -3296,39 +3228,39 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_count,&__pyx_mstate_global->__pyx_n_u_elapsed,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 28, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 27, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 27, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 27, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_progress", 0) < (0)) __PYX_ERR(0, 28, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_progress", 0) < (0)) __PYX_ERR(0, 27, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_progress", 1, 2, 2, i); __PYX_ERR(0, 28, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_progress", 1, 2, 2, i); __PYX_ERR(0, 27, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 28, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 27, __pyx_L3_error)
       values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 28, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 27, __pyx_L3_error)
     }
     __pyx_v_count = values[0];
     __pyx_v_elapsed = values[1];
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_print_progress", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 28, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_print_progress", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 27, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3367,7 +3299,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_print_progress", 0);
 
-  /* "src/ngramprep/utilities/count_items.pyx":29
+  /* "src/ngramprep/utilities/count_items.pyx":28
  * 
  * def _print_progress(count, elapsed):
  *     rate_str = ProgressDisplay.format_rate(count, elapsed, "items")             # <<<<<<<<<<<<<<
@@ -3375,9 +3307,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
  * 
 */
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 29, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_format_rate); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 29, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_format_rate); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_5 = 1;
@@ -3397,13 +3329,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (4-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 29, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 28, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __pyx_v_rate_str = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":30
+  /* "src/ngramprep/utilities/count_items.pyx":29
  * def _print_progress(count, elapsed):
  *     rate_str = ProgressDisplay.format_rate(count, elapsed, "items")
  *     print(f"[{count:>{COUNT_FIELD_WIDTH},}] | elapsed {elapsed:8.1f}s | rate {rate_str}", flush=True)             # <<<<<<<<<<<<<<
@@ -3411,24 +3343,24 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
  * 
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_COUNT_FIELD_WIDTH); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_COUNT_FIELD_WIDTH); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_FormatSimple(__pyx_t_2, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_FormatSimple(__pyx_t_2, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_6[0] = __pyx_mstate_global->__pyx_kp_u__5;
   __pyx_t_6[1] = __pyx_t_3;
   __pyx_t_6[2] = __pyx_mstate_global->__pyx_kp_u__2;
   __pyx_t_2 = __Pyx_PyUnicode_Join(__pyx_t_6, 3, 1 * 2 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_3), 127 | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_3));
-  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 30, __pyx_L1_error)
+  if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Format(__pyx_v_count, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Format(__pyx_v_count, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_elapsed, __pyx_mstate_global->__pyx_kp_u_8_1f); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_elapsed, __pyx_mstate_global->__pyx_kp_u_8_1f); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_7 = __Pyx_PyObject_FormatSimple(__pyx_v_rate_str, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_FormatSimple(__pyx_v_rate_str, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __pyx_t_8[0] = __pyx_mstate_global->__pyx_kp_u__4;
   __pyx_t_8[1] = __pyx_t_3;
@@ -3437,7 +3369,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
   __pyx_t_8[4] = __pyx_mstate_global->__pyx_kp_u_s_rate;
   __pyx_t_8[5] = __pyx_t_7;
   __pyx_t_9 = __Pyx_PyUnicode_Join(__pyx_t_8, 6, 1 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_3) + 12 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_2) + 9 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_7), 127 | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_3) | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_2) | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_7));
-  if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 30, __pyx_L1_error)
+  if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_9);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -3445,19 +3377,19 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
   __pyx_t_5 = 1;
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_4, __pyx_t_9};
-    __pyx_t_7 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 30, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 29, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_flush, Py_True, __pyx_t_7, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 30, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_flush, Py_True, __pyx_t_7, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 29, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_7);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 30, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 29, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":28
+  /* "src/ngramprep/utilities/count_items.pyx":27
  * 
  * 
  * def _print_progress(count, elapsed):             # <<<<<<<<<<<<<<
@@ -3484,7 +3416,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_2_print_progr
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":33
+/* "src/ngramprep/utilities/count_items.pyx":32
  * 
  * 
  * def _print_summary(db_path, count, total_time, group_counts=None):             # <<<<<<<<<<<<<<
@@ -3534,47 +3466,47 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_db_path,&__pyx_mstate_global->__pyx_n_u_count,&__pyx_mstate_global->__pyx_n_u_total_time,&__pyx_mstate_global->__pyx_n_u_group_counts,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 33, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 32, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 32, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 32, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 32, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 32, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_summary", 0) < (0)) __PYX_ERR(0, 33, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "_print_summary", 0) < (0)) __PYX_ERR(0, 32, __pyx_L3_error)
       if (!values[3]) values[3] = __Pyx_NewRef(((PyObject *)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_summary", 0, 3, 4, i); __PYX_ERR(0, 33, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("_print_summary", 0, 3, 4, i); __PYX_ERR(0, 32, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  4:
         values[3] = __Pyx_ArgRef_FASTCALL(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 32, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 32, __pyx_L3_error)
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 32, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 33, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 32, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
@@ -3587,7 +3519,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_print_summary", 0, 3, 4, __pyx_nargs); __PYX_ERR(0, 33, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_print_summary", 0, 3, 4, __pyx_nargs); __PYX_ERR(0, 32, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3631,7 +3563,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_print_summary", 0);
 
-  /* "src/ngramprep/utilities/count_items.pyx":34
+  /* "src/ngramprep/utilities/count_items.pyx":33
  * 
  * def _print_summary(db_path, count, total_time, group_counts=None):
  *     rate_str = ProgressDisplay.format_rate(count, total_time, "items")             # <<<<<<<<<<<<<<
@@ -3639,9 +3571,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=94)
 */
   __pyx_t_2 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 34, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_format_rate); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 34, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_format_rate); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 33, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_5 = 1;
@@ -3661,13 +3593,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (4-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 34, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 33, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __pyx_v_rate_str = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":36
+  /* "src/ngramprep/utilities/count_items.pyx":35
  *     rate_str = ProgressDisplay.format_rate(count, total_time, "items")
  *     # content area inside box is 94 chars (100 width minus borders/padding)
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=94)             # <<<<<<<<<<<<<<
@@ -3675,7 +3607,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
  *         "Items": f"{count:,}",
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_truncate_path_to_fit); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_truncate_path_to_fit); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 35, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -3691,95 +3623,95 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
   #endif
   {
     PyObject *__pyx_callargs[3 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_4, __pyx_v_db_path, __pyx_mstate_global->__pyx_kp_u_Database};
-    __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 36, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 35, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_total_width, __pyx_mstate_global->__pyx_int_94, __pyx_t_3, __pyx_callargs+3, 0) < (0)) __PYX_ERR(0, 36, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_total_width, __pyx_mstate_global->__pyx_int_94, __pyx_t_3, __pyx_callargs+3, 0) < (0)) __PYX_ERR(0, 35, __pyx_L1_error)
     __pyx_t_1 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_3);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 36, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 35, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __pyx_v_db_line = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":38
+  /* "src/ngramprep/utilities/count_items.pyx":37
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=94)
  *     summary_items = {
  *         "Items": f"{count:,}",             # <<<<<<<<<<<<<<
  *         "Elapsed": f"{total_time:.2f}s",
  *         "Avg rate": rate_str,
 */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 38, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 37, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_count, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 38, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_count, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Items, __pyx_t_2) < (0)) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Items, __pyx_t_2) < (0)) __PYX_ERR(0, 37, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":39
+  /* "src/ngramprep/utilities/count_items.pyx":38
  *     summary_items = {
  *         "Items": f"{count:,}",
  *         "Elapsed": f"{total_time:.2f}s",             # <<<<<<<<<<<<<<
  *         "Avg rate": rate_str,
  *         "Database": db_line,
 */
-  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_total_time, __pyx_mstate_global->__pyx_kp_u_2f); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Format(__pyx_v_total_time, __pyx_mstate_global->__pyx_kp_u_2f); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyUnicode_Concat__Pyx_ReferenceSharing_OwnStrongReferenceInPlace(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_s); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyUnicode_Concat__Pyx_ReferenceSharing_OwnStrongReferenceInPlace(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_s); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 38, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Elapsed, __pyx_t_3) < (0)) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Elapsed, __pyx_t_3) < (0)) __PYX_ERR(0, 37, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":40
+  /* "src/ngramprep/utilities/count_items.pyx":39
  *         "Items": f"{count:,}",
  *         "Elapsed": f"{total_time:.2f}s",
  *         "Avg rate": rate_str,             # <<<<<<<<<<<<<<
  *         "Database": db_line,
  *     }
 */
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_kp_u_Avg_rate, __pyx_v_rate_str) < (0)) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_kp_u_Avg_rate, __pyx_v_rate_str) < (0)) __PYX_ERR(0, 37, __pyx_L1_error)
 
-  /* "src/ngramprep/utilities/count_items.pyx":41
+  /* "src/ngramprep/utilities/count_items.pyx":40
  *         "Elapsed": f"{total_time:.2f}s",
  *         "Avg rate": rate_str,
  *         "Database": db_line,             # <<<<<<<<<<<<<<
  *     }
  * 
 */
-  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Database_2, __pyx_v_db_line) < (0)) __PYX_ERR(0, 38, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_Database_2, __pyx_v_db_line) < (0)) __PYX_ERR(0, 37, __pyx_L1_error)
   __pyx_v_summary_items = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":44
+  /* "src/ngramprep/utilities/count_items.pyx":43
  *     }
  * 
  *     if group_counts:             # <<<<<<<<<<<<<<
  *         summary_items["Groups"] = f"{len(group_counts):,}"
  * 
 */
-  __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_v_group_counts); if (unlikely((__pyx_t_6 < 0))) __PYX_ERR(0, 44, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_v_group_counts); if (unlikely((__pyx_t_6 < 0))) __PYX_ERR(0, 43, __pyx_L1_error)
   if (__pyx_t_6) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":45
+    /* "src/ngramprep/utilities/count_items.pyx":44
  * 
  *     if group_counts:
  *         summary_items["Groups"] = f"{len(group_counts):,}"             # <<<<<<<<<<<<<<
  * 
  *     print()
 */
-    __pyx_t_7 = PyObject_Length(__pyx_v_group_counts); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 45, __pyx_L1_error)
-    __pyx_t_1 = PyLong_FromSsize_t(__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __pyx_t_7 = PyObject_Length(__pyx_v_group_counts); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 44, __pyx_L1_error)
+    __pyx_t_1 = PyLong_FromSsize_t(__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = __Pyx_PyObject_Format(__pyx_t_1, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Format(__pyx_t_1, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    if (unlikely((PyDict_SetItem(__pyx_v_summary_items, __pyx_mstate_global->__pyx_n_u_Groups, __pyx_t_3) < 0))) __PYX_ERR(0, 45, __pyx_L1_error)
+    if (unlikely((PyDict_SetItem(__pyx_v_summary_items, __pyx_mstate_global->__pyx_n_u_Groups, __pyx_t_3) < 0))) __PYX_ERR(0, 44, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":44
+    /* "src/ngramprep/utilities/count_items.pyx":43
  *     }
  * 
  *     if group_counts:             # <<<<<<<<<<<<<<
@@ -3788,7 +3720,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":47
+  /* "src/ngramprep/utilities/count_items.pyx":46
  *         summary_items["Groups"] = f"{len(group_counts):,}"
  * 
  *     print()             # <<<<<<<<<<<<<<
@@ -3801,12 +3733,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
     PyObject *__pyx_callargs[2] = {__pyx_t_1, NULL};
     __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 46, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":48
+  /* "src/ngramprep/utilities/count_items.pyx":47
  * 
  *     print()
  *     _display.print_summary_box(             # <<<<<<<<<<<<<<
@@ -3814,20 +3746,20 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
  *         items=summary_items,
 */
   __pyx_t_1 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_display); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 48, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_display); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_print_summary_box); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 48, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_print_summary_box); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":51
+  /* "src/ngramprep/utilities/count_items.pyx":50
  *         title="COUNT COMPLETE",
  *         items=summary_items,
  *         box_width=DISPLAY_WIDTH,             # <<<<<<<<<<<<<<
  *     )
  * 
 */
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 50, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -3843,32 +3775,32 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
   #endif
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 3 : 0)] = {__pyx_t_1, NULL};
-    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(3); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 48, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(3); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_title, __pyx_mstate_global->__pyx_kp_u_COUNT_COMPLETE, __pyx_t_8, __pyx_callargs+1, 0) < (0)) __PYX_ERR(0, 48, __pyx_L1_error)
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_items_2, __pyx_v_summary_items, __pyx_t_8, __pyx_callargs+1, 1) < (0)) __PYX_ERR(0, 48, __pyx_L1_error)
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_box_width, __pyx_t_2, __pyx_t_8, __pyx_callargs+1, 2) < (0)) __PYX_ERR(0, 48, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_title, __pyx_mstate_global->__pyx_kp_u_COUNT_COMPLETE, __pyx_t_8, __pyx_callargs+1, 0) < (0)) __PYX_ERR(0, 47, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_items_2, __pyx_v_summary_items, __pyx_t_8, __pyx_callargs+1, 1) < (0)) __PYX_ERR(0, 47, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_box_width, __pyx_t_2, __pyx_t_8, __pyx_callargs+1, 2) < (0)) __PYX_ERR(0, 47, __pyx_L1_error)
     __pyx_t_3 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
     __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 48, __pyx_L1_error)
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":54
+  /* "src/ngramprep/utilities/count_items.pyx":53
  *     )
  * 
  *     if group_counts:             # <<<<<<<<<<<<<<
  *         print()
  *         print(format_banner("GROUP COUNTS", width=DISPLAY_WIDTH, style=""))
 */
-  __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_v_group_counts); if (unlikely((__pyx_t_6 < 0))) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_v_group_counts); if (unlikely((__pyx_t_6 < 0))) __PYX_ERR(0, 53, __pyx_L1_error)
   if (__pyx_t_6) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":55
+    /* "src/ngramprep/utilities/count_items.pyx":54
  * 
  *     if group_counts:
  *         print()             # <<<<<<<<<<<<<<
@@ -3881,12 +3813,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       PyObject *__pyx_callargs[2] = {__pyx_t_4, NULL};
       __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 55, __pyx_L1_error)
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 54, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":56
+    /* "src/ngramprep/utilities/count_items.pyx":55
  *     if group_counts:
  *         print()
  *         print(format_banner("GROUP COUNTS", width=DISPLAY_WIDTH, style=""))             # <<<<<<<<<<<<<<
@@ -3895,9 +3827,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
 */
     __pyx_t_4 = NULL;
     __pyx_t_2 = NULL;
-    __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 56, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_format_banner); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 55, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_GetModuleGlobalName(__pyx_t_9, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 56, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_9, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 55, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_9);
     __pyx_t_5 = 1;
     #if CYTHON_UNPACK_METHODS
@@ -3913,16 +3845,16 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
     #endif
     {
       PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 2 : 0)] = {__pyx_t_2, __pyx_mstate_global->__pyx_kp_u_GROUP_COUNTS};
-      __pyx_t_10 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 56, __pyx_L1_error)
+      __pyx_t_10 = __Pyx_MakeVectorcallBuilderKwds(2); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_10);
-      if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_9, __pyx_t_10, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 56, __pyx_L1_error)
-      if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u__3, __pyx_t_10, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 56, __pyx_L1_error)
+      if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_9, __pyx_t_10, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 55, __pyx_L1_error)
+      if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_style, __pyx_mstate_global->__pyx_kp_u__3, __pyx_t_10, __pyx_callargs+2, 1) < (0)) __PYX_ERR(0, 55, __pyx_L1_error)
       __pyx_t_8 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_1, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_10);
       __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 56, __pyx_L1_error)
+      if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
     }
     __pyx_t_5 = 1;
@@ -3931,12 +3863,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 56, __pyx_L1_error)
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 55, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":57
+    /* "src/ngramprep/utilities/count_items.pyx":56
  *         print()
  *         print(format_banner("GROUP COUNTS", width=DISPLAY_WIDTH, style=""))
  *         for group in sorted(group_counts.keys()):             # <<<<<<<<<<<<<<
@@ -3950,13 +3882,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       PyObject *__pyx_callargs[2] = {__pyx_t_8, NULL};
       __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_keys, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 57, __pyx_L1_error)
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 56, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     }
-    __pyx_t_8 = PySequence_List(__pyx_t_3); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 57, __pyx_L1_error)
+    __pyx_t_8 = PySequence_List(__pyx_t_3); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 56, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely((PyList_Sort(__pyx_t_8) < 0))) __PYX_ERR(0, 57, __pyx_L1_error)
+    if (unlikely((PyList_Sort(__pyx_t_8) < 0))) __PYX_ERR(0, 56, __pyx_L1_error)
     __pyx_t_3 = __pyx_t_8; __Pyx_INCREF(__pyx_t_3);
     __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
@@ -3964,18 +3896,18 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       {
         Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_3);
         #if !CYTHON_ASSUME_SAFE_SIZE
-        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 57, __pyx_L1_error)
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 56, __pyx_L1_error)
         #endif
         if (__pyx_t_7 >= __pyx_temp) break;
       }
       __pyx_t_8 = __Pyx_PyList_GetItemRefFast(__pyx_t_3, __pyx_t_7, __Pyx_ReferenceSharing_OwnStrongReference);
       ++__pyx_t_7;
-      if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 57, __pyx_L1_error)
+      if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 56, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_XDECREF_SET(__pyx_v_group, __pyx_t_8);
       __pyx_t_8 = 0;
 
-      /* "src/ngramprep/utilities/count_items.pyx":58
+      /* "src/ngramprep/utilities/count_items.pyx":57
  *         print(format_banner("GROUP COUNTS", width=DISPLAY_WIDTH, style=""))
  *         for group in sorted(group_counts.keys()):
  *             print(f"  {group:20s}: {group_counts[group]:>12,} items")             # <<<<<<<<<<<<<<
@@ -3983,11 +3915,11 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
  * 
 */
       __pyx_t_4 = NULL;
-      __pyx_t_1 = __Pyx_PyObject_Format(__pyx_v_group, __pyx_mstate_global->__pyx_kp_u_20s); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Format(__pyx_v_group, __pyx_mstate_global->__pyx_kp_u_20s); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_10 = __Pyx_PyObject_GetItem(__pyx_v_group_counts, __pyx_v_group); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_10 = __Pyx_PyObject_GetItem(__pyx_v_group_counts, __pyx_v_group); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 57, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_10);
-      __pyx_t_9 = __Pyx_PyObject_Format(__pyx_t_10, __pyx_mstate_global->__pyx_kp_u_12); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 58, __pyx_L1_error)
+      __pyx_t_9 = __Pyx_PyObject_Format(__pyx_t_10, __pyx_mstate_global->__pyx_kp_u_12); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 57, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
       __pyx_t_11[0] = __pyx_mstate_global->__pyx_kp_u__6;
@@ -3996,7 +3928,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       __pyx_t_11[3] = __pyx_t_9;
       __pyx_t_11[4] = __pyx_mstate_global->__pyx_kp_u_items;
       __pyx_t_10 = __Pyx_PyUnicode_Join(__pyx_t_11, 5, 2 * 2 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_1) + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_9) + 6, 127 | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_1) | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_9));
-      if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 58, __pyx_L1_error)
+      if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 57, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_10);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -4006,12 +3938,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
         __pyx_t_8 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
-        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 58, __pyx_L1_error)
+        if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 57, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
       }
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-      /* "src/ngramprep/utilities/count_items.pyx":57
+      /* "src/ngramprep/utilities/count_items.pyx":56
  *         print()
  *         print(format_banner("GROUP COUNTS", width=DISPLAY_WIDTH, style=""))
  *         for group in sorted(group_counts.keys()):             # <<<<<<<<<<<<<<
@@ -4021,7 +3953,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":59
+    /* "src/ngramprep/utilities/count_items.pyx":58
  *         for group in sorted(group_counts.keys()):
  *             print(f"  {group:20s}: {group_counts[group]:>12,} items")
  *         print()             # <<<<<<<<<<<<<<
@@ -4034,12 +3966,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
       PyObject *__pyx_callargs[2] = {__pyx_t_8, NULL};
       __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 59, __pyx_L1_error)
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 58, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":54
+    /* "src/ngramprep/utilities/count_items.pyx":53
  *     )
  * 
  *     if group_counts:             # <<<<<<<<<<<<<<
@@ -4048,7 +3980,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":33
+  /* "src/ngramprep/utilities/count_items.pyx":32
  * 
  * 
  * def _print_summary(db_path, count, total_time, group_counts=None):             # <<<<<<<<<<<<<<
@@ -4079,161 +4011,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_4_print_summa
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":62
- * 
- * 
- * cdef bytes _extract_year_bin(bytes key):             # <<<<<<<<<<<<<<
- *     """
- *     Extract a year/bin from a pivoted key.
-*/
-
-static PyObject *__pyx_f_3src_9ngramprep_9utilities_11count_items__extract_year_bin(PyObject *__pyx_v_key) {
-  Py_ssize_t __pyx_v_key_len;
-  unsigned int __pyx_v_year;
-  unsigned char const *__pyx_v_key_ptr;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  Py_ssize_t __pyx_t_1;
-  int __pyx_t_2;
-  char *__pyx_t_3;
-  PyObject *__pyx_t_4 = NULL;
-  PyObject *__pyx_t_5 = NULL;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("_extract_year_bin", 0);
-
-  /* "src/ngramprep/utilities/count_items.pyx":69
- *     followed by the ngram text. We decode that binary prefix.
- *     """
- *     cdef Py_ssize_t key_len = len(key)             # <<<<<<<<<<<<<<
- *     cdef unsigned int year
- *     cdef const unsigned char* key_ptr
-*/
-  if (unlikely(__pyx_v_key == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 69, __pyx_L1_error)
-  }
-  __pyx_t_1 = __Pyx_PyBytes_GET_SIZE(__pyx_v_key); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(0, 69, __pyx_L1_error)
-  __pyx_v_key_len = __pyx_t_1;
-
-  /* "src/ngramprep/utilities/count_items.pyx":74
- * 
- *     # Fast path: 4-byte big-endian year prefix used by pivoted DBs
- *     if key_len >= 4:             # <<<<<<<<<<<<<<
- *         key_ptr = <const unsigned char*>(<char*>key)
- *         # Manually unpack big-endian 4-byte unsigned int
-*/
-  __pyx_t_2 = (__pyx_v_key_len >= 4);
-  if (__pyx_t_2) {
-
-    /* "src/ngramprep/utilities/count_items.pyx":75
- *     # Fast path: 4-byte big-endian year prefix used by pivoted DBs
- *     if key_len >= 4:
- *         key_ptr = <const unsigned char*>(<char*>key)             # <<<<<<<<<<<<<<
- *         # Manually unpack big-endian 4-byte unsigned int
- *         year = ((key_ptr[0] << 24) |
-*/
-    if (unlikely(__pyx_v_key == Py_None)) {
-      PyErr_SetString(PyExc_TypeError, "expected bytes, NoneType found");
-      __PYX_ERR(0, 75, __pyx_L1_error)
-    }
-    __pyx_t_3 = __Pyx_PyBytes_AsWritableString(__pyx_v_key); if (unlikely((!__pyx_t_3) && PyErr_Occurred())) __PYX_ERR(0, 75, __pyx_L1_error)
-    __pyx_v_key_ptr = ((unsigned char const *)((char *)__pyx_t_3));
-
-    /* "src/ngramprep/utilities/count_items.pyx":79
- *         year = ((key_ptr[0] << 24) |
- *                 (key_ptr[1] << 16) |
- *                 (key_ptr[2] << 8) |             # <<<<<<<<<<<<<<
- *                 key_ptr[3])
- * 
-*/
-    __pyx_v_year = (((((__pyx_v_key_ptr[0]) << 24) | ((__pyx_v_key_ptr[1]) << 16)) | ((__pyx_v_key_ptr[2]) << 8)) | (__pyx_v_key_ptr[3]));
-
-    /* "src/ngramprep/utilities/count_items.pyx":83
- * 
- *         # Sanity check: years should be in reasonable range
- *         if 0 < year < 10000:             # <<<<<<<<<<<<<<
- *             return str(year).encode('utf-8')
- * 
-*/
-    __pyx_t_2 = (0 < __pyx_v_year);
-    if (__pyx_t_2) {
-      __pyx_t_2 = (__pyx_v_year < 0x2710);
-    }
-    if (__pyx_t_2) {
-
-      /* "src/ngramprep/utilities/count_items.pyx":84
- *         # Sanity check: years should be in reasonable range
- *         if 0 < year < 10000:
- *             return str(year).encode('utf-8')             # <<<<<<<<<<<<<<
- * 
- *     return b"unknown"
-*/
-      __Pyx_XDECREF(__pyx_r);
-      __pyx_t_4 = __Pyx_PyLong_From_unsigned_int(__pyx_v_year); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 84, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_5 = __Pyx_PyObject_Unicode(__pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 84, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __pyx_t_4 = PyUnicode_AsUTF8String(((PyObject*)__pyx_t_5)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 84, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_4);
-      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-      __pyx_r = ((PyObject*)__pyx_t_4);
-      __pyx_t_4 = 0;
-      goto __pyx_L0;
-
-      /* "src/ngramprep/utilities/count_items.pyx":83
- * 
- *         # Sanity check: years should be in reasonable range
- *         if 0 < year < 10000:             # <<<<<<<<<<<<<<
- *             return str(year).encode('utf-8')
- * 
-*/
-    }
-
-    /* "src/ngramprep/utilities/count_items.pyx":74
- * 
- *     # Fast path: 4-byte big-endian year prefix used by pivoted DBs
- *     if key_len >= 4:             # <<<<<<<<<<<<<<
- *         key_ptr = <const unsigned char*>(<char*>key)
- *         # Manually unpack big-endian 4-byte unsigned int
-*/
-  }
-
-  /* "src/ngramprep/utilities/count_items.pyx":86
- *             return str(year).encode('utf-8')
- * 
- *     return b"unknown"             # <<<<<<<<<<<<<<
- * 
- * 
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_mstate_global->__pyx_n_b_unknown);
-  __pyx_r = __pyx_mstate_global->__pyx_n_b_unknown;
-  goto __pyx_L0;
-
-  /* "src/ngramprep/utilities/count_items.pyx":62
- * 
- * 
- * cdef bytes _extract_year_bin(bytes key):             # <<<<<<<<<<<<<<
- *     """
- *     Extract a year/bin from a pivoted key.
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_AddTraceback("src.ngramprep.utilities.count_items._extract_year_bin", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "src/ngramprep/utilities/count_items.pyx":89
+/* "src/ngramprep/utilities/count_items.pyx":61
  * 
  * 
  * def count_db_items(db_path, long progress_interval = 10_000_000, grouping=None):             # <<<<<<<<<<<<<<
@@ -4249,7 +4027,7 @@ PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_3src_9ngramprep_9utilities_11count_items_6count_db_items, "\n    Count items in a RocksDB database, optionally grouped by key prefix.\n    \n    Args:\n        db_path: Path to the RocksDB database\n        progress_interval: Print progress every N items (default: 10,000,000)\n        grouping: Optional grouping specification. Can be:\n            - None: Return total count (default behavior)\n            - 'year_bin': Fast extraction of [YEAR] prefix (recommended for pivoted DBs)\n            - str: Regex pattern to extract group from key (e.g., r'^\\[(\\d+)\\]' for year bins)\n            - callable: Function that takes a key (bytes) and returns a group identifier (str)\n            \n    Returns:\n        int if grouping is None, dict[str, int] if grouping is specified\n        \n    Examples:\n        # Total count\n        >>> count_db_items('/path/to/db')\n        1234567\n        \n        # Count by year bin (fast path)\n        >>> count_db_items('/path/to/db', grouping='year_bin')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Count by year bin (regex - slower)\n        >>> count_db_items('/path/to/db', grouping=r'^\\[(\\d+)\\]')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Custom grouping function\n        >>> count_db_items('/path/to/db', grouping=lambda k: k[:4].decode('utf-8', 'replace'))\n        {'[190': 45123, '[191': 46782, ...}\n    ");
+PyDoc_STRVAR(__pyx_doc_3src_9ngramprep_9utilities_11count_items_6count_db_items, "\n    Count items in a RocksDB database, optionally grouped by key prefix.\n    \n    Args:\n        db_path: Path to the RocksDB database\n        progress_interval: Print progress every N items (default: 10,000,000)\n        grouping: Optional grouping specification. Can be:\n            - None: Return total count (default behavior)\n            - str: Regex pattern to extract group from key (e.g., r'^\\[(\\d+)\\]' for year bins)\n            - callable: Function that takes a key (bytes) and returns a group identifier (str)\n            \n    Returns:\n        int if grouping is None, dict[str, int] if grouping is specified\n        \n    Examples:\n        # Total count\n        >>> count_db_items('/path/to/db')\n        1234567\n        \n        # Count by year bin (keys like \"[1900] token\")\n        >>> count_db_items('/path/to/db', grouping=r'^\\[(\\d+)\\]')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Custom grouping function\n        >>> count_db_items('/path/to/db', grouping=lambda k: k[:4].decode('utf-8', 'replace'))\n        {'[190': 45123, '[191': 46782, ...}\n    ");
 static PyMethodDef __pyx_mdef_3src_9ngramprep_9utilities_11count_items_7count_db_items = {"count_db_items", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_3src_9ngramprep_9utilities_11count_items_7count_db_items, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_3src_9ngramprep_9utilities_11count_items_6count_db_items};
 static PyObject *__pyx_pw_3src_9ngramprep_9utilities_11count_items_7count_db_items(PyObject *__pyx_self, 
 #if CYTHON_METH_FASTCALL
@@ -4283,43 +4061,43 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_db_path,&__pyx_mstate_global->__pyx_n_u_progress_interval,&__pyx_mstate_global->__pyx_n_u_grouping,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 89, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 61, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 61, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 61, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 61, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "count_db_items", 0) < (0)) __PYX_ERR(0, 89, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "count_db_items", 0) < (0)) __PYX_ERR(0, 61, __pyx_L3_error)
       if (!values[2]) values[2] = __Pyx_NewRef(((PyObject *)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("count_db_items", 0, 1, 3, i); __PYX_ERR(0, 89, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("count_db_items", 0, 1, 3, i); __PYX_ERR(0, 61, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 61, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 61, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 89, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 61, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
@@ -4327,7 +4105,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
     }
     __pyx_v_db_path = values[0];
     if (values[1]) {
-      __pyx_v_progress_interval = __Pyx_PyLong_As_long(values[1]); if (unlikely((__pyx_v_progress_interval == (long)-1) && PyErr_Occurred())) __PYX_ERR(0, 89, __pyx_L3_error)
+      __pyx_v_progress_interval = __Pyx_PyLong_As_long(values[1]); if (unlikely((__pyx_v_progress_interval == (long)-1) && PyErr_Occurred())) __PYX_ERR(0, 61, __pyx_L3_error)
     } else {
       __pyx_v_progress_interval = ((long)((long)0x989680));
     }
@@ -4335,7 +4113,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("count_db_items", 0, 1, 3, __pyx_nargs); __PYX_ERR(0, 89, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("count_db_items", 0, 1, 3, __pyx_nargs); __PYX_ERR(0, 61, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4356,7 +4134,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":142
+/* "src/ngramprep/utilities/count_items.pyx":103
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
  *             def grouping_fn(key):             # <<<<<<<<<<<<<<
@@ -4403,32 +4181,32 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_key,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 142, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 103, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 142, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 103, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "grouping_fn", 0) < (0)) __PYX_ERR(0, 142, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "grouping_fn", 0) < (0)) __PYX_ERR(0, 103, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("grouping_fn", 1, 1, 1, i); __PYX_ERR(0, 142, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("grouping_fn", 1, 1, 1, i); __PYX_ERR(0, 103, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 1)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 142, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 103, __pyx_L3_error)
     }
     __pyx_v_key = values[0];
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("grouping_fn", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 142, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("grouping_fn", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 103, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4467,14 +4245,14 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
   __pyx_outer_scope = (struct __pyx_obj_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items *) __Pyx_CyFunction_GetClosure(__pyx_self);
   __pyx_cur_scope = __pyx_outer_scope;
 
-  /* "src/ngramprep/utilities/count_items.pyx":143
+  /* "src/ngramprep/utilities/count_items.pyx":104
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
  *             def grouping_fn(key):
  *                 match = pattern.search(key)             # <<<<<<<<<<<<<<
  *                 if match:
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')
 */
-  if (unlikely(!__pyx_cur_scope->__pyx_v_pattern)) { __Pyx_RaiseClosureNameError("pattern"); __PYX_ERR(0, 143, __pyx_L1_error) }
+  if (unlikely(!__pyx_cur_scope->__pyx_v_pattern)) { __Pyx_RaiseClosureNameError("pattern"); __PYX_ERR(0, 104, __pyx_L1_error) }
   __pyx_t_2 = __pyx_cur_scope->__pyx_v_pattern;
   __Pyx_INCREF(__pyx_t_2);
   __pyx_t_3 = 0;
@@ -4482,23 +4260,23 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
     PyObject *__pyx_callargs[2] = {__pyx_t_2, __pyx_v_key};
     __pyx_t_1 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_search, __pyx_callargs+__pyx_t_3, (2-__pyx_t_3) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 143, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __pyx_v_match = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":144
+  /* "src/ngramprep/utilities/count_items.pyx":105
  *             def grouping_fn(key):
  *                 match = pattern.search(key)
  *                 if match:             # <<<<<<<<<<<<<<
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')
  *                 return "unknown"
 */
-  __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_v_match); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 144, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_v_match); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 105, __pyx_L1_error)
   if (__pyx_t_4) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":145
+    /* "src/ngramprep/utilities/count_items.pyx":106
  *                 match = pattern.search(key)
  *                 if match:
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')             # <<<<<<<<<<<<<<
@@ -4506,9 +4284,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
  *         elif callable(grouping):
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_mstate_global->__pyx_n_u_lastindex); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_match, __pyx_mstate_global->__pyx_n_u_lastindex); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 145, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 106, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     if (__pyx_t_4) {
       __pyx_t_5 = __pyx_v_match;
@@ -4518,13 +4296,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
         PyObject *__pyx_callargs[2] = {__pyx_t_5, __pyx_mstate_global->__pyx_int_1};
         __pyx_t_2 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_group, __pyx_callargs+__pyx_t_3, (2-__pyx_t_3) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
       }
-      __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_decode); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_decode); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 106, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_1 = __pyx_t_2;
@@ -4537,13 +4315,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
         PyObject *__pyx_callargs[2] = {__pyx_t_5, __pyx_mstate_global->__pyx_int_0};
         __pyx_t_2 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_group, __pyx_callargs+__pyx_t_3, (2-__pyx_t_3) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
       }
-      __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_decode); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_decode); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 106, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_1 = __pyx_t_2;
@@ -4553,7 +4331,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":144
+    /* "src/ngramprep/utilities/count_items.pyx":105
  *             def grouping_fn(key):
  *                 match = pattern.search(key)
  *                 if match:             # <<<<<<<<<<<<<<
@@ -4562,7 +4340,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":146
+  /* "src/ngramprep/utilities/count_items.pyx":107
  *                 if match:
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')
  *                 return "unknown"             # <<<<<<<<<<<<<<
@@ -4574,7 +4352,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
   __pyx_r = __pyx_mstate_global->__pyx_n_u_unknown;
   goto __pyx_L0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":142
+  /* "src/ngramprep/utilities/count_items.pyx":103
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
  *             def grouping_fn(key):             # <<<<<<<<<<<<<<
@@ -4596,8 +4374,8 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":152
- *             raise ValueError(f"grouping must be None, 'year_bin', str (regex), or callable, got {type(grouping)}")
+/* "src/ngramprep/utilities/count_items.pyx":113
+ *             raise ValueError(f"grouping must be None, str (regex), or callable, got {type(grouping)}")
  * 
  *     def signal_handler(signum, frame):             # <<<<<<<<<<<<<<
  *         print(f"\nInterrupt received at count {count:,}")
@@ -4644,39 +4422,39 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_signum,&__pyx_mstate_global->__pyx_n_u_frame,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 152, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 113, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 152, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 113, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 152, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 113, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "signal_handler", 0) < (0)) __PYX_ERR(0, 152, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "signal_handler", 0) < (0)) __PYX_ERR(0, 113, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 2; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("signal_handler", 1, 2, 2, i); __PYX_ERR(0, 152, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("signal_handler", 1, 2, 2, i); __PYX_ERR(0, 113, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 2)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 152, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 113, __pyx_L3_error)
       values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 152, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 113, __pyx_L3_error)
     }
     __pyx_v_signum = values[0];
     __pyx_v_frame = values[1];
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("signal_handler", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 152, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("signal_handler", 1, 2, 2, __pyx_nargs); __PYX_ERR(0, 113, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4714,7 +4492,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
   __pyx_outer_scope = (struct __pyx_obj_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items *) __Pyx_CyFunction_GetClosure(__pyx_self);
   __pyx_cur_scope = __pyx_outer_scope;
 
-  /* "src/ngramprep/utilities/count_items.pyx":153
+  /* "src/ngramprep/utilities/count_items.pyx":114
  * 
  *     def signal_handler(signum, frame):
  *         print(f"\nInterrupt received at count {count:,}")             # <<<<<<<<<<<<<<
@@ -4722,12 +4500,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
  * 
 */
   __pyx_t_2 = NULL;
-  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 153, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_Format(__pyx_t_3, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 153, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Format(__pyx_t_3, __pyx_mstate_global->__pyx_kp_u__2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Interrupt_received_at_count, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 153, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_Interrupt_received_at_count, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_5 = 1;
@@ -4736,12 +4514,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 153, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 114, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":154
+  /* "src/ngramprep/utilities/count_items.pyx":115
  *     def signal_handler(signum, frame):
  *         print(f"\nInterrupt received at count {count:,}")
  *         sys.exit(0)             # <<<<<<<<<<<<<<
@@ -4749,9 +4527,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
  *     signal.signal(signal.SIGINT, signal_handler)
 */
   __pyx_t_3 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_sys); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_sys); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 115, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_exit); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_exit); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 115, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_5 = 1;
@@ -4771,13 +4549,13 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
     __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 154, __pyx_L1_error)
+    if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 115, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":152
- *             raise ValueError(f"grouping must be None, 'year_bin', str (regex), or callable, got {type(grouping)}")
+  /* "src/ngramprep/utilities/count_items.pyx":113
+ *             raise ValueError(f"grouping must be None, str (regex), or callable, got {type(grouping)}")
  * 
  *     def signal_handler(signum, frame):             # <<<<<<<<<<<<<<
  *         print(f"\nInterrupt received at count {count:,}")
@@ -4800,7 +4578,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_14count_db_it
   return __pyx_r;
 }
 
-/* "src/ngramprep/utilities/count_items.pyx":89
+/* "src/ngramprep/utilities/count_items.pyx":61
  * 
  * 
  * def count_db_items(db_path, long progress_interval = 10_000_000, grouping=None):             # <<<<<<<<<<<<<<
@@ -4815,14 +4593,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
   double __pyx_v_end_time;
   double __pyx_v_total_time;
   long __pyx_v_next_progress;
-  PyObject *__pyx_v_key = 0;
-  PyObject *__pyx_v_group_bytes = 0;
   PyObject *__pyx_v_group_counts = NULL;
   PyObject *__pyx_v_grouping_fn = NULL;
-  int __pyx_v_use_fast_year_bin;
   PyObject *__pyx_v_signal_handler = 0;
   PyObject *__pyx_v_db = NULL;
   PyObject *__pyx_v_iterator = NULL;
+  PyObject *__pyx_v_key = NULL;
   PyObject *__pyx_v_group = NULL;
   PyObject *__pyx_v_e = NULL;
   PyObject *__pyx_r = NULL;
@@ -4860,60 +4636,51 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
   if (unlikely(!__pyx_cur_scope)) {
     __pyx_cur_scope = ((struct __pyx_obj_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items *)Py_None);
     __Pyx_INCREF(Py_None);
-    __PYX_ERR(0, 89, __pyx_L1_error)
+    __PYX_ERR(0, 61, __pyx_L1_error)
   } else {
     __Pyx_GOTREF((PyObject *)__pyx_cur_scope);
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":123
+  /* "src/ngramprep/utilities/count_items.pyx":90
  *     """
  *     cdef double start_time, elapsed, end_time, total_time
  *     cdef long count = 0             # <<<<<<<<<<<<<<
  *     cdef long next_progress = progress_interval
- *     cdef bytes key
+ * 
 */
   __pyx_cur_scope->__pyx_v_count = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":124
+  /* "src/ngramprep/utilities/count_items.pyx":91
  *     cdef double start_time, elapsed, end_time, total_time
  *     cdef long count = 0
  *     cdef long next_progress = progress_interval             # <<<<<<<<<<<<<<
- *     cdef bytes key
- *     cdef bytes group_bytes
+ * 
+ *     # Prepare grouping function
 */
   __pyx_v_next_progress = __pyx_v_progress_interval;
 
-  /* "src/ngramprep/utilities/count_items.pyx":129
+  /* "src/ngramprep/utilities/count_items.pyx":94
  * 
  *     # Prepare grouping function
  *     group_counts = None             # <<<<<<<<<<<<<<
  *     grouping_fn = None
- *     use_fast_year_bin = False
+ * 
 */
   __Pyx_INCREF(Py_None);
   __pyx_v_group_counts = Py_None;
 
-  /* "src/ngramprep/utilities/count_items.pyx":130
+  /* "src/ngramprep/utilities/count_items.pyx":95
  *     # Prepare grouping function
  *     group_counts = None
  *     grouping_fn = None             # <<<<<<<<<<<<<<
- *     use_fast_year_bin = False
  * 
+ *     if grouping is not None:
 */
   __Pyx_INCREF(Py_None);
   __pyx_v_grouping_fn = Py_None;
 
-  /* "src/ngramprep/utilities/count_items.pyx":131
- *     group_counts = None
+  /* "src/ngramprep/utilities/count_items.pyx":97
  *     grouping_fn = None
- *     use_fast_year_bin = False             # <<<<<<<<<<<<<<
- * 
- *     if grouping is not None:
-*/
-  __pyx_v_use_fast_year_bin = 0;
-
-  /* "src/ngramprep/utilities/count_items.pyx":133
- *     use_fast_year_bin = False
  * 
  *     if grouping is not None:             # <<<<<<<<<<<<<<
  *         group_counts = defaultdict(int)
@@ -4922,15 +4689,15 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
   __pyx_t_1 = (__pyx_v_grouping != Py_None);
   if (__pyx_t_1) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":134
+    /* "src/ngramprep/utilities/count_items.pyx":98
  * 
  *     if grouping is not None:
  *         group_counts = defaultdict(int)             # <<<<<<<<<<<<<<
  * 
- *         if grouping == 'year_bin':
+ *         if isinstance(grouping, str):
 */
     __pyx_t_3 = NULL;
-    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_defaultdict); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 134, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_defaultdict); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 98, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = 1;
     #if CYTHON_UNPACK_METHODS
@@ -4949,62 +4716,33 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
       __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 134, __pyx_L1_error)
+      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 98, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
     }
     __Pyx_DECREF_SET(__pyx_v_group_counts, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":136
+    /* "src/ngramprep/utilities/count_items.pyx":100
  *         group_counts = defaultdict(int)
  * 
- *         if grouping == 'year_bin':             # <<<<<<<<<<<<<<
- *             # Use optimized Cython function for year bins
- *             use_fast_year_bin = True
-*/
-    __pyx_t_1 = (__Pyx_PyUnicode_Equals(__pyx_v_grouping, __pyx_mstate_global->__pyx_n_u_year_bin, Py_EQ)); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 136, __pyx_L1_error)
-    if (__pyx_t_1) {
-
-      /* "src/ngramprep/utilities/count_items.pyx":138
- *         if grouping == 'year_bin':
- *             # Use optimized Cython function for year bins
- *             use_fast_year_bin = True             # <<<<<<<<<<<<<<
- *         elif isinstance(grouping, str):
- *             # Compile regex pattern
-*/
-      __pyx_v_use_fast_year_bin = 1;
-
-      /* "src/ngramprep/utilities/count_items.pyx":136
- *         group_counts = defaultdict(int)
- * 
- *         if grouping == 'year_bin':             # <<<<<<<<<<<<<<
- *             # Use optimized Cython function for year bins
- *             use_fast_year_bin = True
-*/
-      goto __pyx_L4;
-    }
-
-    /* "src/ngramprep/utilities/count_items.pyx":139
- *             # Use optimized Cython function for year bins
- *             use_fast_year_bin = True
- *         elif isinstance(grouping, str):             # <<<<<<<<<<<<<<
+ *         if isinstance(grouping, str):             # <<<<<<<<<<<<<<
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
 */
     __pyx_t_1 = PyUnicode_Check(__pyx_v_grouping); 
     if (__pyx_t_1) {
 
-      /* "src/ngramprep/utilities/count_items.pyx":141
- *         elif isinstance(grouping, str):
+      /* "src/ngramprep/utilities/count_items.pyx":102
+ *         if isinstance(grouping, str):
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)             # <<<<<<<<<<<<<<
  *             def grouping_fn(key):
  *                 match = pattern.search(key)
 */
       __pyx_t_4 = NULL;
-      __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_re); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 141, __pyx_L1_error)
+      __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_re); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 102, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_compile); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 141, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_compile); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 102, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_t_1 = PyUnicode_Check(__pyx_v_grouping); 
@@ -5016,7 +4754,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
           PyObject *__pyx_callargs[2] = {__pyx_t_8, __pyx_mstate_global->__pyx_kp_u_utf_8};
           __pyx_t_7 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_encode, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-          if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 141, __pyx_L1_error)
+          if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 102, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_7);
         }
         __pyx_t_3 = __pyx_t_7;
@@ -5043,56 +4781,56 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 141, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 102, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
       }
       __Pyx_GIVEREF(__pyx_t_2);
       __pyx_cur_scope->__pyx_v_pattern = __pyx_t_2;
       __pyx_t_2 = 0;
 
-      /* "src/ngramprep/utilities/count_items.pyx":142
+      /* "src/ngramprep/utilities/count_items.pyx":103
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
  *             def grouping_fn(key):             # <<<<<<<<<<<<<<
  *                 match = pattern.search(key)
  *                 if match:
 */
-      __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_14count_db_items_1grouping_fn, 0, __pyx_mstate_global->__pyx_n_u_count_db_items_locals_grouping_f, ((PyObject*)__pyx_cur_scope), __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 142, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_14count_db_items_1grouping_fn, 0, __pyx_mstate_global->__pyx_n_u_count_db_items_locals_grouping_f, ((PyObject*)__pyx_cur_scope), __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 103, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF_SET(__pyx_v_grouping_fn, __pyx_t_2);
       __pyx_t_2 = 0;
 
-      /* "src/ngramprep/utilities/count_items.pyx":139
- *             # Use optimized Cython function for year bins
- *             use_fast_year_bin = True
- *         elif isinstance(grouping, str):             # <<<<<<<<<<<<<<
+      /* "src/ngramprep/utilities/count_items.pyx":100
+ *         group_counts = defaultdict(int)
+ * 
+ *         if isinstance(grouping, str):             # <<<<<<<<<<<<<<
  *             # Compile regex pattern
  *             pattern = re.compile(grouping.encode('utf-8') if isinstance(grouping, str) else grouping)
 */
       goto __pyx_L4;
     }
 
-    /* "src/ngramprep/utilities/count_items.pyx":147
+    /* "src/ngramprep/utilities/count_items.pyx":108
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')
  *                 return "unknown"
  *         elif callable(grouping):             # <<<<<<<<<<<<<<
  *             grouping_fn = grouping
  *         else:
 */
-    __pyx_t_1 = __Pyx_PyCallable_Check(__pyx_v_grouping); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(0, 147, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyCallable_Check(__pyx_v_grouping); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(0, 108, __pyx_L1_error)
     if (likely(__pyx_t_1)) {
 
-      /* "src/ngramprep/utilities/count_items.pyx":148
+      /* "src/ngramprep/utilities/count_items.pyx":109
  *                 return "unknown"
  *         elif callable(grouping):
  *             grouping_fn = grouping             # <<<<<<<<<<<<<<
  *         else:
- *             raise ValueError(f"grouping must be None, 'year_bin', str (regex), or callable, got {type(grouping)}")
+ *             raise ValueError(f"grouping must be None, str (regex), or callable, got {type(grouping)}")
 */
       __Pyx_INCREF(__pyx_v_grouping);
       __Pyx_DECREF_SET(__pyx_v_grouping_fn, __pyx_v_grouping);
 
-      /* "src/ngramprep/utilities/count_items.pyx":147
+      /* "src/ngramprep/utilities/count_items.pyx":108
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')
  *                 return "unknown"
  *         elif callable(grouping):             # <<<<<<<<<<<<<<
@@ -5102,18 +4840,18 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
       goto __pyx_L4;
     }
 
-    /* "src/ngramprep/utilities/count_items.pyx":150
+    /* "src/ngramprep/utilities/count_items.pyx":111
  *             grouping_fn = grouping
  *         else:
- *             raise ValueError(f"grouping must be None, 'year_bin', str (regex), or callable, got {type(grouping)}")             # <<<<<<<<<<<<<<
+ *             raise ValueError(f"grouping must be None, str (regex), or callable, got {type(grouping)}")             # <<<<<<<<<<<<<<
  * 
  *     def signal_handler(signum, frame):
 */
     /*else*/ {
       __pyx_t_6 = NULL;
-      __pyx_t_3 = __Pyx_PyObject_FormatSimple(((PyObject *)Py_TYPE(__pyx_v_grouping)), __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 150, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_FormatSimple(((PyObject *)Py_TYPE(__pyx_v_grouping)), __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 111, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_4 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_grouping_must_be_None_year_bin_s, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 150, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyUnicode_Concat(__pyx_mstate_global->__pyx_kp_u_grouping_must_be_None_str_regex, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 111, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_t_5 = 1;
@@ -5122,17 +4860,17 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
         __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)(((PyTypeObject*)PyExc_ValueError)), __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
         __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 150, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 111, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
       }
       __Pyx_Raise(__pyx_t_2, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      __PYX_ERR(0, 150, __pyx_L1_error)
+      __PYX_ERR(0, 111, __pyx_L1_error)
     }
     __pyx_L4:;
 
-    /* "src/ngramprep/utilities/count_items.pyx":133
- *     use_fast_year_bin = False
+    /* "src/ngramprep/utilities/count_items.pyx":97
+ *     grouping_fn = None
  * 
  *     if grouping is not None:             # <<<<<<<<<<<<<<
  *         group_counts = defaultdict(int)
@@ -5140,19 +4878,19 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":152
- *             raise ValueError(f"grouping must be None, 'year_bin', str (regex), or callable, got {type(grouping)}")
+  /* "src/ngramprep/utilities/count_items.pyx":113
+ *             raise ValueError(f"grouping must be None, str (regex), or callable, got {type(grouping)}")
  * 
  *     def signal_handler(signum, frame):             # <<<<<<<<<<<<<<
  *         print(f"\nInterrupt received at count {count:,}")
  *         sys.exit(0)
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_14count_db_items_3signal_handler, 0, __pyx_mstate_global->__pyx_n_u_count_db_items_locals_signal_han, ((PyObject*)__pyx_cur_scope), __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_14count_db_items_3signal_handler, 0, __pyx_mstate_global->__pyx_n_u_count_db_items_locals_signal_han, ((PyObject*)__pyx_cur_scope), __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[1])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 113, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_v_signal_handler = __pyx_t_2;
   __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":156
+  /* "src/ngramprep/utilities/count_items.pyx":117
  *         sys.exit(0)
  * 
  *     signal.signal(signal.SIGINT, signal_handler)             # <<<<<<<<<<<<<<
@@ -5160,14 +4898,14 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
  * 
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 117, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 117, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 117, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_SIGINT); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_SIGINT); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 117, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __pyx_t_5 = 1;
@@ -5188,12 +4926,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 156, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 117, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":157
+  /* "src/ngramprep/utilities/count_items.pyx":118
  * 
  *     signal.signal(signal.SIGINT, signal_handler)
  *     signal.signal(signal.SIGTERM, signal_handler)             # <<<<<<<<<<<<<<
@@ -5201,14 +4939,14 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
  *     _print_start_banner(db_path, progress_interval, grouping)
 */
   __pyx_t_3 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_signal); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_SIGTERM); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 157, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_SIGTERM); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __pyx_t_5 = 1;
@@ -5229,12 +4967,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 157, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 118, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":159
+  /* "src/ngramprep/utilities/count_items.pyx":120
  *     signal.signal(signal.SIGTERM, signal_handler)
  * 
  *     _print_start_banner(db_path, progress_interval, grouping)             # <<<<<<<<<<<<<<
@@ -5242,9 +4980,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
  *     try:
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_print_start_banner); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 159, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_print_start_banner); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 120, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_v_progress_interval); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 159, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_v_progress_interval); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 120, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
@@ -5264,12 +5002,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 159, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 120, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":161
+  /* "src/ngramprep/utilities/count_items.pyx":122
  *     _print_start_banner(db_path, progress_interval, grouping)
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -5285,7 +5023,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __Pyx_XGOTREF(__pyx_t_11);
     /*try:*/ {
 
-      /* "src/ngramprep/utilities/count_items.pyx":162
+      /* "src/ngramprep/utilities/count_items.pyx":123
  * 
  *     try:
  *         with rs.open(db_path, mode="r") as db:             # <<<<<<<<<<<<<<
@@ -5294,9 +5032,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
       /*with:*/ {
         __pyx_t_6 = NULL;
-        __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_rs); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 162, __pyx_L5_error)
+        __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_rs); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 123, __pyx_L5_error)
         __Pyx_GOTREF(__pyx_t_3);
-        __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_open); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 162, __pyx_L5_error)
+        __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_open); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 123, __pyx_L5_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         __pyx_t_5 = 1;
@@ -5313,20 +5051,20 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
         #endif
         {
           PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_6, __pyx_v_db_path};
-          __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 162, __pyx_L5_error)
+          __pyx_t_3 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 123, __pyx_L5_error)
           __Pyx_GOTREF(__pyx_t_3);
-          if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_mode, __pyx_mstate_global->__pyx_n_u_r, __pyx_t_3, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 162, __pyx_L5_error)
+          if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_mode, __pyx_mstate_global->__pyx_n_u_r, __pyx_t_3, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 123, __pyx_L5_error)
           __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_3);
           __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
           __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-          if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 162, __pyx_L5_error)
+          if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 123, __pyx_L5_error)
           __Pyx_GOTREF(__pyx_t_2);
         }
-        __pyx_t_12 = __Pyx_PyObject_LookupSpecial(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_exit_2); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 162, __pyx_L5_error)
+        __pyx_t_12 = __Pyx_PyObject_LookupSpecial(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_exit_2); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 123, __pyx_L5_error)
         __Pyx_GOTREF(__pyx_t_12);
         __pyx_t_3 = NULL;
-        __pyx_t_6 = __Pyx_PyObject_LookupSpecial(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_enter); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 162, __pyx_L11_error)
+        __pyx_t_6 = __Pyx_PyObject_LookupSpecial(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_enter); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 123, __pyx_L11_error)
         __Pyx_GOTREF(__pyx_t_6);
         __pyx_t_5 = 1;
         #if CYTHON_UNPACK_METHODS
@@ -5345,7 +5083,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
           __pyx_t_4 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
           __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-          if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 162, __pyx_L11_error)
+          if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 123, __pyx_L11_error)
           __Pyx_GOTREF(__pyx_t_4);
         }
         __pyx_t_6 = __pyx_t_4;
@@ -5363,7 +5101,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
               __pyx_v_db = __pyx_t_6;
               __pyx_t_6 = 0;
 
-              /* "src/ngramprep/utilities/count_items.pyx":163
+              /* "src/ngramprep/utilities/count_items.pyx":124
  *     try:
  *         with rs.open(db_path, mode="r") as db:
  *             start_time = time.perf_counter()             # <<<<<<<<<<<<<<
@@ -5371,9 +5109,9 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
  *             iterator.seek(b"")
 */
               __pyx_t_2 = NULL;
-              __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 163, __pyx_L15_error)
+              __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 124, __pyx_L15_error)
               __Pyx_GOTREF(__pyx_t_4);
-              __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 163, __pyx_L15_error)
+              __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 124, __pyx_L15_error)
               __Pyx_GOTREF(__pyx_t_3);
               __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
               __pyx_t_5 = 1;
@@ -5393,14 +5131,14 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
                 __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_3, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
                 __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
                 __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 163, __pyx_L15_error)
+                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 124, __pyx_L15_error)
                 __Pyx_GOTREF(__pyx_t_6);
               }
-              __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_6); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 163, __pyx_L15_error)
+              __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_6); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 124, __pyx_L15_error)
               __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
               __pyx_v_start_time = __pyx_t_16;
 
-              /* "src/ngramprep/utilities/count_items.pyx":164
+              /* "src/ngramprep/utilities/count_items.pyx":125
  *         with rs.open(db_path, mode="r") as db:
  *             start_time = time.perf_counter()
  *             iterator = db.iterator()             # <<<<<<<<<<<<<<
@@ -5414,18 +5152,18 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
                 PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
                 __pyx_t_6 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_iterator, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
                 __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 164, __pyx_L15_error)
+                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 125, __pyx_L15_error)
                 __Pyx_GOTREF(__pyx_t_6);
               }
               __pyx_v_iterator = __pyx_t_6;
               __pyx_t_6 = 0;
 
-              /* "src/ngramprep/utilities/count_items.pyx":165
+              /* "src/ngramprep/utilities/count_items.pyx":126
  *             start_time = time.perf_counter()
  *             iterator = db.iterator()
  *             iterator.seek(b"")             # <<<<<<<<<<<<<<
  * 
- *             # Fast path: no grouping
+ *             while iterator.valid():
 */
               __pyx_t_3 = __pyx_v_iterator;
               __Pyx_INCREF(__pyx_t_3);
@@ -5434,460 +5172,55 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
                 PyObject *__pyx_callargs[2] = {__pyx_t_3, __pyx_mstate_global->__pyx_kp_b__8};
                 __pyx_t_6 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_seek, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
                 __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 165, __pyx_L15_error)
+                if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 126, __pyx_L15_error)
                 __Pyx_GOTREF(__pyx_t_6);
               }
               __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-              /* "src/ngramprep/utilities/count_items.pyx":168
+              /* "src/ngramprep/utilities/count_items.pyx":128
+ *             iterator.seek(b"")
  * 
- *             # Fast path: no grouping
- *             if grouping is None:             # <<<<<<<<<<<<<<
- *                 while iterator.valid():
- *                     count += 1
-*/
-              __pyx_t_1 = (__pyx_v_grouping == Py_None);
-              if (__pyx_t_1) {
-
-                /* "src/ngramprep/utilities/count_items.pyx":169
- *             # Fast path: no grouping
- *             if grouping is None:
- *                 while iterator.valid():             # <<<<<<<<<<<<<<
- *                     count += 1
+ *             while iterator.valid():             # <<<<<<<<<<<<<<
+ *                 count += 1
  * 
 */
-                while (1) {
-                  __pyx_t_3 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_3);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                    __pyx_t_6 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_valid, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 169, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                  }
-                  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_6); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 169, __pyx_L15_error)
-                  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                  if (!__pyx_t_1) break;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":170
- *             if grouping is None:
- *                 while iterator.valid():
- *                     count += 1             # <<<<<<<<<<<<<<
- * 
- *                     if count >= next_progress:
-*/
-                  __pyx_cur_scope->__pyx_v_count = (__pyx_cur_scope->__pyx_v_count + 1);
-
-                  /* "src/ngramprep/utilities/count_items.pyx":172
- *                     count += 1
- * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
-*/
-                  __pyx_t_1 = (__pyx_cur_scope->__pyx_v_count >= __pyx_v_next_progress);
-                  if (__pyx_t_1) {
-
-                    /* "src/ngramprep/utilities/count_items.pyx":173
- * 
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time             # <<<<<<<<<<<<<<
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval
-*/
-                    __pyx_t_3 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 173, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_2);
-                    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 173, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_4);
-                    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_4))) {
-                      __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_4);
-                      assert(__pyx_t_3);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_4);
-                      __Pyx_INCREF(__pyx_t_3);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_4, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                      __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                      if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 173, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_6);
-                    }
-                    __pyx_t_4 = PyFloat_FromDouble(__pyx_v_start_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 173, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_4);
-                    __pyx_t_3 = PyNumber_Subtract(__pyx_t_6, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 173, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                    __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_3); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 173, __pyx_L15_error)
-                    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    __pyx_v_elapsed = __pyx_t_16;
-
-                    /* "src/ngramprep/utilities/count_items.pyx":174
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)             # <<<<<<<<<<<<<<
- *                         next_progress += progress_interval
- * 
-*/
-                    __pyx_t_4 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_print_progress); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 174, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                    __pyx_t_2 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 174, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_2);
-                    __pyx_t_7 = PyFloat_FromDouble(__pyx_v_elapsed); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 174, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_6))) {
-                      __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_6);
-                      assert(__pyx_t_4);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_6);
-                      __Pyx_INCREF(__pyx_t_4);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_6, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[3] = {__pyx_t_4, __pyx_t_2, __pyx_t_7};
-                      __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-                      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 174, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_3);
-                    }
-                    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                    /* "src/ngramprep/utilities/count_items.pyx":175
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval             # <<<<<<<<<<<<<<
- * 
- *                     iterator.next()
-*/
-                    __pyx_v_next_progress = (__pyx_v_next_progress + __pyx_v_progress_interval);
-
-                    /* "src/ngramprep/utilities/count_items.pyx":172
- *                     count += 1
- * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
-*/
-                  }
-
-                  /* "src/ngramprep/utilities/count_items.pyx":177
- *                         next_progress += progress_interval
- * 
- *                     iterator.next()             # <<<<<<<<<<<<<<
- * 
- *             # Fast path: year_bin extraction
-*/
-                  __pyx_t_6 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_6);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
-                    __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_next, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 177, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                  }
-                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                }
-
-                /* "src/ngramprep/utilities/count_items.pyx":168
- * 
- *             # Fast path: no grouping
- *             if grouping is None:             # <<<<<<<<<<<<<<
- *                 while iterator.valid():
- *                     count += 1
-*/
-                goto __pyx_L21;
-              }
-
-              /* "src/ngramprep/utilities/count_items.pyx":180
- * 
- *             # Fast path: year_bin extraction
- *             elif use_fast_year_bin:             # <<<<<<<<<<<<<<
- *                 while iterator.valid():
- *                     count += 1
-*/
-              if (__pyx_v_use_fast_year_bin) {
-
-                /* "src/ngramprep/utilities/count_items.pyx":181
- *             # Fast path: year_bin extraction
- *             elif use_fast_year_bin:
- *                 while iterator.valid():             # <<<<<<<<<<<<<<
- *                     count += 1
- *                     key = iterator.key()
-*/
-                while (1) {
-                  __pyx_t_6 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_6);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
-                    __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_valid, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 181, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                  }
-                  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 181, __pyx_L15_error)
-                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                  if (!__pyx_t_1) break;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":182
- *             elif use_fast_year_bin:
- *                 while iterator.valid():
- *                     count += 1             # <<<<<<<<<<<<<<
- *                     key = iterator.key()
- *                     group_bytes = _extract_year_bin(key)
-*/
-                  __pyx_cur_scope->__pyx_v_count = (__pyx_cur_scope->__pyx_v_count + 1);
-
-                  /* "src/ngramprep/utilities/count_items.pyx":183
- *                 while iterator.valid():
- *                     count += 1
- *                     key = iterator.key()             # <<<<<<<<<<<<<<
- *                     group_bytes = _extract_year_bin(key)
- *                     group_counts[group_bytes.decode('utf-8', 'replace')] += 1
-*/
-                  __pyx_t_6 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_6);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
-                    __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_key, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 183, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                  }
-                  if (!(likely(PyBytes_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_3))) __PYX_ERR(0, 183, __pyx_L15_error)
-                  __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_3));
-                  __pyx_t_3 = 0;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":184
- *                     count += 1
- *                     key = iterator.key()
- *                     group_bytes = _extract_year_bin(key)             # <<<<<<<<<<<<<<
- *                     group_counts[group_bytes.decode('utf-8', 'replace')] += 1
- * 
-*/
-                  __pyx_t_3 = __pyx_f_3src_9ngramprep_9utilities_11count_items__extract_year_bin(__pyx_v_key); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 184, __pyx_L15_error)
-                  __Pyx_GOTREF(__pyx_t_3);
-                  __Pyx_XDECREF_SET(__pyx_v_group_bytes, ((PyObject*)__pyx_t_3));
-                  __pyx_t_3 = 0;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":185
- *                     key = iterator.key()
- *                     group_bytes = _extract_year_bin(key)
- *                     group_counts[group_bytes.decode('utf-8', 'replace')] += 1             # <<<<<<<<<<<<<<
- * 
- *                     if count >= next_progress:
-*/
-                  if (unlikely(__pyx_v_group_bytes == Py_None)) {
-                    PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "decode");
-                    __PYX_ERR(0, 185, __pyx_L15_error)
-                  }
-                  __pyx_t_3 = __Pyx_decode_bytes(__pyx_v_group_bytes, 0, PY_SSIZE_T_MAX, NULL, __pyx_k_replace, PyUnicode_DecodeUTF8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 185, __pyx_L15_error)
-                  __Pyx_GOTREF(__pyx_t_3);
-                  __pyx_t_6 = __Pyx_PyObject_Dict_GetItem(__pyx_v_group_counts, __pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 185, __pyx_L15_error)
+              while (1) {
+                __pyx_t_3 = __pyx_v_iterator;
+                __Pyx_INCREF(__pyx_t_3);
+                __pyx_t_5 = 0;
+                {
+                  PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
+                  __pyx_t_6 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_valid, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                  __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+                  if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 128, __pyx_L15_error)
                   __Pyx_GOTREF(__pyx_t_6);
-                  __pyx_t_7 = __Pyx_PyLong_AddObjC(__pyx_t_6, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 185, __pyx_L15_error)
-                  __Pyx_GOTREF(__pyx_t_7);
-                  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                  if (unlikely((PyObject_SetItem(__pyx_v_group_counts, __pyx_t_3, __pyx_t_7) < 0))) __PYX_ERR(0, 185, __pyx_L15_error)
-                  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":187
- *                     group_counts[group_bytes.decode('utf-8', 'replace')] += 1
- * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
-*/
-                  __pyx_t_1 = (__pyx_cur_scope->__pyx_v_count >= __pyx_v_next_progress);
-                  if (__pyx_t_1) {
-
-                    /* "src/ngramprep/utilities/count_items.pyx":188
- * 
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time             # <<<<<<<<<<<<<<
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval
-*/
-                    __pyx_t_7 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 188, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 188, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_2);
-                    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_2))) {
-                      __pyx_t_7 = PyMethod_GET_SELF(__pyx_t_2);
-                      assert(__pyx_t_7);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_2);
-                      __Pyx_INCREF(__pyx_t_7);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_2, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[2] = {__pyx_t_7, NULL};
-                      __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-                      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 188, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_3);
-                    }
-                    __pyx_t_2 = PyFloat_FromDouble(__pyx_v_start_time); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 188, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_2);
-                    __pyx_t_7 = PyNumber_Subtract(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 188, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
-                    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                    __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_7); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 188, __pyx_L15_error)
-                    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                    __pyx_v_elapsed = __pyx_t_16;
-
-                    /* "src/ngramprep/utilities/count_items.pyx":189
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)             # <<<<<<<<<<<<<<
- *                         next_progress += progress_interval
- * 
-*/
-                    __pyx_t_2 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_print_progress); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 189, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                    __pyx_t_6 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 189, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                    __pyx_t_4 = PyFloat_FromDouble(__pyx_v_elapsed); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 189, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_4);
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_3))) {
-                      __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_3);
-                      assert(__pyx_t_2);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_3);
-                      __Pyx_INCREF(__pyx_t_2);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_3, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[3] = {__pyx_t_2, __pyx_t_6, __pyx_t_4};
-                      __pyx_t_7 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_3, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-                      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                      if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 189, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_7);
-                    }
-                    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-
-                    /* "src/ngramprep/utilities/count_items.pyx":190
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval             # <<<<<<<<<<<<<<
- * 
- *                     iterator.next()
-*/
-                    __pyx_v_next_progress = (__pyx_v_next_progress + __pyx_v_progress_interval);
-
-                    /* "src/ngramprep/utilities/count_items.pyx":187
- *                     group_counts[group_bytes.decode('utf-8', 'replace')] += 1
- * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
-*/
-                  }
-
-                  /* "src/ngramprep/utilities/count_items.pyx":192
- *                         next_progress += progress_interval
- * 
- *                     iterator.next()             # <<<<<<<<<<<<<<
- * 
- *             # Slow path: custom grouping function
-*/
-                  __pyx_t_3 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_3);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                    __pyx_t_7 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_next, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 192, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
-                  }
-                  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
                 }
+                __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_6); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 128, __pyx_L15_error)
+                __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+                if (!__pyx_t_1) break;
 
-                /* "src/ngramprep/utilities/count_items.pyx":180
+                /* "src/ngramprep/utilities/count_items.pyx":129
  * 
- *             # Fast path: year_bin extraction
- *             elif use_fast_year_bin:             # <<<<<<<<<<<<<<
- *                 while iterator.valid():
- *                     count += 1
+ *             while iterator.valid():
+ *                 count += 1             # <<<<<<<<<<<<<<
+ * 
+ *                 # Apply grouping if specified
 */
-                goto __pyx_L21;
-              }
+                __pyx_cur_scope->__pyx_v_count = (__pyx_cur_scope->__pyx_v_count + 1);
 
-              /* "src/ngramprep/utilities/count_items.pyx":196
- *             # Slow path: custom grouping function
- *             else:
- *                 while iterator.valid():             # <<<<<<<<<<<<<<
- *                     count += 1
- *                     key = iterator.key()
-*/
-              /*else*/ {
-                while (1) {
-                  __pyx_t_3 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_3);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                    __pyx_t_7 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_valid, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 196, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
-                  }
-                  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely((__pyx_t_1 < 0))) __PYX_ERR(0, 196, __pyx_L15_error)
-                  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                  if (!__pyx_t_1) break;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":197
- *             else:
- *                 while iterator.valid():
- *                     count += 1             # <<<<<<<<<<<<<<
+                /* "src/ngramprep/utilities/count_items.pyx":132
+ * 
+ *                 # Apply grouping if specified
+ *                 if grouping_fn is not None:             # <<<<<<<<<<<<<<
  *                     key = iterator.key()
  *                     group = grouping_fn(key)
 */
-                  __pyx_cur_scope->__pyx_v_count = (__pyx_cur_scope->__pyx_v_count + 1);
+                __pyx_t_1 = (__pyx_v_grouping_fn != Py_None);
+                if (__pyx_t_1) {
 
-                  /* "src/ngramprep/utilities/count_items.pyx":198
- *                 while iterator.valid():
- *                     count += 1
+                  /* "src/ngramprep/utilities/count_items.pyx":133
+ *                 # Apply grouping if specified
+ *                 if grouping_fn is not None:
  *                     key = iterator.key()             # <<<<<<<<<<<<<<
  *                     group = grouping_fn(key)
  *                     group_counts[group] += 1
@@ -5897,17 +5230,16 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
                   __pyx_t_5 = 0;
                   {
                     PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                    __pyx_t_7 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_key, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                    __pyx_t_6 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_key, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
                     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 198, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
+                    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 133, __pyx_L15_error)
+                    __Pyx_GOTREF(__pyx_t_6);
                   }
-                  if (!(likely(PyBytes_CheckExact(__pyx_t_7))||((__pyx_t_7) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_7))) __PYX_ERR(0, 198, __pyx_L15_error)
-                  __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_7));
-                  __pyx_t_7 = 0;
+                  __Pyx_XDECREF_SET(__pyx_v_key, __pyx_t_6);
+                  __pyx_t_6 = 0;
 
-                  /* "src/ngramprep/utilities/count_items.pyx":199
- *                     count += 1
+                  /* "src/ngramprep/utilities/count_items.pyx":134
+ *                 if grouping_fn is not None:
  *                     key = iterator.key()
  *                     group = grouping_fn(key)             # <<<<<<<<<<<<<<
  *                     group_counts[group] += 1
@@ -5915,7 +5247,80 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
                   __pyx_t_3 = NULL;
                   __Pyx_INCREF(__pyx_v_grouping_fn);
-                  __pyx_t_4 = __pyx_v_grouping_fn; 
+                  __pyx_t_2 = __pyx_v_grouping_fn; 
+                  __pyx_t_5 = 1;
+                  #if CYTHON_UNPACK_METHODS
+                  if (unlikely(PyMethod_Check(__pyx_t_2))) {
+                    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+                    assert(__pyx_t_3);
+                    PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_2);
+                    __Pyx_INCREF(__pyx_t_3);
+                    __Pyx_INCREF(__pyx__function);
+                    __Pyx_DECREF_SET(__pyx_t_2, __pyx__function);
+                    __pyx_t_5 = 0;
+                  }
+                  #endif
+                  {
+                    PyObject *__pyx_callargs[2] = {__pyx_t_3, __pyx_v_key};
+                    __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+                    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+                    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 134, __pyx_L15_error)
+                    __Pyx_GOTREF(__pyx_t_6);
+                  }
+                  __Pyx_XDECREF_SET(__pyx_v_group, __pyx_t_6);
+                  __pyx_t_6 = 0;
+
+                  /* "src/ngramprep/utilities/count_items.pyx":135
+ *                     key = iterator.key()
+ *                     group = grouping_fn(key)
+ *                     group_counts[group] += 1             # <<<<<<<<<<<<<<
+ * 
+ *                 if count >= next_progress:
+*/
+                  __Pyx_INCREF(__pyx_v_group);
+                  __pyx_t_6 = __pyx_v_group;
+                  __pyx_t_2 = __Pyx_PyObject_GetItem(__pyx_v_group_counts, __pyx_t_6); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 135, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_2);
+                  __pyx_t_3 = __Pyx_PyLong_AddObjC(__pyx_t_2, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 135, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_3);
+                  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+                  if (unlikely((PyObject_SetItem(__pyx_v_group_counts, __pyx_t_6, __pyx_t_3) < 0))) __PYX_ERR(0, 135, __pyx_L15_error)
+                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+                  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+
+                  /* "src/ngramprep/utilities/count_items.pyx":132
+ * 
+ *                 # Apply grouping if specified
+ *                 if grouping_fn is not None:             # <<<<<<<<<<<<<<
+ *                     key = iterator.key()
+ *                     group = grouping_fn(key)
+*/
+                }
+
+                /* "src/ngramprep/utilities/count_items.pyx":137
+ *                     group_counts[group] += 1
+ * 
+ *                 if count >= next_progress:             # <<<<<<<<<<<<<<
+ *                     elapsed = time.perf_counter() - start_time
+ *                     _print_progress(count, elapsed)
+*/
+                __pyx_t_1 = (__pyx_cur_scope->__pyx_v_count >= __pyx_v_next_progress);
+                if (__pyx_t_1) {
+
+                  /* "src/ngramprep/utilities/count_items.pyx":138
+ * 
+ *                 if count >= next_progress:
+ *                     elapsed = time.perf_counter() - start_time             # <<<<<<<<<<<<<<
+ *                     _print_progress(count, elapsed)
+ *                     next_progress += progress_interval
+*/
+                  __pyx_t_3 = NULL;
+                  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 138, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_2);
+                  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 138, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_4);
+                  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
                   __pyx_t_5 = 1;
                   #if CYTHON_UNPACK_METHODS
                   if (unlikely(PyMethod_Check(__pyx_t_4))) {
@@ -5929,203 +5334,137 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
                   }
                   #endif
                   {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_3, __pyx_v_key};
-                    __pyx_t_7 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                    PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
+                    __pyx_t_6 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
                     __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
                     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                    if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 199, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
+                    if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 138, __pyx_L15_error)
+                    __Pyx_GOTREF(__pyx_t_6);
                   }
-                  __Pyx_XDECREF_SET(__pyx_v_group, __pyx_t_7);
-                  __pyx_t_7 = 0;
-
-                  /* "src/ngramprep/utilities/count_items.pyx":200
- *                     key = iterator.key()
- *                     group = grouping_fn(key)
- *                     group_counts[group] += 1             # <<<<<<<<<<<<<<
- * 
- *                     if count >= next_progress:
-*/
-                  __Pyx_INCREF(__pyx_v_group);
-                  __pyx_t_7 = __pyx_v_group;
-                  __pyx_t_4 = __Pyx_PyObject_GetItem(__pyx_v_group_counts, __pyx_t_7); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 200, __pyx_L15_error)
+                  __pyx_t_4 = PyFloat_FromDouble(__pyx_v_start_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 138, __pyx_L15_error)
                   __Pyx_GOTREF(__pyx_t_4);
-                  __pyx_t_3 = __Pyx_PyLong_AddObjC(__pyx_t_4, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 200, __pyx_L15_error)
+                  __pyx_t_3 = PyNumber_Subtract(__pyx_t_6, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 138, __pyx_L15_error)
                   __Pyx_GOTREF(__pyx_t_3);
+                  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
                   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                  if (unlikely((PyObject_SetItem(__pyx_v_group_counts, __pyx_t_7, __pyx_t_3) < 0))) __PYX_ERR(0, 200, __pyx_L15_error)
+                  __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_3); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 138, __pyx_L15_error)
                   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+                  __pyx_v_elapsed = __pyx_t_16;
 
-                  /* "src/ngramprep/utilities/count_items.pyx":202
- *                     group_counts[group] += 1
+                  /* "src/ngramprep/utilities/count_items.pyx":139
+ *                 if count >= next_progress:
+ *                     elapsed = time.perf_counter() - start_time
+ *                     _print_progress(count, elapsed)             # <<<<<<<<<<<<<<
+ *                     next_progress += progress_interval
  * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
 */
-                  __pyx_t_1 = (__pyx_cur_scope->__pyx_v_count >= __pyx_v_next_progress);
-                  if (__pyx_t_1) {
-
-                    /* "src/ngramprep/utilities/count_items.pyx":203
- * 
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time             # <<<<<<<<<<<<<<
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval
-*/
-                    __pyx_t_3 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 203, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_4);
-                    __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 203, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_6))) {
-                      __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_6);
-                      assert(__pyx_t_3);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_6);
-                      __Pyx_INCREF(__pyx_t_3);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_6, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[2] = {__pyx_t_3, NULL};
-                      __pyx_t_7 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-                      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                      if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 203, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_7);
-                    }
-                    __pyx_t_6 = PyFloat_FromDouble(__pyx_v_start_time); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 203, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_6);
-                    __pyx_t_3 = PyNumber_Subtract(__pyx_t_7, __pyx_t_6); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 203, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
+                  __pyx_t_4 = NULL;
+                  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_print_progress); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 139, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_6);
+                  __pyx_t_2 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 139, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_2);
+                  __pyx_t_7 = PyFloat_FromDouble(__pyx_v_elapsed); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 139, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_7);
+                  __pyx_t_5 = 1;
+                  #if CYTHON_UNPACK_METHODS
+                  if (unlikely(PyMethod_Check(__pyx_t_6))) {
+                    __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_6);
+                    assert(__pyx_t_4);
+                    PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_6);
+                    __Pyx_INCREF(__pyx_t_4);
+                    __Pyx_INCREF(__pyx__function);
+                    __Pyx_DECREF_SET(__pyx_t_6, __pyx__function);
+                    __pyx_t_5 = 0;
+                  }
+                  #endif
+                  {
+                    PyObject *__pyx_callargs[3] = {__pyx_t_4, __pyx_t_2, __pyx_t_7};
+                    __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                    __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+                    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
                     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
                     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-                    __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_3); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 203, __pyx_L15_error)
-                    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-                    __pyx_v_elapsed = __pyx_t_16;
+                    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 139, __pyx_L15_error)
+                    __Pyx_GOTREF(__pyx_t_3);
+                  }
+                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-                    /* "src/ngramprep/utilities/count_items.pyx":204
- *                     if count >= next_progress:
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)             # <<<<<<<<<<<<<<
- *                         next_progress += progress_interval
+                  /* "src/ngramprep/utilities/count_items.pyx":140
+ *                     elapsed = time.perf_counter() - start_time
+ *                     _print_progress(count, elapsed)
+ *                     next_progress += progress_interval             # <<<<<<<<<<<<<<
  * 
+ *                 iterator.next()
 */
-                    __pyx_t_6 = NULL;
-                    __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_print_progress); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 204, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_7);
-                    __pyx_t_4 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 204, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_4);
-                    __pyx_t_2 = PyFloat_FromDouble(__pyx_v_elapsed); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 204, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_2);
-                    __pyx_t_5 = 1;
-                    #if CYTHON_UNPACK_METHODS
-                    if (unlikely(PyMethod_Check(__pyx_t_7))) {
-                      __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_7);
-                      assert(__pyx_t_6);
-                      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_7);
-                      __Pyx_INCREF(__pyx_t_6);
-                      __Pyx_INCREF(__pyx__function);
-                      __Pyx_DECREF_SET(__pyx_t_7, __pyx__function);
-                      __pyx_t_5 = 0;
-                    }
-                    #endif
-                    {
-                      PyObject *__pyx_callargs[3] = {__pyx_t_6, __pyx_t_4, __pyx_t_2};
-                      __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_7, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-                      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 204, __pyx_L15_error)
-                      __Pyx_GOTREF(__pyx_t_3);
-                    }
-                    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+                  __pyx_v_next_progress = (__pyx_v_next_progress + __pyx_v_progress_interval);
 
-                    /* "src/ngramprep/utilities/count_items.pyx":205
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
- *                         next_progress += progress_interval             # <<<<<<<<<<<<<<
- * 
- *                     iterator.next()
-*/
-                    __pyx_v_next_progress = (__pyx_v_next_progress + __pyx_v_progress_interval);
-
-                    /* "src/ngramprep/utilities/count_items.pyx":202
+                  /* "src/ngramprep/utilities/count_items.pyx":137
  *                     group_counts[group] += 1
  * 
- *                     if count >= next_progress:             # <<<<<<<<<<<<<<
- *                         elapsed = time.perf_counter() - start_time
- *                         _print_progress(count, elapsed)
+ *                 if count >= next_progress:             # <<<<<<<<<<<<<<
+ *                     elapsed = time.perf_counter() - start_time
+ *                     _print_progress(count, elapsed)
 */
-                  }
+                }
 
-                  /* "src/ngramprep/utilities/count_items.pyx":207
- *                         next_progress += progress_interval
+                /* "src/ngramprep/utilities/count_items.pyx":142
+ *                     next_progress += progress_interval
  * 
- *                     iterator.next()             # <<<<<<<<<<<<<<
+ *                 iterator.next()             # <<<<<<<<<<<<<<
  * 
  *             end_time = time.perf_counter()
 */
-                  __pyx_t_7 = __pyx_v_iterator;
-                  __Pyx_INCREF(__pyx_t_7);
-                  __pyx_t_5 = 0;
-                  {
-                    PyObject *__pyx_callargs[2] = {__pyx_t_7, NULL};
-                    __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_next, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                    __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-                    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 207, __pyx_L15_error)
-                    __Pyx_GOTREF(__pyx_t_3);
-                  }
-                  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+                __pyx_t_6 = __pyx_v_iterator;
+                __Pyx_INCREF(__pyx_t_6);
+                __pyx_t_5 = 0;
+                {
+                  PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
+                  __pyx_t_3 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_next, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                  __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+                  if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 142, __pyx_L15_error)
+                  __Pyx_GOTREF(__pyx_t_3);
                 }
+                __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
               }
-              __pyx_L21:;
 
-              /* "src/ngramprep/utilities/count_items.pyx":209
- *                     iterator.next()
+              /* "src/ngramprep/utilities/count_items.pyx":144
+ *                 iterator.next()
  * 
  *             end_time = time.perf_counter()             # <<<<<<<<<<<<<<
  *             total_time = end_time - start_time
  * 
 */
-              __pyx_t_7 = NULL;
-              __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 209, __pyx_L15_error)
+              __pyx_t_6 = NULL;
+              __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_time); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 144, __pyx_L15_error)
+              __Pyx_GOTREF(__pyx_t_7);
+              __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 144, __pyx_L15_error)
               __Pyx_GOTREF(__pyx_t_2);
-              __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_perf_counter); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 209, __pyx_L15_error)
-              __Pyx_GOTREF(__pyx_t_4);
-              __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+              __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
               __pyx_t_5 = 1;
               #if CYTHON_UNPACK_METHODS
-              if (unlikely(PyMethod_Check(__pyx_t_4))) {
-                __pyx_t_7 = PyMethod_GET_SELF(__pyx_t_4);
-                assert(__pyx_t_7);
-                PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_4);
-                __Pyx_INCREF(__pyx_t_7);
+              if (unlikely(PyMethod_Check(__pyx_t_2))) {
+                __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_2);
+                assert(__pyx_t_6);
+                PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_2);
+                __Pyx_INCREF(__pyx_t_6);
                 __Pyx_INCREF(__pyx__function);
-                __Pyx_DECREF_SET(__pyx_t_4, __pyx__function);
+                __Pyx_DECREF_SET(__pyx_t_2, __pyx__function);
                 __pyx_t_5 = 0;
               }
               #endif
               {
-                PyObject *__pyx_callargs[2] = {__pyx_t_7, NULL};
-                __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-                __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-                if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 209, __pyx_L15_error)
+                PyObject *__pyx_callargs[2] = {__pyx_t_6, NULL};
+                __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_2, __pyx_callargs+__pyx_t_5, (1-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+                __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+                if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 144, __pyx_L15_error)
                 __Pyx_GOTREF(__pyx_t_3);
               }
-              __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_3); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 209, __pyx_L15_error)
+              __pyx_t_16 = __Pyx_PyFloat_AsDouble(__pyx_t_3); if (unlikely((__pyx_t_16 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 144, __pyx_L15_error)
               __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
               __pyx_v_end_time = __pyx_t_16;
 
-              /* "src/ngramprep/utilities/count_items.pyx":210
+              /* "src/ngramprep/utilities/count_items.pyx":145
  * 
  *             end_time = time.perf_counter()
  *             total_time = end_time - start_time             # <<<<<<<<<<<<<<
@@ -6134,7 +5473,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
               __pyx_v_total_time = (__pyx_v_end_time - __pyx_v_start_time);
 
-              /* "src/ngramprep/utilities/count_items.pyx":212
+              /* "src/ngramprep/utilities/count_items.pyx":147
  *             total_time = end_time - start_time
  * 
  *             del iterator             # <<<<<<<<<<<<<<
@@ -6143,45 +5482,45 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
               __Pyx_DECREF(__pyx_v_iterator); __pyx_v_iterator = 0;
 
-              /* "src/ngramprep/utilities/count_items.pyx":214
+              /* "src/ngramprep/utilities/count_items.pyx":149
  *             del iterator
  * 
  *             _print_summary(db_path, count, total_time, group_counts)             # <<<<<<<<<<<<<<
  * 
  *     except Exception as e:
 */
-              __pyx_t_4 = NULL;
-              __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_print_summary); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 214, __pyx_L15_error)
-              __Pyx_GOTREF(__pyx_t_7);
-              __pyx_t_2 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 214, __pyx_L15_error)
-              __Pyx_GOTREF(__pyx_t_2);
-              __pyx_t_6 = PyFloat_FromDouble(__pyx_v_total_time); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 214, __pyx_L15_error)
+              __pyx_t_2 = NULL;
+              __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_print_summary); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 149, __pyx_L15_error)
               __Pyx_GOTREF(__pyx_t_6);
+              __pyx_t_7 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 149, __pyx_L15_error)
+              __Pyx_GOTREF(__pyx_t_7);
+              __pyx_t_4 = PyFloat_FromDouble(__pyx_v_total_time); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 149, __pyx_L15_error)
+              __Pyx_GOTREF(__pyx_t_4);
               __pyx_t_5 = 1;
               #if CYTHON_UNPACK_METHODS
-              if (unlikely(PyMethod_Check(__pyx_t_7))) {
-                __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_7);
-                assert(__pyx_t_4);
-                PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_7);
-                __Pyx_INCREF(__pyx_t_4);
+              if (unlikely(PyMethod_Check(__pyx_t_6))) {
+                __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_6);
+                assert(__pyx_t_2);
+                PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_6);
+                __Pyx_INCREF(__pyx_t_2);
                 __Pyx_INCREF(__pyx__function);
-                __Pyx_DECREF_SET(__pyx_t_7, __pyx__function);
+                __Pyx_DECREF_SET(__pyx_t_6, __pyx__function);
                 __pyx_t_5 = 0;
               }
               #endif
               {
-                PyObject *__pyx_callargs[5] = {__pyx_t_4, __pyx_v_db_path, __pyx_t_2, __pyx_t_6, __pyx_v_group_counts};
-                __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_7, __pyx_callargs+__pyx_t_5, (5-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-                __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-                __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-                __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+                PyObject *__pyx_callargs[5] = {__pyx_t_2, __pyx_v_db_path, __pyx_t_7, __pyx_t_4, __pyx_v_group_counts};
+                __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_6, __pyx_callargs+__pyx_t_5, (5-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+                __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
                 __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-                if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 214, __pyx_L15_error)
+                __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+                __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+                if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 149, __pyx_L15_error)
                 __Pyx_GOTREF(__pyx_t_3);
               }
               __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-              /* "src/ngramprep/utilities/count_items.pyx":162
+              /* "src/ngramprep/utilities/count_items.pyx":123
  * 
  *     try:
  *         with rs.open(db_path, mode="r") as db:             # <<<<<<<<<<<<<<
@@ -6202,32 +5541,32 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
             __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
             /*except:*/ {
               __Pyx_AddTraceback("src.ngramprep.utilities.count_items.count_db_items", __pyx_clineno, __pyx_lineno, __pyx_filename);
-              if (__Pyx_GetException(&__pyx_t_3, &__pyx_t_7, &__pyx_t_6) < 0) __PYX_ERR(0, 162, __pyx_L17_except_error)
+              if (__Pyx_GetException(&__pyx_t_3, &__pyx_t_6, &__pyx_t_4) < 0) __PYX_ERR(0, 123, __pyx_L17_except_error)
               __Pyx_XGOTREF(__pyx_t_3);
-              __Pyx_XGOTREF(__pyx_t_7);
               __Pyx_XGOTREF(__pyx_t_6);
-              __pyx_t_2 = PyTuple_Pack(3, __pyx_t_3, __pyx_t_7, __pyx_t_6); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 162, __pyx_L17_except_error)
-              __Pyx_GOTREF(__pyx_t_2);
-              __pyx_t_17 = __Pyx_PyObject_Call(__pyx_t_12, __pyx_t_2, NULL);
+              __Pyx_XGOTREF(__pyx_t_4);
+              __pyx_t_7 = PyTuple_Pack(3, __pyx_t_3, __pyx_t_6, __pyx_t_4); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 123, __pyx_L17_except_error)
+              __Pyx_GOTREF(__pyx_t_7);
+              __pyx_t_17 = __Pyx_PyObject_Call(__pyx_t_12, __pyx_t_7, NULL);
               __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-              __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-              if (unlikely(!__pyx_t_17)) __PYX_ERR(0, 162, __pyx_L17_except_error)
+              __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+              if (unlikely(!__pyx_t_17)) __PYX_ERR(0, 123, __pyx_L17_except_error)
               __Pyx_GOTREF(__pyx_t_17);
               __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_17);
               __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-              if (__pyx_t_1 < (0)) __PYX_ERR(0, 162, __pyx_L17_except_error)
+              if (__pyx_t_1 < (0)) __PYX_ERR(0, 123, __pyx_L17_except_error)
               __pyx_t_18 = (!__pyx_t_1);
               if (unlikely(__pyx_t_18)) {
                 __Pyx_GIVEREF(__pyx_t_3);
-                __Pyx_GIVEREF(__pyx_t_7);
-                __Pyx_XGIVEREF(__pyx_t_6);
-                __Pyx_ErrRestoreWithState(__pyx_t_3, __pyx_t_7, __pyx_t_6);
-                __pyx_t_3 = 0;  __pyx_t_7 = 0;  __pyx_t_6 = 0; 
-                __PYX_ERR(0, 162, __pyx_L17_except_error)
+                __Pyx_GIVEREF(__pyx_t_6);
+                __Pyx_XGIVEREF(__pyx_t_4);
+                __Pyx_ErrRestoreWithState(__pyx_t_3, __pyx_t_6, __pyx_t_4);
+                __pyx_t_3 = 0;  __pyx_t_6 = 0;  __pyx_t_4 = 0; 
+                __PYX_ERR(0, 123, __pyx_L17_except_error)
               }
               __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-              __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
               __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+              __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
               goto __pyx_L16_exception_handled;
             }
             __pyx_L17_except_error:;
@@ -6249,7 +5588,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
             if (__pyx_t_12) {
               __pyx_t_15 = __Pyx_PyObject_Call(__pyx_t_12, __pyx_mstate_global->__pyx_tuple[1], NULL);
               __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-              if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 162, __pyx_L5_error)
+              if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 123, __pyx_L5_error)
               __Pyx_GOTREF(__pyx_t_15);
               __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
             }
@@ -6257,14 +5596,14 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
           }
           __pyx_L14:;
         }
-        goto __pyx_L34;
+        goto __pyx_L28;
         __pyx_L11_error:;
         __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
         goto __pyx_L5_error;
-        __pyx_L34:;
+        __pyx_L28:;
       }
 
-      /* "src/ngramprep/utilities/count_items.pyx":161
+      /* "src/ngramprep/utilities/count_items.pyx":122
  *     _print_start_banner(db_path, progress_interval, grouping)
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -6284,7 +5623,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":216
+    /* "src/ngramprep/utilities/count_items.pyx":151
  *             _print_summary(db_path, count, total_time, group_counts)
  * 
  *     except Exception as e:             # <<<<<<<<<<<<<<
@@ -6294,62 +5633,62 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __pyx_t_19 = __Pyx_PyErr_ExceptionMatches(((PyObject *)(((PyTypeObject*)PyExc_Exception))));
     if (__pyx_t_19) {
       __Pyx_AddTraceback("src.ngramprep.utilities.count_items.count_db_items", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_6, &__pyx_t_7, &__pyx_t_3) < 0) __PYX_ERR(0, 216, __pyx_L7_except_error)
+      if (__Pyx_GetException(&__pyx_t_4, &__pyx_t_6, &__pyx_t_3) < 0) __PYX_ERR(0, 151, __pyx_L7_except_error)
+      __Pyx_XGOTREF(__pyx_t_4);
       __Pyx_XGOTREF(__pyx_t_6);
-      __Pyx_XGOTREF(__pyx_t_7);
       __Pyx_XGOTREF(__pyx_t_3);
-      __Pyx_INCREF(__pyx_t_7);
-      __pyx_v_e = __pyx_t_7;
+      __Pyx_INCREF(__pyx_t_6);
+      __pyx_v_e = __pyx_t_6;
       /*try:*/ {
 
-        /* "src/ngramprep/utilities/count_items.pyx":217
+        /* "src/ngramprep/utilities/count_items.pyx":152
  * 
  *     except Exception as e:
  *         print(f"Error at count {count}: {e}")             # <<<<<<<<<<<<<<
  *         raise
  * 
 */
-        __pyx_t_4 = NULL;
-        __pyx_t_8 = __Pyx_PyUnicode_From_long(__pyx_cur_scope->__pyx_v_count, 0, ' ', 'd'); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 217, __pyx_L40_error)
+        __pyx_t_2 = NULL;
+        __pyx_t_8 = __Pyx_PyUnicode_From_long(__pyx_cur_scope->__pyx_v_count, 0, ' ', 'd'); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 152, __pyx_L34_error)
         __Pyx_GOTREF(__pyx_t_8);
-        __pyx_t_20 = __Pyx_PyObject_FormatSimple(__pyx_v_e, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_20)) __PYX_ERR(0, 217, __pyx_L40_error)
+        __pyx_t_20 = __Pyx_PyObject_FormatSimple(__pyx_v_e, __pyx_mstate_global->__pyx_empty_unicode); if (unlikely(!__pyx_t_20)) __PYX_ERR(0, 152, __pyx_L34_error)
         __Pyx_GOTREF(__pyx_t_20);
         __pyx_t_21[0] = __pyx_mstate_global->__pyx_kp_u_Error_at_count;
         __pyx_t_21[1] = __pyx_t_8;
         __pyx_t_21[2] = __pyx_mstate_global->__pyx_kp_u__7;
         __pyx_t_21[3] = __pyx_t_20;
         __pyx_t_22 = __Pyx_PyUnicode_Join(__pyx_t_21, 4, 15 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_8) + 2 + __Pyx_PyUnicode_GET_LENGTH(__pyx_t_20), 127 | __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_20));
-        if (unlikely(!__pyx_t_22)) __PYX_ERR(0, 217, __pyx_L40_error)
+        if (unlikely(!__pyx_t_22)) __PYX_ERR(0, 152, __pyx_L34_error)
         __Pyx_GOTREF(__pyx_t_22);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_DECREF(__pyx_t_20); __pyx_t_20 = 0;
         __pyx_t_5 = 1;
         {
-          PyObject *__pyx_callargs[2] = {__pyx_t_4, __pyx_t_22};
-          __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-          __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+          PyObject *__pyx_callargs[2] = {__pyx_t_2, __pyx_t_22};
+          __pyx_t_7 = __Pyx_PyObject_FastCall((PyObject*)__pyx_builtin_print, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+          __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
           __Pyx_DECREF(__pyx_t_22); __pyx_t_22 = 0;
-          if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 217, __pyx_L40_error)
-          __Pyx_GOTREF(__pyx_t_2);
+          if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 152, __pyx_L34_error)
+          __Pyx_GOTREF(__pyx_t_7);
         }
-        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-        /* "src/ngramprep/utilities/count_items.pyx":218
+        /* "src/ngramprep/utilities/count_items.pyx":153
  *     except Exception as e:
  *         print(f"Error at count {count}: {e}")
  *         raise             # <<<<<<<<<<<<<<
  * 
  *     # Return counts or group_counts
 */
+        __Pyx_GIVEREF(__pyx_t_4);
         __Pyx_GIVEREF(__pyx_t_6);
-        __Pyx_GIVEREF(__pyx_t_7);
         __Pyx_XGIVEREF(__pyx_t_3);
-        __Pyx_ErrRestoreWithState(__pyx_t_6, __pyx_t_7, __pyx_t_3);
-        __pyx_t_6 = 0;  __pyx_t_7 = 0;  __pyx_t_3 = 0; 
-        __PYX_ERR(0, 218, __pyx_L40_error)
+        __Pyx_ErrRestoreWithState(__pyx_t_4, __pyx_t_6, __pyx_t_3);
+        __pyx_t_4 = 0;  __pyx_t_6 = 0;  __pyx_t_3 = 0; 
+        __PYX_ERR(0, 153, __pyx_L34_error)
       }
 
-      /* "src/ngramprep/utilities/count_items.pyx":216
+      /* "src/ngramprep/utilities/count_items.pyx":151
  *             _print_summary(db_path, count, total_time, group_counts)
  * 
  *     except Exception as e:             # <<<<<<<<<<<<<<
@@ -6357,7 +5696,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
  *         raise
 */
       /*finally:*/ {
-        __pyx_L40_error:;
+        __pyx_L34_error:;
         /*exception exit:*/{
           __Pyx_PyThreadState_declare
           __Pyx_PyThreadState_assign
@@ -6365,7 +5704,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
           __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
           __Pyx_XDECREF(__pyx_t_20); __pyx_t_20 = 0;
           __Pyx_XDECREF(__pyx_t_22); __pyx_t_22 = 0;
-          __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+          __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
            __Pyx_ExceptionSwap(&__pyx_t_13, &__pyx_t_17, &__pyx_t_25);
           if ( unlikely(__Pyx_GetException(&__pyx_t_12, &__pyx_t_15, &__pyx_t_14) < 0)) __Pyx_ErrFetch(&__pyx_t_12, &__pyx_t_15, &__pyx_t_14);
@@ -6395,7 +5734,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     }
     goto __pyx_L7_except_error;
 
-    /* "src/ngramprep/utilities/count_items.pyx":161
+    /* "src/ngramprep/utilities/count_items.pyx":122
  *     _print_start_banner(db_path, progress_interval, grouping)
  * 
  *     try:             # <<<<<<<<<<<<<<
@@ -6411,7 +5750,7 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
     __pyx_L10_try_end:;
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":221
+  /* "src/ngramprep/utilities/count_items.pyx":156
  * 
  *     # Return counts or group_counts
  *     if group_counts is not None:             # <<<<<<<<<<<<<<
@@ -6421,27 +5760,27 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
   __pyx_t_18 = (__pyx_v_group_counts != Py_None);
   if (__pyx_t_18) {
 
-    /* "src/ngramprep/utilities/count_items.pyx":222
+    /* "src/ngramprep/utilities/count_items.pyx":157
  *     # Return counts or group_counts
  *     if group_counts is not None:
  *         return dict(group_counts)             # <<<<<<<<<<<<<<
  *     return count
 */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_7 = NULL;
+    __pyx_t_6 = NULL;
     __pyx_t_5 = 1;
     {
-      PyObject *__pyx_callargs[2] = {__pyx_t_7, __pyx_v_group_counts};
+      PyObject *__pyx_callargs[2] = {__pyx_t_6, __pyx_v_group_counts};
       __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)(&PyDict_Type), __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 222, __pyx_L1_error)
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 157, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     }
     __pyx_r = __pyx_t_3;
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "src/ngramprep/utilities/count_items.pyx":221
+    /* "src/ngramprep/utilities/count_items.pyx":156
  * 
  *     # Return counts or group_counts
  *     if group_counts is not None:             # <<<<<<<<<<<<<<
@@ -6450,19 +5789,19 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
 */
   }
 
-  /* "src/ngramprep/utilities/count_items.pyx":223
+  /* "src/ngramprep/utilities/count_items.pyx":158
  *     if group_counts is not None:
  *         return dict(group_counts)
  *     return count             # <<<<<<<<<<<<<<
 */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 223, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_cur_scope->__pyx_v_count); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 158, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":89
+  /* "src/ngramprep/utilities/count_items.pyx":61
  * 
  * 
  * def count_db_items(db_path, long progress_interval = 10_000_000, grouping=None):             # <<<<<<<<<<<<<<
@@ -6483,13 +5822,12 @@ static PyObject *__pyx_pf_3src_9ngramprep_9utilities_11count_items_6count_db_ite
   __Pyx_AddTraceback("src.ngramprep.utilities.count_items.count_db_items", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_key);
-  __Pyx_XDECREF(__pyx_v_group_bytes);
   __Pyx_XDECREF(__pyx_v_group_counts);
   __Pyx_XDECREF(__pyx_v_grouping_fn);
   __Pyx_XDECREF(__pyx_v_signal_handler);
   __Pyx_XDECREF(__pyx_v_db);
   __Pyx_XDECREF(__pyx_v_iterator);
+  __Pyx_XDECREF(__pyx_v_key);
   __Pyx_XDECREF(__pyx_v_group);
   __Pyx_XDECREF(__pyx_v_e);
   __Pyx_DECREF((PyObject *)__pyx_cur_scope);
@@ -6722,15 +6060,15 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
   #if CYTHON_USE_TYPE_SPECS
-  __pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items)) __PYX_ERR(0, 89, __pyx_L1_error)
-  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items_spec, __pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items) < (0)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items)) __PYX_ERR(0, 61, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items_spec, __pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items) < (0)) __PYX_ERR(0, 61, __pyx_L1_error)
   #else
   __pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items = &__pyx_type_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items;
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
   #endif
   #if !CYTHON_USE_TYPE_SPECS
-  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items) < (0)) __PYX_ERR(0, 89, __pyx_L1_error)
+  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items) < (0)) __PYX_ERR(0, 61, __pyx_L1_error)
   #endif
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount((PyObject*)__pyx_mstate->__pyx_ptype_3src_9ngramprep_9utilities_11count_items___pyx_scope_struct__count_db_items);
@@ -7074,7 +6412,7 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
  * import sys
  * import time             # <<<<<<<<<<<<<<
  * import re
- * import struct
+ * from collections import defaultdict
 */
   __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_time, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   __pyx_t_2 = __pyx_t_1;
@@ -7086,8 +6424,8 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
  * import sys
  * import time
  * import re             # <<<<<<<<<<<<<<
- * import struct
  * from collections import defaultdict
+ * 
 */
   __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_re, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 4, __pyx_L1_error)
   __pyx_t_2 = __pyx_t_1;
@@ -7098,54 +6436,41 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
   /* "src/ngramprep/utilities/count_items.pyx":5
  * import time
  * import re
- * import struct             # <<<<<<<<<<<<<<
- * from collections import defaultdict
- * 
-*/
-  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_struct, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 5, __pyx_L1_error)
-  __pyx_t_2 = __pyx_t_1;
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_struct, __pyx_t_2) < (0)) __PYX_ERR(0, 5, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-
-  /* "src/ngramprep/utilities/count_items.pyx":6
- * import re
- * import struct
  * from collections import defaultdict             # <<<<<<<<<<<<<<
  * 
  * import rocks_shim as rs
 */
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_defaultdict};
-    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_collections, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_collections, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 5, __pyx_L1_error)
   }
   __pyx_t_2 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_2);
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_defaultdict};
     __pyx_t_3 = 0; {
-      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 6, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 5, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 6, __pyx_L1_error)
+      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 5, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":8
+  /* "src/ngramprep/utilities/count_items.pyx":7
  * from collections import defaultdict
  * 
  * import rocks_shim as rs             # <<<<<<<<<<<<<<
  * from ngramprep.utilities.display import format_banner, truncate_path_to_fit
  * from ngramprep.utilities.progress import ProgressDisplay
 */
-  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_rocks_shim, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_rocks_shim, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
   __pyx_t_2 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_rs, __pyx_t_2) < (0)) __PYX_ERR(0, 8, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_rs, __pyx_t_2) < (0)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":9
+  /* "src/ngramprep/utilities/count_items.pyx":8
  * 
  * import rocks_shim as rs
  * from ngramprep.utilities.display import format_banner, truncate_path_to_fit             # <<<<<<<<<<<<<<
@@ -7154,22 +6479,22 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
 */
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_format_banner,__pyx_mstate_global->__pyx_n_u_truncate_path_to_fit};
-    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_ngramprep_utilities_display, __pyx_imported_names, 2, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_ngramprep_utilities_display, __pyx_imported_names, 2, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
   }
   __pyx_t_2 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_2);
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_format_banner,__pyx_mstate_global->__pyx_n_u_truncate_path_to_fit};
     for (__pyx_t_3=0; __pyx_t_3 < 2; __pyx_t_3++) {
-      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 9, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 8, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 9, __pyx_L1_error)
+      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 8, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":10
+  /* "src/ngramprep/utilities/count_items.pyx":9
  * import rocks_shim as rs
  * from ngramprep.utilities.display import format_banner, truncate_path_to_fit
  * from ngramprep.utilities.progress import ProgressDisplay             # <<<<<<<<<<<<<<
@@ -7178,31 +6503,31 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
 */
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_ProgressDisplay};
-    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_ngramprep_utilities_progress, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 10, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_ngramprep_utilities_progress, __pyx_imported_names, 1, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 9, __pyx_L1_error)
   }
   __pyx_t_2 = __pyx_t_1;
   __Pyx_GOTREF(__pyx_t_2);
   {
     PyObject* const __pyx_imported_names[] = {__pyx_mstate_global->__pyx_n_u_ProgressDisplay};
     __pyx_t_3 = 0; {
-      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 10, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_2, __pyx_imported_names[__pyx_t_3]); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 9, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 10, __pyx_L1_error)
+      if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_imported_names[__pyx_t_3], __pyx_t_4) < (0)) __PYX_ERR(0, 9, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":12
+  /* "src/ngramprep/utilities/count_items.pyx":11
  * from ngramprep.utilities.progress import ProgressDisplay
  * 
  * DISPLAY_WIDTH = 100             # <<<<<<<<<<<<<<
  * _display = ProgressDisplay(width=DISPLAY_WIDTH)
  * COUNT_FIELD_WIDTH = 15
 */
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH, __pyx_mstate_global->__pyx_int_100) < (0)) __PYX_ERR(0, 12, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH, __pyx_mstate_global->__pyx_int_100) < (0)) __PYX_ERR(0, 11, __pyx_L1_error)
 
-  /* "src/ngramprep/utilities/count_items.pyx":13
+  /* "src/ngramprep/utilities/count_items.pyx":12
  * 
  * DISPLAY_WIDTH = 100
  * _display = ProgressDisplay(width=DISPLAY_WIDTH)             # <<<<<<<<<<<<<<
@@ -7210,103 +6535,103 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
  * 
 */
   __pyx_t_4 = NULL;
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 13, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_ProgressDisplay); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 13, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_DISPLAY_WIDTH); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __pyx_t_7 = 1;
   {
     PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_4, NULL};
-    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 13, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 12, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_6, __pyx_t_8, __pyx_callargs+1, 0) < (0)) __PYX_ERR(0, 13, __pyx_L1_error)
+    if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_width, __pyx_t_6, __pyx_t_8, __pyx_callargs+1, 0) < (0)) __PYX_ERR(0, 12, __pyx_L1_error)
     __pyx_t_2 = __Pyx_Object_Vectorcall_CallFromBuilder((PyObject*)__pyx_t_5, __pyx_callargs+__pyx_t_7, (1-__pyx_t_7) | (__pyx_t_7*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 13, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 12, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   }
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_display, __pyx_t_2) < (0)) __PYX_ERR(0, 13, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_display, __pyx_t_2) < (0)) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":14
+  /* "src/ngramprep/utilities/count_items.pyx":13
  * DISPLAY_WIDTH = 100
  * _display = ProgressDisplay(width=DISPLAY_WIDTH)
  * COUNT_FIELD_WIDTH = 15             # <<<<<<<<<<<<<<
  * 
  * 
 */
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_COUNT_FIELD_WIDTH, __pyx_mstate_global->__pyx_int_15) < (0)) __PYX_ERR(0, 14, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_COUNT_FIELD_WIDTH, __pyx_mstate_global->__pyx_int_15) < (0)) __PYX_ERR(0, 13, __pyx_L1_error)
 
-  /* "src/ngramprep/utilities/count_items.pyx":17
+  /* "src/ngramprep/utilities/count_items.pyx":16
  * 
  * 
  * def _print_start_banner(db_path, progress_interval, grouping=None):             # <<<<<<<<<<<<<<
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=DISPLAY_WIDTH)
  *     print(format_banner("DATABASE ITEM COUNTER", width=DISPLAY_WIDTH, style=""))
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_1_print_start_banner, 0, __pyx_mstate_global->__pyx_n_u_print_start_banner, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 17, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_1_print_start_banner, 0, __pyx_mstate_global->__pyx_n_u_print_start_banner, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[2])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
   #endif
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_mstate_global->__pyx_tuple[2]);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_start_banner, __pyx_t_2) < (0)) __PYX_ERR(0, 17, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_start_banner, __pyx_t_2) < (0)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":28
+  /* "src/ngramprep/utilities/count_items.pyx":27
  * 
  * 
  * def _print_progress(count, elapsed):             # <<<<<<<<<<<<<<
  *     rate_str = ProgressDisplay.format_rate(count, elapsed, "items")
  *     print(f"[{count:>{COUNT_FIELD_WIDTH},}] | elapsed {elapsed:8.1f}s | rate {rate_str}", flush=True)
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_3_print_progress, 0, __pyx_mstate_global->__pyx_n_u_print_progress, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_3_print_progress, 0, __pyx_mstate_global->__pyx_n_u_print_progress, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 27, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
   #endif
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_progress, __pyx_t_2) < (0)) __PYX_ERR(0, 28, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_progress, __pyx_t_2) < (0)) __PYX_ERR(0, 27, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":33
+  /* "src/ngramprep/utilities/count_items.pyx":32
  * 
  * 
  * def _print_summary(db_path, count, total_time, group_counts=None):             # <<<<<<<<<<<<<<
  *     rate_str = ProgressDisplay.format_rate(count, total_time, "items")
  *     # content area inside box is 94 chars (100 width minus borders/padding)
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_5_print_summary, 0, __pyx_mstate_global->__pyx_n_u_print_summary, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_5_print_summary, 0, __pyx_mstate_global->__pyx_n_u_print_summary, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[4])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 32, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
   #endif
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_mstate_global->__pyx_tuple[2]);
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_summary, __pyx_t_2) < (0)) __PYX_ERR(0, 33, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_print_summary, __pyx_t_2) < (0)) __PYX_ERR(0, 32, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "src/ngramprep/utilities/count_items.pyx":89
+  /* "src/ngramprep/utilities/count_items.pyx":61
  * 
  * 
  * def count_db_items(db_path, long progress_interval = 10_000_000, grouping=None):             # <<<<<<<<<<<<<<
  *     """
  *     Count items in a RocksDB database, optionally grouped by key prefix.
 */
-  __pyx_t_2 = __Pyx_PyLong_From_long(((long)0x989680)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyLong_From_long(((long)0x989680)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_5 = PyTuple_Pack(2, __pyx_t_2, Py_None); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_Pack(2, __pyx_t_2, Py_None); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_7count_db_items, 0, __pyx_mstate_global->__pyx_n_u_count_db_items, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_3src_9ngramprep_9utilities_11count_items_7count_db_items, 0, __pyx_mstate_global->__pyx_n_u_count_db_items, NULL, __pyx_mstate_global->__pyx_n_u_src_ngramprep_utilities_count_it, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[5])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
   #endif
   __Pyx_CyFunction_SetDefaultsTuple(__pyx_t_2, __pyx_t_5);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_count_db_items, __pyx_t_2) < (0)) __PYX_ERR(0, 89, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_count_db_items, __pyx_t_2) < (0)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "src/ngramprep/utilities/count_items.pyx":1
@@ -7316,7 +6641,7 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
 */
   __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_kp_u_count_db_items_line_89, __pyx_mstate_global->__pyx_kp_u_Count_items_in_a_RocksDB_databa) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_2, __pyx_mstate_global->__pyx_kp_u_count_db_items_line_61, __pyx_mstate_global->__pyx_kp_u_Count_items_in_a_RocksDB_databa) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_test, __pyx_t_2) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
@@ -7360,7 +6685,7 @@ __Pyx_RefNannySetupContext("PyInit_count_items", 0);
 
 static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
-  __pyx_builtin_print = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_print); if (!__pyx_builtin_print) __PYX_ERR(0, 19, __pyx_L1_error)
+  __pyx_builtin_print = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_print); if (!__pyx_builtin_print) __PYX_ERR(0, 18, __pyx_L1_error)
 
   /* Cached unbound methods */
   __pyx_mstate->__pyx_umethod_PyDict_Type_items.type = (PyObject*)&PyDict_Type;
@@ -7380,36 +6705,36 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "src/ngramprep/utilities/count_items.pyx":145
+  /* "src/ngramprep/utilities/count_items.pyx":106
  *                 match = pattern.search(key)
  *                 if match:
  *                     return match.group(1).decode('utf-8', 'replace') if match.lastindex else match.group(0).decode('utf-8', 'replace')             # <<<<<<<<<<<<<<
  *                 return "unknown"
  *         elif callable(grouping):
 */
-  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(2, __pyx_mstate_global->__pyx_kp_u_utf_8, __pyx_mstate_global->__pyx_n_u_replace); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 145, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(2, __pyx_mstate_global->__pyx_kp_u_utf_8, __pyx_mstate_global->__pyx_n_u_replace); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 106, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[0]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[0]);
 
-  /* "src/ngramprep/utilities/count_items.pyx":162
+  /* "src/ngramprep/utilities/count_items.pyx":123
  * 
  *     try:
  *         with rs.open(db_path, mode="r") as db:             # <<<<<<<<<<<<<<
  *             start_time = time.perf_counter()
  *             iterator = db.iterator()
 */
-  __pyx_mstate_global->__pyx_tuple[1] = PyTuple_Pack(3, Py_None, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[1])) __PYX_ERR(0, 162, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[1] = PyTuple_Pack(3, Py_None, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[1])) __PYX_ERR(0, 123, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[1]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[1]);
 
-  /* "src/ngramprep/utilities/count_items.pyx":17
+  /* "src/ngramprep/utilities/count_items.pyx":16
  * 
  * 
  * def _print_start_banner(db_path, progress_interval, grouping=None):             # <<<<<<<<<<<<<<
  *     db_line = truncate_path_to_fit(db_path, "Database: ", total_width=DISPLAY_WIDTH)
  *     print(format_banner("DATABASE ITEM COUNTER", width=DISPLAY_WIDTH, style=""))
 */
-  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(1, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 17, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(1, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[2]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[2]);
   #if CYTHON_IMMORTAL_CONSTANTS
@@ -7435,31 +6760,31 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 11; } index[] = {{3},{4},{3},{3},{4},{8},{14},{1348},{21},{10},{15},{12},{13},{29},{25},{1},{1},{3},{1},{1},{2},{2},{1},{24},{15},{7},{12},{6},{2},{65},{9},{6},{9},{5},{8},{17},{13},{8},{7},{6},{5},{15},{20},{6},{7},{18},{9},{17},{18},{11},{7},{5},{14},{35},{38},{2},{7},{7},{6},{11},{8},{1},{7},{6},{8},{9},{4},{8},{5},{13},{11},{5},{8},{5},{11},{12},{8},{11},{13},{5},{8},{3},{4},{9},{8},{5},{4},{10},{8},{4},{13},{27},{28},{4},{7},{12},{3},{5},{15},{19},{14},{17},{17},{12},{1},{8},{2},{7},{10},{2},{1},{6},{4},{12},{10},{6},{14},{6},{35},{10},{6},{5},{13},{3},{8},{4},{5},{10},{11},{20},{7},{17},{5},{6},{5},{8},{0},{107},{574},{25},{71},{51},{198},{7}};
-    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (2189 bytes) */
-const char* const cstring = "BZh91AY&SYGQ\325Q\000\007\020\177\377\357\377\377\377\377\377\377\367\277\357\377\277\377\377\377\356\340@D@@@@@@@@@P\000@\000`\007}\367c\263q\235\330\\V\367h\233:[\256\355\336\003\006\211M\014\212\037\212\217S\364\223z\247\244\375\002\236\246=H\036\211\260\321\r&\36554\003C@\014\207\244\332\217P\332OS\323A\251\264\3053(4M\023@\3110\020\231#&\232d\3652hj\006i\001\204`\031\000\003M\000\0040\320i1\000\301\241\014\232\204\220\377U\033\325=F#F\214\203#@\032\000\000\000\000h\000\000\000\000\000\000\304$\3112\236\232\n\2364\223\365O\005=OS\306\246P\r\032\000\320\032\000\003\324\000\000\000h\006\201\223j\004\030\000&\000\010b`\230\000\0020\002d\3012`\000FF&#\001\014\000\000%\t\003I<\202\236\247\211\250\332\215\244\320\365\032i\351\031\036D\006\200\000\000\000\r4\000\000\003@\320$g\\k\303\303u\014\021\353s\277o\344\377C\244\177~\224BH\364\313\324\271?\300\222\005X\003\014\252\240\2520\0051$\376UO\362\024\030\226X\222\021\357YU\000`\254\221>\"%\na\033\347r\177\246\301\342\341\254,\270\232[\007\256hg\345Q\005\030\301Cn\013iG\203\252\263I$\202Th\234\245\215@=k\314\007\022\013q\205D5Ur\001\254\350\326\3432\326wb\207\373<\026V\267\326\214&\342\212&\370\025Z\327\357\305cdl]^\211]\226\203\204\333\220a ]:d\240\274aa\200BS\014\004dw8*\257\026\241$\346@\222wH\210\265t\210\235\275\027\211\021\221y\027\002\037\224\020BG1=\257\225F\335&\324%r\224\202\262\357\211\361\204\274\321zi\204gT\350\330hH\241\256\222\354\005\213@\354\013\177\310\247w\276\025\362\376\017\211\224\327\360\250\\\200\241o\251\3138\302\374f\351f9\\\332\343\020\354\254sV\312aIlI\240FIQ\373\216\374\201\316\217,nn\360p\035\341\333s\035\324'io\216y\220\257@\025\322\010\321G\032]\034m\217\336\203\034`u\013\241\327N\341\331b(a\260,y\354S*\246\010O\361!\020\260caP\235\306\305\303\321\332\276\321\2372_\301\326\231\306p\257\250\356\360\303\222f\236\364\024\210\372\270\033\343\301\232\225\326\361d\255k\"$\2351,\246<\r\212\265r\376\256\032\372=1\352J\025\303\0147wk\331-\334\030V\030\312\030\3022\252\346\"\320\315x\006b\214\031c7C""6q\304]\260*\243SS\034\253\250\313\214\r\315\025\202\326qb\026\021\231\r+\372\330\3038\013)\276\205\324\357\250\031V;\273\375\305\2052^\275t\000\367\254e\226c\212P\212\000H\315\271T\262\322G\034\250\341\204\311e\236\343\200\260\345@\031\000/\251OOZ\304\234l\226g-\305\034\003\323l\2630\024\242\301\364\253\371Ki}\210\341S\343}Q\037o\3342\376/\327U\233\362\350\321\3150\307#\205\245\327X\257'RE\233\270qE\014.\033\003^\020\226]\227\225V\034.\347\355\rS'\257O\014\225\373@3\272\205X\365\202\201\031WM\nxD\340]+\231H\022u9\2058\262|\255\027\014s\t\1770\354\214\235\262\202V$\270\002\200\216\360)\365j\031\362.\216\017\360>\241\243\235-\276\361\250\"\347\014\226\036\336A\367\301\177%o\024\340\217M/g\253rn\322\352+\177\020W.=D\037q\337<M(HK\246\340\314\304\200\200\203?5\273\340\246\254\022qo\0314J\306\231t\325'\252\326\022H\273I\007\355\331\237RZN\206\336\230\320\366b\024\026 \214\232Q\247Z,K^4\213E\024a\254\016\321a\234\371\034\224\2316\263T&#J\250\030\004\311\000A\231dl7\217\214\322\026\206\230\246\245\374 \034\346(\004\224\023]\2632\262\377\006Ar%\2744dXp\324DK\026\316\330U\202\262jT\205\022\022#e\234\016\026\322\264\372\272\2333\035xn\235\203\n\336\332\244\n\2453h\201\033\355\2069\366\201T\035\024\273(c\214\226d\215\226\013\212\210\327Fmf\001\240\017\001\334(\251\323&\267+\213D\023\235\3069x\235\033\004\005\021\322\217\226,\274f\014\246\315\n\221mD\030CL\221\214\033\220\004\036\230\202a\034\\\2362\315\225*\202\n\223V`T\037=8H\357\036\345\266\233\220\002\310Y\027\335\325E\204b\344\301j\303*D\r$$\2161\3265f*z\000\025\261\325\3365\342\026F\235\001\205rq\276\2240<\206\333k\221\202\201@\350\362/O\206d\003\004$\210\014\2361\332\264Y\351\035\370\304F\262\330@\274\321l\000Q\215\340\006\031\371M4s\255\244u\254\253\017/L\201XW!!\222\300\343x\355S?\022\273l\355HP\300\2545\200Y\215\311\315h\2329\357\225\205\t\220e\227\035\021\023e\002\331\223\253!+\333\023\r\301TI \006Va\212\342\312 \231Bz\242\014}\010S\355o\n\340+\355\004\036\0345d\374\r\263\260\255-\264q \2601\365;g%\221\222\3069\217""\210z\211\340\035\331\255\310\034\010\2052\346\225\340\250\336`-E)7\032\005(\022\231\002S+\354<re&AX\201!\345Nb\032\000g\272\245\313\202\353<\005p\0250X\n:\341f\255\210;\232\226`\025\215\341e\342\212\332\201t\202\004\"\024/\005\313\276-\330\n\340\310\214C@\301\2372\013U\300\017S0\230:\n\307\261:\226\240\225\030\220\233m\002\\\200/\242\240\217\021\n6LR\326N\224\254\212R\272\026\221\244\252Ce\315]\020eAQ\215)\3109\323\254gQ\313\320\343b\335\202\271\326D\267@\335\334\003\211\373^c\267~bR0\372\372v\\Q\305\330D\241\006\221\t\216\336\331\230\325\276\254\324ip\346\010#\336\305+\002'\031\271\221\241:A\202\252+\240\025\t\336\3617\252\010\262\021\321\245\222\343Q\225P\204\252D W\267q\3461p\232\354N&\200G\211.lB\021\235%\244\016'z\330u\304\t#\316\007\201u\261\026\2145\210\251je=uK6\007\003\022\022\344\006o2a\206\254J\300\263\226\004\214\363\233\304V\261\020\315\247v\272\001\014\242\t\010cB\370\340y\211.\211\244t\014\355 \004\220\261\t\303\031T\340]`\016\036S\300\340I`$v\210\212\226\020\304e\027\344\023D\274\263*\261\"G\nD\0231I$\2465\022Jt\014`\226W\301\030\340\202!\213\026R\267\025\2716\233;\373\265\350\3401W\204\247\270\267\363\232\000\020\224\tj\300\325h\3638$\342\224\305\260\244\242\272\306\336\264\204\267rc\013T43\333\031\036B\231\211\020!\221L-\336!\226|\314\026\025\244\253OSew\211\241(\002\004~\316,\262\206\250\353@\210O\366\223\030\222(\340\263P\031\243t\213lZ\325@@\007\370\257\3722\037q\327-\341\\\306\312%Z\201\325\026B\010\344\357\3301&~\"B\271\242\325o?\001\350f\335\267\r\372\014  \253\010\324^\tf\006\021\342\262\311\346m\344\031\207\007\024\323\270\0321\312\357\233\216\356\354\236K\005$\343\273T\275\305)\253\342\2652\3029$Qta=\302\230\326|R\230W\256\010\364\207\221\036\360\221Fjq\207\236\262>\353\215`\233W\004\362\030tJp\210\314\306w\314\261w\013\2715\343#\367\257nk\"%\374\326F\rm\226\312\034-\020\273F.\205\377\312\347\027\r\004\320w\334~JjZU\032e\317\376\016\324Z^\036\233je)I\350\241m\3666=<\312\216\3512\307\333\2775\357\250\030\202\375\210Z\016>\311\316\227\301""\227\302\027\215\236\305:\265\347\324\372(\304&:IN4\211\236\261UUVB\323h$\203\035\254\252\243/7\016\256\350\3312\311\251\304'\002cD\004\305\017<#\023\251U\005\212\262\232\310\2610g\034\004\225\341\327\325O\370\273\222)\302\204\202:\216\252\210";
-    PyObject *data = __Pyx_DecompressString(cstring, 2189, 2);
+    const struct { const unsigned int length: 11; } index[] = {{3},{4},{3},{3},{4},{8},{14},{1098},{21},{10},{15},{12},{13},{29},{25},{1},{1},{3},{1},{1},{2},{2},{1},{24},{15},{7},{12},{6},{2},{53},{9},{6},{9},{5},{8},{17},{13},{8},{7},{6},{5},{15},{20},{6},{7},{18},{9},{17},{18},{11},{7},{5},{14},{35},{38},{2},{7},{7},{6},{11},{8},{1},{7},{6},{8},{9},{4},{8},{5},{13},{11},{5},{8},{5},{12},{8},{11},{13},{5},{8},{3},{4},{9},{8},{5},{4},{10},{8},{4},{13},{27},{28},{4},{7},{12},{3},{5},{15},{19},{14},{17},{17},{12},{1},{8},{2},{7},{10},{2},{1},{6},{4},{12},{10},{6},{14},{6},{35},{10},{5},{13},{3},{8},{4},{5},{10},{11},{20},{7},{5},{6},{5},{0},{107},{25},{399},{71},{51},{198}};
+    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (2043 bytes) */
+const char* const cstring = "BZh91AY&SY\020\202\rJ\000\006'\377\377\347\377\377\377\377\377\377\367\277\357\377\277\377\377\377\356\340@D@@@@@@@@@P\000@\000`\006\275\325U\316\226\264\345\265\3335\023\rms\337c\341\251\2414\214\200'\246OJM\031\251\342'\246\324\236\243\321\246\246Fi1\0004m&\200\003M4\321\241\231'\241\246\241\243F\201(B\021\210\332\214\203T\362\233Jz\237\224z\247\350\2234L\215\251\240\000\000\003OP\311\372\240\000\000\320\000\000\032 4M&\247\251\351Oi4\207\250zL'\251\240\000\000\321\240\320\000\000\000\000\000\320\003A\240\032h \204\324\365=Sd$\321\352z\236\247\251\243OF\246\214\215\006\201\246\200\000\003C\021\211\204\302i\246M=G\244h\365\000\252~\244\000\t\243\021\246C#F\023\021\246\206j\032i\243\t\211\350M0\230&\001\003\000#\0024\320\310*\202a4\300&#\000\323Bb0&\000L#\0011\0314\310b\031\003\t\200L\000\001\035$x\232\2266\3422\016G\355\373\217\340wSo\272\356I\217\357\374\004\220\206\250\241I \022\242\005@'\277\371\202_\342\021P\213\231\010\034L\200\n+$\324B%\n\223k?\033\360\367x\370\356\343K\313\332\354\253\023\324TR7x\317\014\333\246\274\035\014\244\202I \232<\341\330&\255N\001a\240\364\312\016C3\017\177\354\005a\024Mc\010\3560\177c$\007\214f\331\210\250\307\201(\\7\257\337\217\366\352\333t\205r\013 g\030\027\013TlA\220/\213RVJ\374\301\001[0\010\026\234\020.N\036\370\017\315\337\262\264\212\373\006\210\221>/\357\366{\231\031A\004\372\204\236l\307\024\210n\2750\230\3613\366+\005\203/e\255\332\0162\247\3243nW\014\233~\347r\372[\216\207sha!G\346\311\207\020\317!\321*\016S\242@~\231\005\322\325\305Om\226\332\250\376\230\n\271+l\215\354k\367\313 \347\263t\031\343Q\312\326@\340\330\227'\232\033\035C\311\357~+\203k\217M?\252\217X\333\326g\277\030\262D\306\223\375\344\000\277\177\264\365(ne\027U]\247\254Ul\372M\273Vf\366p\016(j{f\276K\343\211\232=\371\206\307\023D\347(@\370\2160VjI<\342\227Z\362\001\362\r\014R\226\321\226h\r\231\003\317\353\3570\254\307<a\271-\356\255\221\3379\333/\252\252\341\361w5\233\373\247\033d{X\313\005\334,\261O!h\224\2606V*\247\025\273m\340L1\227#\311\370\3639L'""\267\305\262\261\261\330%,y\232\215\207\225'/\230`\221\213F\305T\237\363Ax!n\264\023)Xf\222?\2476!\245v46\255O\300\220\375x\360'X9\312\251\254\017d\303\315E\303\325\237\244\305\006v\207\253\326*\315^#k\367\275D\371F4\016\252\351\273\310i$\336|)\220\204Q\3007Y\010\276u\276\354\265\267f\311\036*.i>\324\275\360\010\235A\235\027\001\224\210a\352\271*\230\2511\205[\316\035\026\246\016tK#\303A\231N\313.\245\305?&\023\275\323\362\006H\204\327\321`\311nW\235\300\230\251\232\201\237v\360\255d\261\351\315\275\367\032\201\275Q=Z4\342\214\366gQLq1\346\254\243\001\303\324(\271\236c\346\303\007\323kQ\0038\237,fM\022 E+,\000\022m2\352\202Q4*\302\336@J\023j\315\030\254\213K9D\022\214\260Cy\212\265\306\314\033w\253\342\212\232\201\002\332\005\270\344\\\262H\334B\024.`\333\212\025\2516K\3258\227`.\023LR\341\024\311\001#\001\220\313\002@|\035\261\034\205y\240\310A\302\300\204\331\251U\025\263x\252\n\n*\341\245$\346\303\002\t\217A\354\005o\304\233\252=\r\02298)\343\307\242\006\241\277\213\245\345\345n\314\362Q4\2708\177\016\367\366\256\000\224h\263\203\024\230\263\"L8C\300\n\272\366\215\264\242#{\022UQF\353\026\020\251oSK\365\323v\004\211qm\303\\*\275>\233a\2753Fg=\362\271\306a\346Mh\311\016\205\234P\202\002\213\354{\016.P\202\265\346\004&{\027:J\272\315\000\003\006\347\2662fkPa[M\3577qq\020S\001\221h\217*\000\037=\367\371\303\276w8\315b@\277Q\305A\013\302j\311QQ\325\362\361_P\202P\312\227m\203\334\365\327J\030\227:\241$\2125\300\225\2238\014Z\262*Z\273\212b\273m\354\010\223\013J\2175]\034g\337\271\2529\363\312\353C\311\201\002\242\003cK\010\253\222b\320\324#\017\000\235U(d\036\243\224\242cx\372\232,vd\217\202\252&\026b7\222\030$X\353&\037N\\\225\301#\247O#%\302\202\002\024\013c:|\243}M+\205\215\030,[\r\261j|\032e\\\304\321d\306p2\260\001\333\242\273\303-\005\231\262\n\340Tg0\014\244XlF\200\324\000\234eN+\232\034\250\007)\224\032\302\357\003<\272e!i\360X\231qP8\221\226\214\035pP\005\211\241\2320\030\363`\004:$A\312\242\240*\n\365\360\\\216tu^ \241\023aw6E\025\200\203\225\232D6\"\307s,""\213\216\02311OM\350\340\355\305\004\230\020\313\274f\341\254\261\027\265L\351\2051\021\246\313\224\200\224\020\215t\246\311\241Q\274/\261\276a\251v\242\0365\257\032\351\257\303\331n\037\224\336\210b\360\335\356ko\004g\354\303\021\000\215]T\220\322\302Zv,io\312q^\225\000I\207\033\315\232\013\321\364\311\005\234\024\027\326\2508\345\020\032\t\347a\3440\324\341b\"\310@\311\243\243\263A\276\326\236\223\235hVH\217I\202\2418\277\000TO,\354\261\300\205\255%\220\tQ5\317\250SmW\2542\251\250\230a\210\223(\006v\014\232a\354\022\\\232\346&\213\224\247<\314\315\323\321\326\267t\003\340\262\033\013\336\021\225\343{(8\212Vp\211\004\\D\335R\024\013\355\002a\320\226\353\220\272!\302\250Al\031\013#Y*\035\025\245U\211\222X$\201C\025\004\244*\300Jf\027\312*\214\024\360\260\030\345aJ\224\021BvM\334\367\322\2008\241z\263\314\305\220\020\036\311s?;\227f\204\230\214s\316\227\243]g.\276nS\025<\303~b\346\206\206\2678q\003F\016\324A\014X\314\t\200\354.2\030J\t\226p\240\250\036lQ\206\370V\275\370s\013/\222\326\260\"=\263\033\3467{\347\007\001\235\255\255\300m\221\306k\200k\355\363[\200\\\336\0101\t\373\366\310O#\345J\030\220^\251\n\266\001\233\361\375b\3230\004\206\025Ql\214.\000\376\021\027E\303e`\000\342\370\266\003\207\316\300\020\031\235\311\321\374\036\300\303\266\037^d\350u\010\251\274\033\002\370s\331\275\020\226H\335t\203U\240\004\357\264RN\367a#j$\034 x\203\210\271\005m\216B\257\376\311\027\373\365\227uurN\261k\321zmi\240\374o\014m=k\016I\260$r\210j~\304\236\n\363\217b\362\264z1\217#lS\336\352=E\234HW\030\035+\252~\206\217\303:\307^^\311\352\247T\020\207\203}/-\212\031V\357h9S\203\241wJ\373cs&\017j\335q\325\247 \216\222*\212S\0140\227\211H8`(\236eJ\220\317\245EeZ\317\350\254D\2131c\370\322&V!D\252]u\313\306\362y.\345\257\376.\344\212p\241 !\004\032\224";
+    PyObject *data = __Pyx_DecompressString(cstring, 2043, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (2011 bytes) */
-const char* const cstring = "x\332\255V\315S\033G\026G\265\020\313X\330\340h\001;x\267q>\004\273\262`\2601X\025\263%\033\231U\255\215\371J\266\034`;-M\2174\313hF\352n\001\252\330\025\357M\3079\3440\3079\352\250#G\216\034\3478GU\376\002\377\ty=3\022`;UIjURk^w\277\327\357\375\336\357\275\236\237\177\372\337\212\262\220^\230\347\231\005m9\243h\271\3032bD\320\247/\277Y\337AO_\276\330x\236\337\311\017#\370<\265\032\246@\272\240U\216t\023\021\264e\225\016\370\352\023\244\022A\212\204\3234\262jB\267Lb\030MTfV\243FUTl\242\003\332D5F5\3758\023\030\n\206\034+\363l\360$?j\021\327\210\250d\321\006\214HXHT\350\007\366\373\273k\314*3\3129\326MA\331!1@\217\301s\177\001\321C\312\232h=\362vF\245\032i\030\"\213\224\371\364\374|\360\233\355[\013<\325\315r\026\275\214\334\357O!^\243%]\323KD.d\320Sb\242\"=w[~\356\241u\313\244Y\264EE\203\231\340\273\000\003\245\000\253\336\271\240S!\207\272\305f\337\323L5)a\270\250\233\251,zF\270@\364X0R\222\207!KC\273\257\362\271\255\375\010;4\303h\311\252V\251\251\002\254\232\305PM?\264\004<\257>\341\357\033\346\202I\217\312\364\030\001\256\000\222t\254g=\014\017i\314\252\006\271\231\241\231r&\215X\352?{\2733{\352\337g\367\366S\301\001\322;\004\336}`\276\004)&E\003\242~\3260CwE\205\010$\310\001\345\300\214\300j\261)(\237E\304T\021\013\260\221+\341\321\272JM\001\270R\206f\300\325\313\346\003!D\363\002Cdzu\355<3:\017pO#U/\211]0\222\226[\366\337\337\023%\220\252\303\227\314\347\217I\265f\320\013\366?G;\347\231\353\317\256\254\254\2043\030\030\032\220i&5'\231:'\2549\265\230:\367\\Y\270\377`\361\341\322\345cB\303a\341@!\364\360D3\232L\266\2643\373\233\217J\367\343z|N\233s\365\037R\312\243\371y\340\321\203Ep%\215\244\270(\305\207K\313\013\201\250\004\253K\340g\032e2\2317\277\321U\026\260\010(eXG\224\375!\177/1\353\377\356r\203\013 r?\351Z\304\310?\342\250A\252E\025\350\233E\007\273\331\007\373\031\025*N\2453\251\206\320\356-\303\306\024\2435\203\224hj\366b\024\273\340\367\205(@T\316\243\350\273\275\232\333\311=\311m\347Qa'\377\002\005\3755\277\265\032\265\266,\3123\006\025\0075\024\266""\216\265\255\227\337l\204\273\266\327z\241\025\233Y4\\\220=\2175j\002\252\252D\365Ch\000}\255\215^\377;o\214a'\374G\372\347\237\336\356\256 \224E\231\313X\240\031C7)Z~4\033\316\007\223\231Z\363X\325\271,\361}\364\032Q\203\3248\234CM9S.\365\261\256\002\366\320\334\242J<\247eZ6\240\210:\263p-\260~\307\000\260-(d\036\232R\303\006\315\341\014y\351\240\000\347 \350\302\372Z\360\217\237\025\362\317W\361\277\013\253;\377\\-lo<\317\275\212\204\010\271|\350[\200\021/Hk=\020Vu\016\311jb\274\321<\206\337*\364\t\274\016-p\213j\333\205\265\002\000[X\203\024\274 \274i\226t\013p\001\033\002\300\340E\353\030\037\351\252\250`\\2\010\3343e*\244\243R\204u\270v\260l\244\264HJ\007%\3130h@8\016\335\271\246\203 q\274\014\362e)\363\265a\001\036|%\323\003\022k\346\257m\341z\031n$\\\2016jP\246\026a\207\364!\2720C\202F\327\214\354\204X\r\243\246Q\316\250)7\300\235\201\205^\245\030SI\014\370;\326Eo\324\214\006\257@\273\257\022\201\213\3044)\213\004\231\022\215\021\251&\213\n\343\300\335`\300As\017\037\003\317y/\224\013!a\235\343>\250AX0\200Q\213\301\375\000_\016\330\302\222J\2171\256\022\000\025FQ\252T\301ax\264\324\206\001\377\030\233\201\007&dN\376p\357\2167\313\340\032\\\215\265\014\3307t\241S\236\211\202\377\330RO\315\252Q3\272\022k\020i\350=e5\253V\223\257\020\2707Fo\030\241\310\005a=pzS\215j\225\260\346%\001\003q>x7\301\270\336 F\030\004\223\220\2025\306h\324I\230|\307\301\274\242W\031\347\034\352\247T\341\224\036`\314\251\210\"\207\247(\301!\027.3BJ\215*g\245\314\307\242\276P\323a\014\222\005p~\243$\270h\302\005\0309\036\356hr\214!\255\300\t\271\r(o\320\340u&\024\203\247\240,@\337,\311H$\005\261\260\260\246\213\206y`ZGf\203S,/7\334\353\005\200\200\256\302\320\240<\320\355\315{\003\017:9\177\360\272w\375\256;\355>j\257\237\244O\211?x\2655\326\272g\327\275I\2453\336\371\361T;\313\205s\323\301\2377\374\245\273\351}\265\324\251\373\203W\336\326\375\370Hk\263e9\233N\250\331Ww\022\356\263\366\334\311\370\311\341\351\267g\21270\345M\345N\307\336\255\306\006\206&l\330\373\027\207\274\033\036""\030J\332\212?x\323\006\333\223N\254\013\026\233\366\025\033\254N\330?\200OJ7~\255\365\310~j\327\273\t\344\306\374\221\t0<\354Nw\023\343v\321\211\2731w\262=\321\211u\246N\276;\255\237\r{[{\336\336\276\237\030\001\313\327\307\355M8'q\333\201\3357\355\27799\357\316\367\336\367\304#\324\243\232\247\225\273\203C\357\342\003C\327Z){\314\376\312\271\352\202\357\303\221 \217\030\224g]\365\246\001#\330\352\217\334h5\354\234\375\312\241\356r[\361\023\267\234\244\263\337\236\366\023\0236sn\271\360\220\264\363\316\2303\375\356\223\201\221\321V\323\371\223\243\370\243\343v\305\321\334\234\237\274\343lv\223\023\366\241\263\raL\336u\277p\253\235\373\235\342\t\010)\267\336\276\322\256\373\223\263\355\261nr\312\311\273c`\343\346\247\227\265\375\344mg\006\324\210\237\274\353\335\275\337Q uI\300\304\375\254\275\006B\341\004\237\345~\317\t\361\201\261\211\217\233\237r\376\005\373c\241\365\333m\345wX\355\002\032\302y\014\312\200\317-\367\256\233\353&F\355XWf\301y\344\256\265\277\356\324\273\203\327Z\217\235X@\034\357\372_\235\272\033o\307\332c~\374*D=\024\177\373\306^\003\344\3427Z\302Vl\240\336\265\226\3626\027\355\316\264I\273\001\201\003+\026\355\230=\326\312\371\243\223\316\025\347\310%n\335\037\375\024\310\224\374\314Yt?\001\231\005\314\270u\2229\033\362^\354{\373E\257X\361*\272\247\037x\007\314c\334\343\257\275\327o\374QH\363\333\230?x\243\365\243c\264\247\333K\235\331\023%d\361\347\300lj/\330\233\336\370\303\016\351\034\235Xg\233g\206\367]@\243\2019\010\375\202V\372\204t?(\245!?\016>I^\310\007\260d\377\027`\214'!.9\204\001\003\333\377\014+\206\204\313\335\006,\356t\300TPK\t/\001u\342\307\257\267z\003\224J_\013 \t\313\257\352(\336T\272\375\2543w:~\n\013\211V\301\376\326Q\234\347\355\241\366\246\237\030\003N\177a\023\273\341\254\271\212\373\034P\031\357\204\352Q\307\370\005\241\\ \311";
-    PyObject *data = __Pyx_DecompressString(cstring, 2011, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1876 bytes) */
+const char* const cstring = "x\332\235U\317S\033\311\025\206*X\313X\306\260\253\200q\330M\2037F$\262`\210\001[e\223\322\032\231\250\2021\277\274)\033Hok\246%M4\232\221\272[\030\325\332\265\344\246\343\034\3660\3079\352\250#G\216\034\3478G\325\376\005\376\023\362zf$\300v\252RQ\225z\372u\277\367\372}\337{\375\372\267_\377\275\246,\245\226\026yz\251\3708\255\024\263\307%\304\210\240\317_\275\336\332G\317_\275\334\336\314\355\347F\020\374\236[\rS ]\320*G\272\211\010\332\265\324\n_\377\001iD\220\002\3414\205\254\232\320-\223\030F\023\225\230\325\250Q\r\025\232\250B\233\250\306hQ?I\007\216\202!\313J<\023\314\344O+\340\032\021\345\014\332\206\021\t\013\2112\375\314\177_\273\306\254\022\243\234c\335\024\224\035\023\003\354\030\314\373\033\210\036S\326D[Q\264I\215\026I\303\020\031\244,\246\026\027\203\377|\337[\020\251n\2262\350U\024~\177\t\361\032U\365\242\256\022\271\221F\317\211\211\n\3642l\371{\210\266,\223f\320.\025\rfB\354\002\034\250\001W\275s\301\246L\216u\213\315\177b\311\005\223\206%z\202\000>`\221\366\210\236\010FT\021F\201\212\314\252\006\024&i\272\224N!6\367\317\303\203\344\241\366\347\371\303\2439T\264\030jR\302PA7\371\247\356U\310\004)\030\020\334\213\206\251J\010\300+\021H\220\n\345\220\300\300k\241)(\237G\304\324\020\013 \310\235\360h]\243\246\000\370\224\241$\204z\335} \204\240\257$RfA/^\022\250\363\200\236\024\322tU\034\200\223\224T9\372T'\342\231j#\327\334\347NH\265f\320+\376\357\243\375K\202\373\253kkk\341\n\206B\nr\236\234[\220\005\265 \254\005\2550w\031\271\262\364\227G\313+\253\327\217\t\035\207\365\r\365\332\343\023%\201 \216\014\275B\321\354\201\362dq\361\010\322S\241\346\354\374\377|r\252\017\363\331\265\304]z\370yNz\236\313\240G\313\020\\\nIqY\212+\253\217\227\002Q\tvW!\362\024J\247\323\037\276\030|\203\013\250\223>\247\305(\341\377O\240\006\251\0264\250\216\014\252\034d\036\035\2455\252Z\032M\3165D\361\341cP\234c\264f\020\225\316\315_E!\t\272\202\002D\345\022E?\354\365\354~\366\207\354^\016\345\367s/Q\320er\273\353\321\005\317\240\034cP\320P\242\341\005\332\330}\365z;\324""\332\333\350A+43h$/o>k\324\004\024\255J\365c\3504}\253\355^\027\270l\017a?\370k\352\267_O\017\326\020\312\240\364u.P\322\320M\212V\224\371p=XL\327\232'\232\316\345\r:B\357\0215H\215\3039\324\224+%\265\317u\025\270\207+\036\025:\3248J2y\247\347\241!\262\376%\004\202-\270\033<4\327\302\326\304\301\257l\267(\3406\000\232\337\332\010\276\370E>\267\271\216\377\221_\337\377\333z~o{3\373&\022\"\266ra<\001/</\275\365\200\257\353\034\022\324\304x\273y\002\377u\270zx\013\272\312.-\356\3457\362@f~\003h\177Ix\323Tu\013\270\000\037\002\010\340\005\353\004\277\3235Q\306X5\010t\330\022\0252P)\302>4\\,{\023-\020\265\242Z\206A\203\"\343\252U\255\351 H\356\256\023{]J?5,\340\203\257\245{\344\341\242\371\337T\270^\202^\214\313\320\231\014\312\264\002h\310\030\242\247\",\312\250\301\312\346\202\265\0205\215\362DM\251@M\r\013\275J1\246\262\030\340s\242\213\336X4\032\274\014\035\264J\004.\020\323\244,\022dJ\212\214H3y\2210\016\302\r\006\034\204\313{\361_\301\201u\216\373L\006X`\000O\026\2036\";\t\020\n[\032=\301\270J\200I\030\205Z\256B\2240\265\264\206\001_\214\315\340X\023\322%\377\270\367\244\231%\210\007^\321Z\032\374\033\272\320)OG\210\277\264\3253\263j\324\214\236\226\032\300\013\243\247\254f\325j\362\305\304\2751zPC\221\013\302z\214\364\226\032\325*a\315k\002\206j\371\354)\306\270\336 F\010\202I\036\301\033c4j\031L>\351\230\227\365*\343\234C\237U\313\234\322\n\306\234\212\0109\314\242\254\206\005p\275\014\244\324\250r\246\246\277\204\372\312\345\r1\310\324s\321\204'$\n9\334kr\214\341\325\203\022\220\nP\341\006\r\336\355P\014f\301-\020\014\262/1\310\212\303\302\302E]4\314\212i\2753\001\252\256\301\320\240<P\365\006\036u\262\376\320\2507:\353\316\270O\332[g\251s\342\017\335l\215\267\036\332u\357\256\322\231\350\374r^\274\310\206k3\301\307\033\371\243\273\343=X\355\324\375\241\033\247u?v\273\265\323\262\234\035'\264\354\233;q\367E{\341l\342\354\370\374\307\013\3454\033(z\243\3516i7\340\324\330\255\326\262=h\217{\003\323\336t\366|\374cf`x\322\006\037\3379\344\343W\003\303\t[\361\207""\276\266g\272pH\323\276a\303A\223\366\317\020\246\322\005\323\214\275c\377\313\035\354\306'\354\202\023s\007\335\273\355\311\316`g\372\354\355y\375b\304\333=\364\016\217\374\370\355\217#\003\243\023\240J\374\370=g\246\033\377\332\376\223\223\365\276\335\367\366_{\257\337xo\336zo\017\272C\303\037c\003\303\267Zs\366\270\375\300\271\351\002\204\221H\030q\341\374I\300r\323\233\001\252@\325\277}\247\325\260\263\366\033\207\272\217\333\212\037\237r\022\316Q{\306\217O\332\314\231ra\222\260s\316xxZ\322y\340\016\372cS\3168@\032O\330O\235w.\361\023\367\234\244\373\275\234L;\177w\353\355A?\201\000\302\275\266\322\035\373\306^q\276q\262~\342;Gs\037\266yg\026\270J\334w\025w\003NK\000\365\335\261\273\316\260\263\323\205\003\205\363\014\214!\204)w\326\315v\343c60\002@\235'\240\375\264S\357\016\335j=s\006#\346\377\340\324\335X{\260=\356\307nJ\206c\247\037\354\rG\361cwZ\302VlH\362\255\226\322\312\372\340\377\206\214\323\255\373\020\016\034\372{g\331\375\nd\026p<u\226\276\030\366^\036yG\005\257P\366\312\272\247W\274\n\363\030\367\370{\357\375\007\177\014\010;\035\364\207\356\264~q\214\366L{\2653\177\246\204eq\037J\205\332K\366\2167\261\322!\235wg\326\305\316\205\341\275\375\311\373\211x\003\013\355\372U\253\324\031\351~V\233\303~\014b\222\014\313\311RX\006~,\001\341\313!\304\005\265\362;\3301$+\356\036@\376\266\003\256\202\342\214{q(0?6\332\352\rPc}+\340)\254\347\252\243x\323\251\366\213\316\302\371\3049l\304[y\373GGq6\333\303\355\035?>\016\325\361\275M\354\206\263\001\231\331\004V&:\241\371\177\000@\026}\204";
+    PyObject *data = __Pyx_DecompressString(cstring, 1876, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (3715 bytes) */
-const char* const bytes = "\342\224\201>12,20s.2f8.1fAvg rateCOUNT COMPLETE\n    Count items in a RocksDB database, optionally grouped by key prefix.\n    \n    Args:\n        db_path: Path to the RocksDB database\n        progress_interval: Print progress every N items (default: 10,000,000)\n        grouping: Optional grouping specification. Can be:\n            - None: Return total count (default behavior)\n            - 'year_bin': Fast extraction of [YEAR] prefix (recommended for pivoted DBs)\n            - str: Regex pattern to extract group from key (e.g., r'^\\[(\\d+)\\]' for year bins)\n            - callable: Function that takes a key (bytes) and returns a group identifier (str)\n            \n    Returns:\n        int if grouping is None, dict[str, int] if grouping is specified\n        \n    Examples:\n        # Total count\n        >>> count_db_items('/path/to/db')\n        1234567\n        \n        # Count by year bin (fast path)\n        >>> count_db_items('/path/to/db', grouping='year_bin')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Count by year bin (regex - slower)\n        >>> count_db_items('/path/to/db', grouping=r'^\\[(\\d+)\\]')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Custom grouping function\n        >>> count_db_items('/path/to/db', grouping=lambda k: k[:4].decode('utf-8', 'replace'))\n        {'[190': 45123, '[191': 46782, ...}\n    DATABASE ITEM COUNTERDatabase: Error at count GROUP COUNTSGrouping by: \nInterrupt received at count Progress interval: every ?,\342\224\200[>  : .count_db_items (line 89)count_items.pyxdisable] | elapsed enablegcgrouping must be None, 'year_bin', str (regex), or callable, got isenabled itemss | rate utf-8COUNTINGCOUNT_FIELD_WIDTHDISPLAY_WIDTHDatabaseElapsedGroupsItemsProgressDisplay__Pyx_PyDict_NextRefSIGINTSIGTERMasyncio.coroutinesbox_width__class_getitem__cline_in_tracebackcollectionscompilecountcount_db_itemscount_db_items.<locals>.grouping_fncount_db_items"".<locals>.signal_handlerdbdb_linedb_pathdecodedefaultdict_displayeelapsedencodeend_time__enter__exit__exit__flushformat_bannerformat_rateframe__func__groupgroup_bytesgroup_countsgroupinggrouping_fn_is_coroutineitemsiteratorkeykeyslastindex__main__matchmode__module____name__nextnext_progressngramprep.utilities.displayngramprep.utilities.progressopenpatternperf_counterpopprint_print_progress_print_start_banner_print_summaryprint_summary_boxprogress_interval__qualname__rrate_strrereplacerocks_shimrsssearchseek__set_name__setdefaultsignalsignal_handlersignumsrc.ngramprep.utilities.count_itemsstart_timestructstylesummary_itemssys__test__timetitletotal_timetotal_widthtruncate_path_to_fitunknownuse_fast_year_binvalidvalueswidthyear_bin\320\0004\260A\330\004\016\320\016\"\240!\2409\250N\270,\300a\330\004\t\210\021\210-\220q\320\0301\260\026\260\177\300f\310A\330\004\t\210\021\210!\330\004\t\210\021\320\n%\240Q\320&7\260q\330\004\007\200q\330\010\r\210Q\210o\230Q\230a\330\004\t\210\021\330\004\t\210\021\210-\220q\230\014\240F\250/\270\026\270v\300V\3101\320\000\034\320\034A\300\021\360D\001\000\005\027\220a\330\004\036\230a\360\n\000\005\024\2201\330\004\022\220!\330\004\030\230\001\340\004\007\200y\220\007\220q\330\010\027\220{\240!\2401\340\010\013\2109\220C\220q\340\014 \240\001\330\r\027\220q\230\n\240!\340\014\026\220b\230\010\240\001\240\030\250\027\260\001\260\034\270Z\300q\310\n\320R\\\320\\]\330\014\r\360\n\000\016\026\220Q\220a\330\014\032\230!\340\014\022\220*\230A\320\035`\320`a\320ae\320ef\320fg\340\004\005\360\010\000\005\013\210'\220\021\220&\230\t\240\021\330\004\n\210'\220\021\220&\230\n\240!\340\004\027\220q\230\t\320!4\260A\340\004\005\330\r\017\210u\220A\220Y\230e\2408\2501\330\014\031\230\024\230]\250!\330\014\027\220r\230\031\240!\330\014\024\220E\230\021\230!\360\006\000\r\020\210y\230\003\2301\330\020\026\220h\230f\240A\330\024\035\230Q\340\024\027\220v\230S\240\001\330\030\"\240$\240m\2603\260b\270\001\330\030'\240q\250\007\250q\330\030)\250\021\340""\024\034\230E\240\021\360\006\000\022\023\330\020\026\220h\230f\240A\330\024\035\230Q\330\024\032\230(\240$\240a\330\024\"\320\"3\2601\260A\330\024 \240\001\240\033\250G\2601\260I\270_\310A\340\024\027\220v\230S\240\001\330\030\"\240$\240m\2603\260b\270\001\330\030'\240q\250\007\250q\330\030)\250\021\340\024\034\230E\240\021\360\010\000\021\027\220h\230f\240A\330\024\035\230Q\330\024\032\230(\240$\240a\330\024\034\230K\240q\250\001\330\024 \240\001\240\032\2501\340\024\027\220v\230S\240\001\330\030\"\240$\240m\2603\260b\270\001\330\030'\240q\250\007\250q\330\030)\250\021\340\024\034\230E\240\021\340\014\027\220t\230=\250\001\330\014\031\230\031\240\"\240A\340\014\020\220\001\340\014\032\230!\2309\240G\250<\260q\340\004\013\210=\230\001\330\010\r\210Q\320\016\037\230q\240\010\250\001\250\021\330\010\t\360\006\000\005\010\200}\220G\2301\330\010\017\210t\2201\220A\330\004\013\2101\200A\330\010\r\210Q\320\016.\250a\250u\260A\330\010\013\2105\220\001\220\021\210A\330\020\030\230\007\230w\240a\240q\330\020\023\2201\330\024\033\2305\240\006\240a\240r\250\027\260\001\260\031\270.\310\005\320M]\320]b\320bh\320hi\320ik\320kr\320rs\320s|\320|}\330\020\027\220q\200\001\330\004\017\210\177\230l\250!\2507\260)\2701\330\004\t\210\021\210#\210Q\210e\2202\220Q\320\0266\260a\260w\270o\310Q\310l\320Z`\320`a\320\000/\250q\330\004\017\210\177\230l\250!\2507\260,\270a\340\004\016\320\016\"\240!\2409\250N\270,\300a\330\004\005\330\010\023\2201\220E\230\021\330\010\023\2202\220Q\220j\240\001\330\010\024\220A\330\010\024\220A\360\006\000\005\010\200q\330\010\025\220Q\220l\240\"\240A\240S\250\001\250\035\260a\340\004\t\210\021\330\004\014\320\014\036\230a\330\010\016\210a\330\010\016\210a\330\010\022\220!\360\006\000\005\010\200q\330\010\r\210Q\330\010\r\210Q\210m\2301\320\034,\250F\260/\300\026\300q\330\010\014\210I\220V\2301\230L\250\005\250Q\330\014\021\220\021\220$\220a\220u\230G\2401\240L\260\001\260\026\260q\330\010\r\210Qunknown";
+    #else /* compression: none (3229 bytes) */
+const char* const bytes = "\342\224\201>12,20s.2f8.1fAvg rateCOUNT COMPLETE\n    Count items in a RocksDB database, optionally grouped by key prefix.\n    \n    Args:\n        db_path: Path to the RocksDB database\n        progress_interval: Print progress every N items (default: 10,000,000)\n        grouping: Optional grouping specification. Can be:\n            - None: Return total count (default behavior)\n            - str: Regex pattern to extract group from key (e.g., r'^\\[(\\d+)\\]' for year bins)\n            - callable: Function that takes a key (bytes) and returns a group identifier (str)\n            \n    Returns:\n        int if grouping is None, dict[str, int] if grouping is specified\n        \n    Examples:\n        # Total count\n        >>> count_db_items('/path/to/db')\n        1234567\n        \n        # Count by year bin (keys like \"[1900] token\")\n        >>> count_db_items('/path/to/db', grouping=r'^\\[(\\d+)\\]')\n        {'1900': 45123, '1905': 46782, '1910': 47234, ...}\n        \n        # Custom grouping function\n        >>> count_db_items('/path/to/db', grouping=lambda k: k[:4].decode('utf-8', 'replace'))\n        {'[190': 45123, '[191': 46782, ...}\n    DATABASE ITEM COUNTERDatabase: Error at count GROUP COUNTSGrouping by: \nInterrupt received at count Progress interval: every ?,\342\224\200[>  : .count_db_items (line 61)count_items.pyxdisable] | elapsed enablegcgrouping must be None, str (regex), or callable, got isenabled itemss | rate utf-8COUNTINGCOUNT_FIELD_WIDTHDISPLAY_WIDTHDatabaseElapsedGroupsItemsProgressDisplay__Pyx_PyDict_NextRefSIGINTSIGTERMasyncio.coroutinesbox_width__class_getitem__cline_in_tracebackcollectionscompilecountcount_db_itemscount_db_items.<locals>.grouping_fncount_db_items.<locals>.signal_handlerdbdb_linedb_pathdecodedefaultdict_displayeelapsedencodeend_time__enter__exit__exit__flushformat_bannerformat_rateframe__func__groupgroup_countsgroupinggrouping_fn_is_coroutineitemsiteratorkeykeyslastindex__main__matchmode__module____name__ne""xtnext_progressngramprep.utilities.displayngramprep.utilities.progressopenpatternperf_counterpopprint_print_progress_print_start_banner_print_summaryprint_summary_boxprogress_interval__qualname__rrate_strrereplacerocks_shimrsssearchseek__set_name__setdefaultsignalsignal_handlersignumsrc.ngramprep.utilities.count_itemsstart_timestylesummary_itemssys__test__timetitletotal_timetotal_widthtruncate_path_to_fitunknownvalidvalueswidth\320\0004\260A\330\004\016\320\016\"\240!\2409\250N\270,\300a\330\004\t\210\021\210-\220q\320\0301\260\026\260\177\300f\310A\330\004\t\210\021\210!\330\004\t\210\021\320\n%\240Q\320&7\260q\330\004\007\200q\330\010\r\210Q\210o\230Q\230a\330\004\t\210\021\330\004\t\210\021\210-\220q\230\014\240F\250/\270\026\270v\300V\3101\200A\330\010\r\210Q\320\016.\250a\250u\260A\330\010\013\2105\220\001\220\021\320\000\034\320\034A\300\021\360:\000\005\027\220a\330\004\036\230a\360\006\000\005\024\2201\330\004\022\220!\340\004\007\200y\220\007\220q\330\010\027\220{\240!\2401\340\010\013\210:\220Q\220j\240\001\340\014\026\220b\230\010\240\001\240\030\250\027\260\001\260\034\270Z\300q\310\n\320R\\\320\\]\330\014\r\360\n\000\016\026\220Q\220a\330\014\032\230!\340\014\022\220*\230A\320\035T\320TU\320UY\320YZ\320Z[\340\004\005\360\010\000\005\013\210'\220\021\220&\230\t\240\021\330\004\n\210'\220\021\220&\230\n\240!\340\004\027\220q\230\t\320!4\260A\340\004\005\330\r\017\210u\220A\220Y\230e\2408\2501\330\014\031\230\024\230]\250!\330\014\027\220r\230\031\240!\330\014\024\220E\230\021\230!\340\014\022\220(\230&\240\001\330\020\031\230\021\360\006\000\021\024\220<\230w\240a\330\024\032\230(\240$\240a\330\024\034\230K\240q\250\001\330\024 \240\001\240\032\2501\340\020\023\2206\230\023\230A\330\024\036\230d\240-\250s\260\"\260A\330\024#\2401\240G\2501\330\024%\240Q\340\020\030\230\005\230Q\340\014\027\220t\230=\250\001\330\014\031\230\031\240\"\240A\340\014\020\220\001\340\014\032\230!\2309\240G\250<\260q\340\004\013\210=\230\001\330\010\r\210Q\320\016\037\230q\240""\010\250\001\250\021\330\010\t\360\006\000\005\010\200}\220G\2301\330\010\017\210t\2201\220A\330\004\013\2101\210A\330\020\030\230\007\230w\240a\240q\330\020\023\2201\330\024\033\2305\240\006\240a\240r\250\027\260\001\260\031\270.\310\005\320M]\320]b\320bh\320hi\320ik\320kr\320rs\320s|\320|}\330\020\027\220q\200\001\330\004\017\210\177\230l\250!\2507\260)\2701\330\004\t\210\021\210#\210Q\210e\2202\220Q\320\0266\260a\260w\270o\310Q\310l\320Z`\320`a\320\000/\250q\330\004\017\210\177\230l\250!\2507\260,\270a\340\004\016\320\016\"\240!\2409\250N\270,\300a\330\004\005\330\010\023\2201\220E\230\021\330\010\023\2202\220Q\220j\240\001\330\010\024\220A\330\010\024\220A\360\006\000\005\010\200q\330\010\025\220Q\220l\240\"\240A\240S\250\001\250\035\260a\340\004\t\210\021\330\004\014\320\014\036\230a\330\010\016\210a\330\010\016\210a\330\010\022\220!\360\006\000\005\010\200q\330\010\r\210Q\330\010\r\210Q\210m\2301\320\034,\250F\260/\300\026\300q\330\010\014\210I\220V\2301\230L\250\005\250Q\330\014\021\220\021\220$\220a\220u\230G\2401\240L\260\001\260\026\260q\330\010\r\210Q";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
     PyObject **stringtab = __pyx_mstate->__pyx_string_tab;
     Py_ssize_t pos = 0;
-    for (int i = 0; i < 136; i++) {
+    for (int i = 0; i < 132; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyUnicode_DecodeUTF8(bytes + pos, bytes_length, NULL);
       if (likely(string) && i >= 34) PyUnicode_InternInPlace(&string);
@@ -7470,7 +6795,7 @@ const char* const bytes = "\342\224\201>12,20s.2f8.1fAvg rateCOUNT COMPLETE\n   
       stringtab[i] = string;
       pos += bytes_length;
     }
-    for (int i = 136; i < 144; i++) {
+    for (int i = 132; i < 139; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyBytes_FromStringAndSize(bytes + pos, bytes_length);
       stringtab[i] = string;
@@ -7481,15 +6806,15 @@ const char* const bytes = "\342\224\201>12,20s.2f8.1fAvg rateCOUNT COMPLETE\n   
       }
     }
     Py_XDECREF(data);
-    for (Py_ssize_t i = 0; i < 144; i++) {
+    for (Py_ssize_t i = 0; i < 139; i++) {
       if (unlikely(PyObject_Hash(stringtab[i]) == -1)) {
         __PYX_ERR(0, 1, __pyx_L1_error)
       }
     }
     #if CYTHON_IMMORTAL_CONSTANTS
     {
-      PyObject **table = stringtab + 136;
-      for (Py_ssize_t i=0; i<8; ++i) {
+      PyObject **table = stringtab + 132;
+      for (Py_ssize_t i=0; i<7; ++i) {
         #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
         Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
         #else
@@ -7530,7 +6855,7 @@ typedef struct {
     unsigned int num_kwonly_args : 1;
     unsigned int nlocals : 5;
     unsigned int flags : 10;
-    unsigned int first_line : 8;
+    unsigned int first_line : 7;
 } __Pyx_PyCode_New_function_description;
 /* NewCodeObj.proto */
 static PyObject* __Pyx_PyCode_New(
@@ -7547,34 +6872,34 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 142};
+    const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 103};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_key, __pyx_mstate->__pyx_n_u_match};
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_grouping_fn, __pyx_mstate->__pyx_kp_b_iso88591_A_waq_1_5_ar_M_bbhhiikkrrss_q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 152};
+    const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 113};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_signum, __pyx_mstate->__pyx_n_u_frame};
     __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_signal_handler, __pyx_mstate->__pyx_kp_b_iso88591_A_Q_auA_5, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 17};
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 16};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_db_path, __pyx_mstate->__pyx_n_u_progress_interval, __pyx_mstate->__pyx_n_u_grouping, __pyx_mstate->__pyx_n_u_db_line};
     __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_print_start_banner, __pyx_mstate->__pyx_kp_b_iso88591_4A_9N_a_q_1_fA_Q_7q_q_QoQa_q_F, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 28};
+    const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 3, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 27};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_count, __pyx_mstate->__pyx_n_u_elapsed, __pyx_mstate->__pyx_n_u_rate_str};
     __pyx_mstate_global->__pyx_codeobj_tab[3] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_print_progress, __pyx_mstate->__pyx_kp_b_iso88591_l_7_1_Qe2Q_6awoQlZ_a, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[3])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {4, 0, 0, 8, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 33};
+    const __Pyx_PyCode_New_function_description descr = {4, 0, 0, 8, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 32};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_db_path, __pyx_mstate->__pyx_n_u_count, __pyx_mstate->__pyx_n_u_total_time, __pyx_mstate->__pyx_n_u_group_counts, __pyx_mstate->__pyx_n_u_rate_str, __pyx_mstate->__pyx_n_u_db_line, __pyx_mstate->__pyx_n_u_summary_items, __pyx_mstate->__pyx_n_u_group};
     __pyx_mstate_global->__pyx_codeobj_tab[4] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_print_summary, __pyx_mstate->__pyx_kp_b_iso88591_q_l_7_a_9N_a_1E_2Qj_A_A_q_Ql_AS, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[4])) goto bad;
   }
   {
-    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 22, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 89};
-    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_db_path, __pyx_mstate->__pyx_n_u_progress_interval, __pyx_mstate->__pyx_n_u_grouping, __pyx_mstate->__pyx_n_u_start_time, __pyx_mstate->__pyx_n_u_elapsed, __pyx_mstate->__pyx_n_u_end_time, __pyx_mstate->__pyx_n_u_total_time, __pyx_mstate->__pyx_n_u_count, __pyx_mstate->__pyx_n_u_next_progress, __pyx_mstate->__pyx_n_u_key, __pyx_mstate->__pyx_n_u_group_bytes, __pyx_mstate->__pyx_n_u_group_counts, __pyx_mstate->__pyx_n_u_grouping_fn, __pyx_mstate->__pyx_n_u_use_fast_year_bin, __pyx_mstate->__pyx_n_u_pattern, __pyx_mstate->__pyx_n_u_grouping_fn, __pyx_mstate->__pyx_n_u_signal_handler, __pyx_mstate->__pyx_n_u_signal_handler, __pyx_mstate->__pyx_n_u_db, __pyx_mstate->__pyx_n_u_iterator, __pyx_mstate->__pyx_n_u_group, __pyx_mstate->__pyx_n_u_e};
-    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_count_db_items, __pyx_mstate->__pyx_kp_b_iso88591_A_D_a_a_1_y_q_1_9Cq_q_b_Zq_R_Qa, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
+    const __Pyx_PyCode_New_function_description descr = {3, 0, 0, 20, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 61};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_db_path, __pyx_mstate->__pyx_n_u_progress_interval, __pyx_mstate->__pyx_n_u_grouping, __pyx_mstate->__pyx_n_u_start_time, __pyx_mstate->__pyx_n_u_elapsed, __pyx_mstate->__pyx_n_u_end_time, __pyx_mstate->__pyx_n_u_total_time, __pyx_mstate->__pyx_n_u_count, __pyx_mstate->__pyx_n_u_next_progress, __pyx_mstate->__pyx_n_u_group_counts, __pyx_mstate->__pyx_n_u_grouping_fn, __pyx_mstate->__pyx_n_u_pattern, __pyx_mstate->__pyx_n_u_grouping_fn, __pyx_mstate->__pyx_n_u_signal_handler, __pyx_mstate->__pyx_n_u_signal_handler, __pyx_mstate->__pyx_n_u_db, __pyx_mstate->__pyx_n_u_iterator, __pyx_mstate->__pyx_n_u_key, __pyx_mstate->__pyx_n_u_group, __pyx_mstate->__pyx_n_u_e};
+    __pyx_mstate_global->__pyx_codeobj_tab[5] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_count_items_pyx, __pyx_mstate->__pyx_n_u_count_db_items, __pyx_mstate->__pyx_kp_b_iso88591_A_a_a_1_y_q_1_Qj_b_Zq_R_Qa_A_TT, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[5])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;
@@ -10937,44 +10262,6 @@ static CYTHON_INLINE PyObject* __Pyx__PyObject_LookupSpecial(PyObject* obj, PyOb
 }
 #endif
 
-/* RaiseUnexpectedTypeError */
-static int
-__Pyx_RaiseUnexpectedTypeError(const char *expected, PyObject *obj)
-{
-    __Pyx_TypeName obj_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(obj));
-    PyErr_Format(PyExc_TypeError, "Expected %s, got " __Pyx_FMT_TYPENAME,
-                 expected, obj_type_name);
-    __Pyx_DECREF_TypeName(obj_type_name);
-    return 0;
-}
-
-/* decode_c_bytes (used by decode_bytes) */
-static CYTHON_INLINE PyObject* __Pyx_decode_c_bytes(
-         const char* cstring, Py_ssize_t length, Py_ssize_t start, Py_ssize_t stop,
-         const char* encoding, const char* errors,
-         PyObject* (*decode_func)(const char *s, Py_ssize_t size, const char *errors)) {
-    if (unlikely((start < 0) | (stop < 0))) {
-        if (start < 0) {
-            start += length;
-            if (start < 0)
-                start = 0;
-        }
-        if (stop < 0)
-            stop += length;
-    }
-    if (stop > length)
-        stop = length;
-    if (unlikely(stop <= start))
-        return __Pyx_NewRef(__pyx_mstate_global->__pyx_empty_unicode);
-    length = stop - start;
-    cstring += start;
-    if (decode_func) {
-        return decode_func(cstring, length, errors);
-    } else {
-        return PyUnicode_Decode(cstring, length, encoding, errors);
-    }
-}
-
 /* PyLongBinop */
 #if !CYTHON_COMPILING_IN_PYPY
 static PyObject* __Pyx_Fallback___Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, int inplace) {
@@ -11071,25 +10358,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2
         return __Pyx_Float___Pyx_PyLong_AddObjC(op1, intval, zerodivision_check);
     }
     return __Pyx_Fallback___Pyx_PyLong_AddObjC(op1, op2, inplace);
-}
-#endif
-
-/* DictGetItem */
-#if !CYTHON_COMPILING_IN_PYPY
-static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key) {
-    PyObject *value;
-    if (unlikely(__Pyx_PyDict_GetItemRef(d, key, &value) == 0)) { // no value, no error
-        if (unlikely(PyTuple_Check(key))) {
-            PyObject* args = PyTuple_Pack(1, key);
-            if (likely(args)) {
-                PyErr_SetObject(PyExc_KeyError, args);
-                Py_DECREF(args);
-            }
-        } else {
-            PyErr_SetObject(PyExc_KeyError, key);
-        }
-    }
-    return value;
 }
 #endif
 
@@ -12679,75 +11947,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value) {
         from_bytes = PyObject_GetAttrString((PyObject*)&PyLong_Type, "from_bytes");
         if (!from_bytes) return NULL;
         py_bytes = PyBytes_FromStringAndSize((char*)bytes, sizeof(long));
-        if (!py_bytes) goto limited_bad;
-        order_str = PyUnicode_FromString(little ? "little" : "big");
-        if (!order_str) goto limited_bad;
-        {
-            PyObject *args[3+(CYTHON_VECTORCALL ? 1 : 0)] = { NULL, py_bytes, order_str };
-            if (!is_unsigned) {
-                kwds = __Pyx_MakeVectorcallBuilderKwds(1);
-                if (!kwds) goto limited_bad;
-                if (__Pyx_VectorcallBuilder_AddArgStr("signed", __Pyx_NewRef(Py_True), kwds, args+3, 0) < 0) goto limited_bad;
-            }
-            result = __Pyx_Object_Vectorcall_CallFromBuilder(from_bytes, args+1, 2 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET, kwds);
-        }
-        limited_bad:
-        Py_XDECREF(kwds);
-        Py_XDECREF(order_str);
-        Py_XDECREF(py_bytes);
-        Py_XDECREF(from_bytes);
-        return result;
-#endif
-    }
-}
-
-/* CIntToPy */
-static CYTHON_INLINE PyObject* __Pyx_PyLong_From_unsigned_int(unsigned int value) {
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#endif
-    const unsigned int neg_one = (unsigned int) -1, const_zero = (unsigned int) 0;
-#ifdef __Pyx_HAS_GCC_DIAGNOSTIC
-#pragma GCC diagnostic pop
-#endif
-    const int is_unsigned = neg_one > const_zero;
-    if (is_unsigned) {
-        if (sizeof(unsigned int) < sizeof(long)) {
-            return PyLong_FromLong((long) value);
-        } else if (sizeof(unsigned int) <= sizeof(unsigned long)) {
-            return PyLong_FromUnsignedLong((unsigned long) value);
-#if !CYTHON_COMPILING_IN_PYPY
-        } else if (sizeof(unsigned int) <= sizeof(unsigned PY_LONG_LONG)) {
-            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
-#endif
-        }
-    } else {
-        if (sizeof(unsigned int) <= sizeof(long)) {
-            return PyLong_FromLong((long) value);
-        } else if (sizeof(unsigned int) <= sizeof(PY_LONG_LONG)) {
-            return PyLong_FromLongLong((PY_LONG_LONG) value);
-        }
-    }
-    {
-        unsigned char *bytes = (unsigned char *)&value;
-#if !CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x030d00A4
-        if (is_unsigned) {
-            return PyLong_FromUnsignedNativeBytes(bytes, sizeof(value), -1);
-        } else {
-            return PyLong_FromNativeBytes(bytes, sizeof(value), -1);
-        }
-#elif !CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX < 0x030d0000
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        return _PyLong_FromByteArray(bytes, sizeof(unsigned int),
-                                     little, !is_unsigned);
-#else
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        PyObject *from_bytes, *result = NULL, *kwds = NULL;
-        PyObject *py_bytes = NULL, *order_str = NULL;
-        from_bytes = PyObject_GetAttrString((PyObject*)&PyLong_Type, "from_bytes");
-        if (!from_bytes) return NULL;
-        py_bytes = PyBytes_FromStringAndSize((char*)bytes, sizeof(unsigned int));
         if (!py_bytes) goto limited_bad;
         order_str = PyUnicode_FromString(little ? "little" : "big");
         if (!order_str) goto limited_bad;

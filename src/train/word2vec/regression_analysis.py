@@ -495,12 +495,11 @@ def plot_regression_results(
     has_random_effects = isinstance(results, MixedLMResults) and hasattr(results, 'random_effects')
     n_subplots = 2 if (plot_random_effects and has_random_effects) else 1
 
-    # Adjust figsize to keep FE plot dimensions consistent
-    if n_subplots == 1:
-        # Use half the width for single plot to match the FE subplot size when n_subplots=2
-        adjusted_figsize = (figsize[0] / 2, figsize[1])
-    else:
-        adjusted_figsize = figsize
+    # Use the requested DPI directly to match evaluation plotting behavior
+    adjusted_figsize = figsize
+
+    # Ensure inline backends honor the requested DPI (helps notebook sharpness)
+    plt.rcParams['figure.dpi'] = display_dpi
 
     fig, axes = plt.subplots(1, n_subplots, figsize=adjusted_figsize, dpi=display_dpi)
     fig.patch.set_facecolor('#f9fafb')
@@ -508,9 +507,10 @@ def plot_regression_results(
         axes = [axes]
 
     # Compute text scale factor based on original figsize (before adjustment) relative to default (12, 6)
-    # This ensures text scales based on the user's requested figure size, not the adjusted layout size
+    # Clamp to 1.0 so small figs don't shrink text into unreadable/blurred glyphs
     default_figsize = (12, 6)
-    text_scale = np.sqrt((figsize[0] * figsize[1]) / (default_figsize[0] * default_figsize[1]))
+    text_scale_raw = np.sqrt((figsize[0] * figsize[1]) / (default_figsize[0] * default_figsize[1]))
+    text_scale = max(1.0, text_scale_raw)
 
     # Extract coefficients (OLS uses 'params', mixed models use 'fe_params')
     fe_params = results.fe_params if isinstance(results, MixedLMResults) else results.params
@@ -681,7 +681,7 @@ def plot_regression_results(
 
     # Save or show
     if output_file:
-        plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor=fig.get_facecolor())
+        plt.savefig(output_file, dpi=display_dpi, bbox_inches='tight', facecolor=fig.get_facecolor())
         print(f"Figure saved to: {output_file}")
 
     plt.show()

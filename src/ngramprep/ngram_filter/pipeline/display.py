@@ -140,6 +140,9 @@ def _format_filter_options(filter_config: FilterConfig) -> list[str]:
     alpha_only = getattr(filter_config, "alpha_only", True)
     lines.append(f"Alpha only:           {alpha_only}")
 
+    ascii_alpha_only = getattr(filter_config, "ascii_alpha_only", False)
+    lines.append(f"ASCII alpha only:     {ascii_alpha_only}")
+
     # Length filtering
     filter_short = getattr(filter_config, "filter_short", False)
     if filter_short:

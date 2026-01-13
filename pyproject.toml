@@ -3,8 +3,16 @@ name = "lexichron"
 version = "0.1.0"
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=45", "wheel", "Cython>=0.29.36"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.cython.directive]
+language_level = "3"
+
+[tool.cython.sources]
+cython_sources = [
+    "src/ngramprep/ngram_filter/filters/core_cy.pyx",
+]

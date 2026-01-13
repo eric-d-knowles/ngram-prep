@@ -34,7 +34,7 @@ def parse_davies_key(key_str: str) -> bytes:
         return None
 
 
-def parse_pivot_key(key_str: str) -> bytes:
+def parse_pivot_key(key_str: str) -> Optional[bytes]:
     """
     Parse a human-readable pivot key string like "[2000] quick" or "[2000]" into bytes.
 
@@ -43,6 +43,7 @@ def parse_pivot_key(key_str: str) -> bytes:
 
     Returns:
         Encoded key bytes (4-byte year + ngram, or just 4-byte year if no ngram)
+        or None if the string doesn't match the pivot key pattern
     """
     # Match pattern: [year] optional_ngram
     match = re.match(r'\[(\d+)\]\s*(.*)', key_str)
@@ -54,8 +55,8 @@ def parse_pivot_key(key_str: str) -> bytes:
         else:  # Just [year] - return year prefix only
             return struct.pack('>I', year)
     else:
-        # No year specified, assume year 0
-        return struct.pack('>I', 0) + key_str.encode('utf-8')
+        # Pattern doesn't match - return None to signal fallback
+        return None
 
 
 def normalize_key(key: Union[str, bytes]) -> bytes:
@@ -63,7 +64,7 @@ def normalize_key(key: Union[str, bytes]) -> bytes:
     Normalize key input to bytes, handling both strings and bytes.
 
     Args:
-        key: Either bytes or a string (will parse as Davies or pivot key)
+        key: Either bytes or a string (will parse as Davies or pivot key, or just encode as UTF-8)
 
     Returns:
         Key as bytes
@@ -73,8 +74,12 @@ def normalize_key(key: Union[str, bytes]) -> bytes:
         davies_key = parse_davies_key(key)
         if davies_key is not None:
             return davies_key
-        # Fall back to pivot format ([year] text)
-        return parse_pivot_key(key)
+        # Try pivot format ([year] text)
+        pivot_key = parse_pivot_key(key)
+        if pivot_key is not None:
+            return pivot_key
+        # Neither pattern matched - just encode as UTF-8
+        return key.encode('utf-8')
     return key
 
 

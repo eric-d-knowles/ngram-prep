@@ -57,6 +57,7 @@ def build_processor(cfg: FilterConfig) -> ProcessorProtocol:
             token_b,
             opt_lower=cfg.lowercase,
             opt_alpha=cfg.alpha_only,
+            opt_ascii_alpha_only=cfg.ascii_alpha_only,
             opt_shorts=cfg.filter_short,
             opt_stops=cfg.filter_stops,
             opt_lemmas=cfg.apply_lemmatization,

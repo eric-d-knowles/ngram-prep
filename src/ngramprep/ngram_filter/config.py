@@ -11,10 +11,11 @@ from typing import Optional, Set, Dict, Any, Union
 class FilterConfig:
     lowercase: bool = True
     alpha_only: bool = True
+    ascii_alpha_only: bool = True
     filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
-    min_len: int = 3
+    min_len: int = 2
     stop_set: Optional[Set[str]] = None
     lemma_gen: Any = None
     tag_map: Optional[Dict] = None
