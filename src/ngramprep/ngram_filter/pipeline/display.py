@@ -133,6 +133,13 @@ def _format_filter_options(filter_config: FilterConfig) -> list[str]:
     """
     lines = []
 
+    # Check if whitelist is being used
+    whitelist_path = getattr(filter_config, "whitelist_path", None)
+    if whitelist_path:
+        lines.append(f"Whitelist mode:       ENABLED")
+        lines.append(f"(All other filters are bypassed when whitelist is active)")
+        return lines
+
     # Normalization options
     lowercase = getattr(filter_config, "lowercase", True)
     lines.append(f"Lowercase:            {lowercase}")
@@ -142,6 +149,10 @@ def _format_filter_options(filter_config: FilterConfig) -> list[str]:
 
     ascii_alpha_only = getattr(filter_config, "ascii_alpha_only", False)
     lines.append(f"ASCII alpha only:     {ascii_alpha_only}")
+
+    # N-gram context requirement
+    min_context_tokens = getattr(filter_config, "min_context_tokens", 2)
+    lines.append(f"Min context tokens:   {min_context_tokens}")
 
     # Length filtering
     filter_short = getattr(filter_config, "filter_short", False)

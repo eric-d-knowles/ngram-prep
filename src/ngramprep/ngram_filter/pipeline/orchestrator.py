@@ -644,6 +644,7 @@ def build_processed_db(
     # Filter configuration parameters (used if filter_config not provided)
     stop_set: Optional[Set[str]] = None,
     lemma_gen: Any = None,
+    min_len: int = 2,
     # Input whitelist configuration (used if filter_config not provided)
     whitelist_path: Optional[Union[str, Path]] = None,
     whitelist_min_count: int = 1,
@@ -652,6 +653,7 @@ def build_processed_db(
     always_include: Optional[Set[str]] = None,
     # Year binning configuration (used if filter_config not provided)
     bin_size: int = 1,
+    min_context_tokens: int = 2,
     # Pipeline execution parameters
     num_workers: Optional[int] = None,
     mode: Optional[str] = None,
@@ -724,15 +726,17 @@ def build_processed_db(
     # Construct FilterConfig if not provided
     if filter_config is None:
         # If filter parameters provided, use them; otherwise use defaults
-        if stop_set is not None or lemma_gen is not None or whitelist_path is not None or always_include is not None or bin_size != 1:
+        if stop_set is not None or lemma_gen is not None or whitelist_path is not None or always_include is not None or bin_size != 1 or min_context_tokens != 2 or min_len != 2:
             filter_config = FilterConfig(
                 stop_set=stop_set,
                 lemma_gen=lemma_gen,
+                min_len=min_len,
                 whitelist_path=whitelist_path,
                 whitelist_min_count=whitelist_min_count,
                 whitelist_top_n=whitelist_top_n,
                 always_include=_to_bytes_set(always_include) if always_include else None,
                 bin_size=bin_size,
+                min_context_tokens=min_context_tokens,
             )
         else:
             filter_config = FilterConfig()

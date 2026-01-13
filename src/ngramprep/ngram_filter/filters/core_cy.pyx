@@ -98,6 +98,7 @@ cpdef bytes process_tokens(
     bint opt_lower = False,
     bint opt_alpha = False,
     bint opt_ascii_alpha_only = False,
+    int min_context_tokens = 2,
     bint opt_shorts = False,
     bint opt_stops = False,
     bint opt_lemmas = False,
@@ -243,8 +244,9 @@ cpdef bytes process_tokens(
         outbuf.extend(out_token)
         token_count += 1
 
-    # if everything became <UNK>, return empty
-    if token_count > 0 and unk_count == token_count:
+    # Check if n-gram has sufficient context (at least min_context_tokens non-<UNK> tokens)
+    non_unk_count = token_count - unk_count
+    if non_unk_count < min_context_tokens:
         return b""
 
     return bytes(outbuf)

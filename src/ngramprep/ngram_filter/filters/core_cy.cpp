@@ -11,7 +11,7 @@
         "language": "c++",
         "name": "ngramprep.ngram_filter.filters.core_cy",
         "sources": [
-            "/scratch/edk202/lexichron/src/ngramprep/ngram_filter/filters/core_cy.pyx"
+            "src/ngramprep/ngram_filter/filters/core_cy.pyx"
         ]
     },
     "module_name": "ngramprep.ngram_filter.filters.core_cy"
@@ -1642,6 +1642,7 @@ struct __pyx_opt_args_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens
   int opt_lower;
   int opt_alpha;
   int opt_ascii_alpha_only;
+  int min_context_tokens;
   int opt_shorts;
   int opt_stops;
   int opt_lemmas;
@@ -3121,7 +3122,7 @@ static void __pyx_memoryviewslice___pyx_pf_15View_dot_MemoryView_16_memoryviewsl
 static PyObject *__pyx_pf___pyx_memoryviewslice___reduce_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf___pyx_memoryviewslice_2__setstate_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_15View_dot_MemoryView___pyx_unpickle_Enum(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_ngram, int __pyx_v_opt_lower, int __pyx_v_opt_alpha, int __pyx_v_opt_ascii_alpha_only, int __pyx_v_opt_shorts, int __pyx_v_opt_stops, int __pyx_v_opt_lemmas, int __pyx_v_min_len, PyObject *__pyx_v_stop_set, PyObject *__pyx_v_lemma_gen, PyObject *__pyx_v_whitelist, PyObject *__pyx_v_always_include, PyObject *__pyx_v_outbuf); /* proto */
+static PyObject *__pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_ngram, int __pyx_v_opt_lower, int __pyx_v_opt_alpha, int __pyx_v_opt_ascii_alpha_only, int __pyx_v_min_context_tokens, int __pyx_v_opt_shorts, int __pyx_v_opt_stops, int __pyx_v_opt_lemmas, int __pyx_v_min_len, PyObject *__pyx_v_stop_set, PyObject *__pyx_v_lemma_gen, PyObject *__pyx_v_whitelist, PyObject *__pyx_v_always_include, PyObject *__pyx_v_outbuf); /* proto */
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -3167,8 +3168,8 @@ typedef struct {
   PyObject *__pyx_slice[1];
   PyObject *__pyx_tuple[3];
   PyObject *__pyx_codeobj_tab[1];
-  PyObject *__pyx_string_tab[171];
-  PyObject *__pyx_number_tab[5];
+  PyObject *__pyx_string_tab[172];
+  PyObject *__pyx_number_tab[6];
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
 PyTypeObject *__pyx_CommonTypesMetaclassType;
@@ -3313,78 +3314,80 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_lower __pyx_string_tab[101]
 #define __pyx_n_u_main __pyx_string_tab[102]
 #define __pyx_n_u_memview __pyx_string_tab[103]
-#define __pyx_n_u_min_len __pyx_string_tab[104]
-#define __pyx_n_u_mode __pyx_string_tab[105]
-#define __pyx_n_u_module __pyx_string_tab[106]
-#define __pyx_n_u_name __pyx_string_tab[107]
-#define __pyx_n_u_name_2 __pyx_string_tab[108]
-#define __pyx_n_u_ndim __pyx_string_tab[109]
-#define __pyx_n_u_new __pyx_string_tab[110]
-#define __pyx_n_u_ngram __pyx_string_tab[111]
-#define __pyx_n_u_ngramprep_ngram_filter_filters_c __pyx_string_tab[112]
-#define __pyx_n_u_obj __pyx_string_tab[113]
-#define __pyx_n_u_opt_alpha __pyx_string_tab[114]
-#define __pyx_n_u_opt_ascii_alpha_only __pyx_string_tab[115]
-#define __pyx_n_u_opt_lemmas __pyx_string_tab[116]
-#define __pyx_n_u_opt_lower __pyx_string_tab[117]
-#define __pyx_n_u_opt_shorts __pyx_string_tab[118]
-#define __pyx_n_u_opt_stops __pyx_string_tab[119]
-#define __pyx_n_u_outbuf __pyx_string_tab[120]
-#define __pyx_n_u_pack __pyx_string_tab[121]
-#define __pyx_n_u_pop __pyx_string_tab[122]
-#define __pyx_n_u_pos __pyx_string_tab[123]
-#define __pyx_n_u_process_tokens __pyx_string_tab[124]
-#define __pyx_n_u_pyx_checksum __pyx_string_tab[125]
-#define __pyx_n_u_pyx_state __pyx_string_tab[126]
-#define __pyx_n_u_pyx_type __pyx_string_tab[127]
-#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[128]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[129]
-#define __pyx_n_u_qualname __pyx_string_tab[130]
-#define __pyx_n_u_reduce __pyx_string_tab[131]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[132]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[133]
-#define __pyx_n_u_register __pyx_string_tab[134]
-#define __pyx_n_u_rfind __pyx_string_tab[135]
-#define __pyx_n_u_set_name __pyx_string_tab[136]
-#define __pyx_n_u_setdefault __pyx_string_tab[137]
-#define __pyx_n_u_setstate __pyx_string_tab[138]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[139]
-#define __pyx_n_u_shape __pyx_string_tab[140]
-#define __pyx_n_u_size __pyx_string_tab[141]
-#define __pyx_n_u_start __pyx_string_tab[142]
-#define __pyx_n_u_step __pyx_string_tab[143]
-#define __pyx_n_u_stop __pyx_string_tab[144]
-#define __pyx_n_u_stop_set __pyx_string_tab[145]
-#define __pyx_n_u_struct __pyx_string_tab[146]
-#define __pyx_n_u_test __pyx_string_tab[147]
-#define __pyx_n_u_unpack __pyx_string_tab[148]
-#define __pyx_n_u_update __pyx_string_tab[149]
-#define __pyx_n_u_values __pyx_string_tab[150]
-#define __pyx_n_u_whitelist __pyx_string_tab[151]
-#define __pyx_n_u_x __pyx_string_tab[152]
-#define __pyx_kp_b_UNK __pyx_string_tab[153]
-#define __pyx_kp_b__2 __pyx_string_tab[154]
-#define __pyx_kp_b__6 __pyx_string_tab[155]
-#define __pyx_kp_b_iso88591_XQ_r_A_q_d_G1_j_q_T_wc_fA_aq_Ba __pyx_string_tab[156]
-#define __pyx_n_b_ADJ __pyx_string_tab[157]
-#define __pyx_n_b_ADP __pyx_string_tab[158]
-#define __pyx_n_b_ADV __pyx_string_tab[159]
-#define __pyx_n_b_CONJ __pyx_string_tab[160]
-#define __pyx_n_b_DET __pyx_string_tab[161]
-#define __pyx_n_b_NOUN __pyx_string_tab[162]
-#define __pyx_n_b_NUM __pyx_string_tab[163]
-#define __pyx_n_b_O __pyx_string_tab[164]
-#define __pyx_n_b_PRON __pyx_string_tab[165]
-#define __pyx_n_b_PROPN __pyx_string_tab[166]
-#define __pyx_n_b_VERB __pyx_string_tab[167]
-#define __pyx_n_b_X __pyx_string_tab[168]
-#define __pyx_n_b__7 __pyx_string_tab[169]
-#define __pyx_n_b__8 __pyx_string_tab[170]
+#define __pyx_n_u_min_context_tokens __pyx_string_tab[104]
+#define __pyx_n_u_min_len __pyx_string_tab[105]
+#define __pyx_n_u_mode __pyx_string_tab[106]
+#define __pyx_n_u_module __pyx_string_tab[107]
+#define __pyx_n_u_name __pyx_string_tab[108]
+#define __pyx_n_u_name_2 __pyx_string_tab[109]
+#define __pyx_n_u_ndim __pyx_string_tab[110]
+#define __pyx_n_u_new __pyx_string_tab[111]
+#define __pyx_n_u_ngram __pyx_string_tab[112]
+#define __pyx_n_u_ngramprep_ngram_filter_filters_c __pyx_string_tab[113]
+#define __pyx_n_u_obj __pyx_string_tab[114]
+#define __pyx_n_u_opt_alpha __pyx_string_tab[115]
+#define __pyx_n_u_opt_ascii_alpha_only __pyx_string_tab[116]
+#define __pyx_n_u_opt_lemmas __pyx_string_tab[117]
+#define __pyx_n_u_opt_lower __pyx_string_tab[118]
+#define __pyx_n_u_opt_shorts __pyx_string_tab[119]
+#define __pyx_n_u_opt_stops __pyx_string_tab[120]
+#define __pyx_n_u_outbuf __pyx_string_tab[121]
+#define __pyx_n_u_pack __pyx_string_tab[122]
+#define __pyx_n_u_pop __pyx_string_tab[123]
+#define __pyx_n_u_pos __pyx_string_tab[124]
+#define __pyx_n_u_process_tokens __pyx_string_tab[125]
+#define __pyx_n_u_pyx_checksum __pyx_string_tab[126]
+#define __pyx_n_u_pyx_state __pyx_string_tab[127]
+#define __pyx_n_u_pyx_type __pyx_string_tab[128]
+#define __pyx_n_u_pyx_unpickle_Enum __pyx_string_tab[129]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[130]
+#define __pyx_n_u_qualname __pyx_string_tab[131]
+#define __pyx_n_u_reduce __pyx_string_tab[132]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[133]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[134]
+#define __pyx_n_u_register __pyx_string_tab[135]
+#define __pyx_n_u_rfind __pyx_string_tab[136]
+#define __pyx_n_u_set_name __pyx_string_tab[137]
+#define __pyx_n_u_setdefault __pyx_string_tab[138]
+#define __pyx_n_u_setstate __pyx_string_tab[139]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[140]
+#define __pyx_n_u_shape __pyx_string_tab[141]
+#define __pyx_n_u_size __pyx_string_tab[142]
+#define __pyx_n_u_start __pyx_string_tab[143]
+#define __pyx_n_u_step __pyx_string_tab[144]
+#define __pyx_n_u_stop __pyx_string_tab[145]
+#define __pyx_n_u_stop_set __pyx_string_tab[146]
+#define __pyx_n_u_struct __pyx_string_tab[147]
+#define __pyx_n_u_test __pyx_string_tab[148]
+#define __pyx_n_u_unpack __pyx_string_tab[149]
+#define __pyx_n_u_update __pyx_string_tab[150]
+#define __pyx_n_u_values __pyx_string_tab[151]
+#define __pyx_n_u_whitelist __pyx_string_tab[152]
+#define __pyx_n_u_x __pyx_string_tab[153]
+#define __pyx_kp_b_UNK __pyx_string_tab[154]
+#define __pyx_kp_b__2 __pyx_string_tab[155]
+#define __pyx_kp_b__6 __pyx_string_tab[156]
+#define __pyx_kp_b_iso88591_XQ_r_A_q_d_G1_j_q_T_wc_fA_aq_Ba __pyx_string_tab[157]
+#define __pyx_n_b_ADJ __pyx_string_tab[158]
+#define __pyx_n_b_ADP __pyx_string_tab[159]
+#define __pyx_n_b_ADV __pyx_string_tab[160]
+#define __pyx_n_b_CONJ __pyx_string_tab[161]
+#define __pyx_n_b_DET __pyx_string_tab[162]
+#define __pyx_n_b_NOUN __pyx_string_tab[163]
+#define __pyx_n_b_NUM __pyx_string_tab[164]
+#define __pyx_n_b_O __pyx_string_tab[165]
+#define __pyx_n_b_PRON __pyx_string_tab[166]
+#define __pyx_n_b_PROPN __pyx_string_tab[167]
+#define __pyx_n_b_VERB __pyx_string_tab[168]
+#define __pyx_n_b_X __pyx_string_tab[169]
+#define __pyx_n_b__7 __pyx_string_tab[170]
+#define __pyx_n_b__8 __pyx_string_tab[171]
 #define __pyx_int_0 __pyx_number_tab[0]
 #define __pyx_int_neg_1 __pyx_number_tab[1]
 #define __pyx_int_1 __pyx_number_tab[2]
-#define __pyx_int_3 __pyx_number_tab[3]
-#define __pyx_int_136983863 __pyx_number_tab[4]
+#define __pyx_int_2 __pyx_number_tab[3]
+#define __pyx_int_3 __pyx_number_tab[4]
+#define __pyx_int_136983863 __pyx_number_tab[5]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -3411,8 +3414,8 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_slice[i]); }
   for (int i=0; i<3; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<171; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
-  for (int i=0; i<5; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
+  for (int i=0; i<172; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<6; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_clear_contents ### */
 /* CommonTypesMetaclass.module_state_clear */
 Py_CLEAR(clear_module_state->__pyx_CommonTypesMetaclassType);
@@ -3447,8 +3450,8 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_slice[i]); }
   for (int i=0; i<3; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<171; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
-  for (int i=0; i<5; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
+  for (int i=0; i<172; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<6; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_traverse_contents ### */
 /* CommonTypesMetaclass.module_state_traverse */
 Py_VISIT(traverse_module_state->__pyx_CommonTypesMetaclassType);
@@ -17281,7 +17284,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
  *     bint opt_lower = False,
  *     bint opt_alpha = False,             # <<<<<<<<<<<<<<
  *     bint opt_ascii_alpha_only = False,
- *     bint opt_shorts = False,
+ *     int min_context_tokens = 2,
 */
   int __pyx_v_opt_alpha = ((int)0);
 
@@ -17289,22 +17292,23 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
  *     bint opt_lower = False,
  *     bint opt_alpha = False,
  *     bint opt_ascii_alpha_only = False,             # <<<<<<<<<<<<<<
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,
- *     bint opt_stops = False,
 */
   int __pyx_v_opt_ascii_alpha_only = ((int)0);
+  int __pyx_v_min_context_tokens = ((int)2);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":101
- *     bint opt_alpha = False,
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":102
  *     bint opt_ascii_alpha_only = False,
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,             # <<<<<<<<<<<<<<
  *     bint opt_stops = False,
  *     bint opt_lemmas = False,
 */
   int __pyx_v_opt_shorts = ((int)0);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":102
- *     bint opt_ascii_alpha_only = False,
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":103
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,
  *     bint opt_stops = False,             # <<<<<<<<<<<<<<
  *     bint opt_lemmas = False,
@@ -17312,7 +17316,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   int __pyx_v_opt_stops = ((int)0);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":103
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":104
  *     bint opt_shorts = False,
  *     bint opt_stops = False,
  *     bint opt_lemmas = False,             # <<<<<<<<<<<<<<
@@ -17322,7 +17326,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   int __pyx_v_opt_lemmas = ((int)0);
   int __pyx_v_min_len = ((int)3);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":105
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
  *     bint opt_lemmas = False,
  *     int  min_len = 3,
  *     object stop_set = None,             # <<<<<<<<<<<<<<
@@ -17331,7 +17335,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   PyObject *__pyx_v_stop_set = ((PyObject *)Py_None);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
  *     int  min_len = 3,
  *     object stop_set = None,
  *     object lemma_gen = None,             # <<<<<<<<<<<<<<
@@ -17340,7 +17344,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   PyObject *__pyx_v_lemma_gen = ((PyObject *)Py_None);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
  *     object stop_set = None,
  *     object lemma_gen = None,
  *     object whitelist = None,             # <<<<<<<<<<<<<<
@@ -17349,7 +17353,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   PyObject *__pyx_v_whitelist = ((PyObject *)Py_None);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
  *     object lemma_gen = None,
  *     object whitelist = None,
  *     object always_include = None,             # <<<<<<<<<<<<<<
@@ -17358,7 +17362,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   PyObject *__pyx_v_always_include = ((PyObject *)Py_None);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":110
  *     object whitelist = None,
  *     object always_include = None,
  *     bytearray outbuf = None             # <<<<<<<<<<<<<<
@@ -17391,6 +17395,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   PyObject *__pyx_v_pos_s = 0;
   PyObject *__pyx_v_res = NULL;
   PyObject *__pyx_v_normalized_token = NULL;
+  Py_ssize_t __pyx_v_non_unk_count;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -17418,23 +17423,26 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         if (__pyx_optional_args->__pyx_n > 2) {
           __pyx_v_opt_ascii_alpha_only = __pyx_optional_args->opt_ascii_alpha_only;
           if (__pyx_optional_args->__pyx_n > 3) {
-            __pyx_v_opt_shorts = __pyx_optional_args->opt_shorts;
+            __pyx_v_min_context_tokens = __pyx_optional_args->min_context_tokens;
             if (__pyx_optional_args->__pyx_n > 4) {
-              __pyx_v_opt_stops = __pyx_optional_args->opt_stops;
+              __pyx_v_opt_shorts = __pyx_optional_args->opt_shorts;
               if (__pyx_optional_args->__pyx_n > 5) {
-                __pyx_v_opt_lemmas = __pyx_optional_args->opt_lemmas;
+                __pyx_v_opt_stops = __pyx_optional_args->opt_stops;
                 if (__pyx_optional_args->__pyx_n > 6) {
-                  __pyx_v_min_len = __pyx_optional_args->min_len;
+                  __pyx_v_opt_lemmas = __pyx_optional_args->opt_lemmas;
                   if (__pyx_optional_args->__pyx_n > 7) {
-                    __pyx_v_stop_set = __pyx_optional_args->stop_set;
+                    __pyx_v_min_len = __pyx_optional_args->min_len;
                     if (__pyx_optional_args->__pyx_n > 8) {
-                      __pyx_v_lemma_gen = __pyx_optional_args->lemma_gen;
+                      __pyx_v_stop_set = __pyx_optional_args->stop_set;
                       if (__pyx_optional_args->__pyx_n > 9) {
-                        __pyx_v_whitelist = __pyx_optional_args->whitelist;
+                        __pyx_v_lemma_gen = __pyx_optional_args->lemma_gen;
                         if (__pyx_optional_args->__pyx_n > 10) {
-                          __pyx_v_always_include = __pyx_optional_args->always_include;
+                          __pyx_v_whitelist = __pyx_optional_args->whitelist;
                           if (__pyx_optional_args->__pyx_n > 11) {
-                            __pyx_v_outbuf = __pyx_optional_args->outbuf;
+                            __pyx_v_always_include = __pyx_optional_args->always_include;
+                            if (__pyx_optional_args->__pyx_n > 12) {
+                              __pyx_v_outbuf = __pyx_optional_args->outbuf;
+                            }
                           }
                         }
                       }
@@ -17450,20 +17458,20 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   }
   __Pyx_INCREF(__pyx_v_outbuf);
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":120
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":121
  *                     in the whitelist. Useful for combined bigrams or focal terms.
  *     """
  *     cdef Py_ssize_t N = ngram.__len__()             # <<<<<<<<<<<<<<
  *     if N == 0:
  *         return b""
 */
-  __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type____len, __pyx_v_ngram); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 120, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type____len, __pyx_v_ngram); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 121, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyIndex_AsSsize_t(__pyx_t_1); if (unlikely((__pyx_t_2 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 120, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyIndex_AsSsize_t(__pyx_t_1); if (unlikely((__pyx_t_2 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 121, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_N = __pyx_t_2;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":121
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":122
  *     """
  *     cdef Py_ssize_t N = ngram.__len__()
  *     if N == 0:             # <<<<<<<<<<<<<<
@@ -17473,7 +17481,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_t_3 = (__pyx_v_N == 0);
   if (__pyx_t_3) {
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":122
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":123
  *     cdef Py_ssize_t N = ngram.__len__()
  *     if N == 0:
  *         return b""             # <<<<<<<<<<<<<<
@@ -17485,7 +17493,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_r = __pyx_mstate_global->__pyx_kp_b__6;
     goto __pyx_L0;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":121
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":122
  *     """
  *     cdef Py_ssize_t N = ngram.__len__()
  *     if N == 0:             # <<<<<<<<<<<<<<
@@ -17494,7 +17502,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   }
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":125
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":126
  * 
  *     # flags
  *     cdef bint do_lower  = opt_lower             # <<<<<<<<<<<<<<
@@ -17503,7 +17511,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_do_lower = __pyx_v_opt_lower;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":126
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":127
  *     # flags
  *     cdef bint do_lower  = opt_lower
  *     cdef bint do_lemmas = (opt_lemmas and lemma_gen is not None)             # <<<<<<<<<<<<<<
@@ -17520,7 +17528,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_L4_bool_binop_done:;
   __pyx_v_do_lemmas = __pyx_t_3;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":127
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":128
  *     cdef bint do_lower  = opt_lower
  *     cdef bint do_lemmas = (opt_lemmas and lemma_gen is not None)
  *     cdef bint do_whitelist = (whitelist is not None)             # <<<<<<<<<<<<<<
@@ -17530,7 +17538,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_t_3 = (__pyx_v_whitelist != Py_None);
   __pyx_v_do_whitelist = __pyx_t_3;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":128
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":129
  *     cdef bint do_lemmas = (opt_lemmas and lemma_gen is not None)
  *     cdef bint do_whitelist = (whitelist is not None)
  *     cdef bint do_always_include = (always_include is not None)             # <<<<<<<<<<<<<<
@@ -17540,7 +17548,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_t_3 = (__pyx_v_always_include != Py_None);
   __pyx_v_do_always_include = __pyx_t_3;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":129
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":130
  *     cdef bint do_whitelist = (whitelist is not None)
  *     cdef bint do_always_include = (always_include is not None)
  *     cdef bint do_alpha  = opt_alpha             # <<<<<<<<<<<<<<
@@ -17549,7 +17557,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_do_alpha = __pyx_v_opt_alpha;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":130
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":131
  *     cdef bint do_always_include = (always_include is not None)
  *     cdef bint do_alpha  = opt_alpha
  *     cdef bint do_shorts = opt_shorts             # <<<<<<<<<<<<<<
@@ -17558,7 +17566,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_do_shorts = __pyx_v_opt_shorts;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":131
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":132
  *     cdef bint do_alpha  = opt_alpha
  *     cdef bint do_shorts = opt_shorts
  *     cdef bint do_stops  = (opt_stops and stop_set is not None)             # <<<<<<<<<<<<<<
@@ -17575,7 +17583,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_L6_bool_binop_done:;
   __pyx_v_do_stops = __pyx_t_3;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":134
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":135
  * 
  *     # prep output buffer (one-pass writer)
  *     if outbuf is None:             # <<<<<<<<<<<<<<
@@ -17585,7 +17593,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
   __pyx_t_3 = (__pyx_v_outbuf == ((PyObject*)Py_None));
   if (__pyx_t_3) {
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":135
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":136
  *     # prep output buffer (one-pass writer)
  *     if outbuf is None:
  *         outbuf = bytearray()             # <<<<<<<<<<<<<<
@@ -17598,13 +17606,13 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       PyObject *__pyx_callargs[2] = {__pyx_t_5, NULL};
       __pyx_t_1 = __Pyx_PyObject_FastCall((PyObject*)(&PyByteArray_Type), __pyx_callargs+__pyx_t_6, (1-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
       __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 135, __pyx_L1_error)
+      if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 136, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
     }
     __Pyx_DECREF_SET(__pyx_v_outbuf, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":134
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":135
  * 
  *     # prep output buffer (one-pass writer)
  *     if outbuf is None:             # <<<<<<<<<<<<<<
@@ -17614,7 +17622,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     goto __pyx_L8;
   }
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":137
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":138
  *         outbuf = bytearray()
  *     else:
  *         outbuf.clear()             # <<<<<<<<<<<<<<
@@ -17622,23 +17630,23 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
  *     # raw pointer for slicing without extra attribute lookups
 */
   /*else*/ {
-    __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyByteArray_Type__clear, __pyx_v_outbuf); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyByteArray_Type__clear, __pyx_v_outbuf); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 138, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
   __pyx_L8:;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":140
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":141
  * 
  *     # raw pointer for slicing without extra attribute lookups
  *     cdef char* base = PyBytes_AsString(ngram)             # <<<<<<<<<<<<<<
  * 
  *     cdef Py_ssize_t i = 0
 */
-  __pyx_t_7 = PyBytes_AsString(__pyx_v_ngram); if (unlikely(__pyx_t_7 == ((void *)NULL))) __PYX_ERR(0, 140, __pyx_L1_error)
+  __pyx_t_7 = PyBytes_AsString(__pyx_v_ngram); if (unlikely(__pyx_t_7 == ((void *)NULL))) __PYX_ERR(0, 141, __pyx_L1_error)
   __pyx_v_base = __pyx_t_7;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":142
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":143
  *     cdef char* base = PyBytes_AsString(ngram)
  * 
  *     cdef Py_ssize_t i = 0             # <<<<<<<<<<<<<<
@@ -17647,7 +17655,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_i = 0;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":144
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":145
  *     cdef Py_ssize_t i = 0
  *     cdef Py_ssize_t tok_start, tok_end
  *     cdef Py_ssize_t token_count = 0             # <<<<<<<<<<<<<<
@@ -17656,7 +17664,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_token_count = 0;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":145
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":146
  *     cdef Py_ssize_t tok_start, tok_end
  *     cdef Py_ssize_t token_count = 0
  *     cdef Py_ssize_t unk_count = 0             # <<<<<<<<<<<<<<
@@ -17665,7 +17673,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
   __pyx_v_unk_count = 0;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":158
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":159
  * 
  *     # scan tokens separated by ASCII space
  *     while i < N:             # <<<<<<<<<<<<<<
@@ -17676,7 +17684,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_t_3 = (__pyx_v_i < __pyx_v_N);
     if (!__pyx_t_3) break;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":160
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":161
  *     while i < N:
  *         # skip spaces
  *         while i < N and (<unsigned char>base[i]) == 32:             # <<<<<<<<<<<<<<
@@ -17695,7 +17703,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __pyx_L13_bool_binop_done:;
       if (!__pyx_t_3) break;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":161
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":162
  *         # skip spaces
  *         while i < N and (<unsigned char>base[i]) == 32:
  *             i += 1             # <<<<<<<<<<<<<<
@@ -17705,7 +17713,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __pyx_v_i = (__pyx_v_i + 1);
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":162
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":163
  *         while i < N and (<unsigned char>base[i]) == 32:
  *             i += 1
  *         if i >= N:             # <<<<<<<<<<<<<<
@@ -17715,7 +17723,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_t_3 = (__pyx_v_i >= __pyx_v_N);
     if (__pyx_t_3) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":163
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":164
  *             i += 1
  *         if i >= N:
  *             break             # <<<<<<<<<<<<<<
@@ -17724,7 +17732,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       goto __pyx_L10_break;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":162
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":163
  *         while i < N and (<unsigned char>base[i]) == 32:
  *             i += 1
  *         if i >= N:             # <<<<<<<<<<<<<<
@@ -17733,7 +17741,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":164
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":165
  *         if i >= N:
  *             break
  *         tok_start = i             # <<<<<<<<<<<<<<
@@ -17742,7 +17750,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     __pyx_v_tok_start = __pyx_v_i;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":165
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":166
  *             break
  *         tok_start = i
  *         while i < N and (<unsigned char>base[i]) != 32:             # <<<<<<<<<<<<<<
@@ -17761,7 +17769,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __pyx_L18_bool_binop_done:;
       if (!__pyx_t_3) break;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":166
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":167
  *         tok_start = i
  *         while i < N and (<unsigned char>base[i]) != 32:
  *             i += 1             # <<<<<<<<<<<<<<
@@ -17771,7 +17779,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __pyx_v_i = (__pyx_v_i + 1);
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":167
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":168
  *         while i < N and (<unsigned char>base[i]) != 32:
  *             i += 1
  *         tok_end = i             # <<<<<<<<<<<<<<
@@ -17780,32 +17788,32 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     __pyx_v_tok_end = __pyx_v_i;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":170
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":171
  * 
  *         # materialize token bytes (needed for set lookups / .lower() / rfind)
  *         tok_b = PyBytes_FromStringAndSize(<char*>base + tok_start, tok_end - tok_start)             # <<<<<<<<<<<<<<
  * 
  *         # split POS by last underscore
 */
-    __pyx_t_1 = PyBytes_FromStringAndSize((((char *)__pyx_v_base) + __pyx_v_tok_start), (__pyx_v_tok_end - __pyx_v_tok_start)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 170, __pyx_L1_error)
+    __pyx_t_1 = PyBytes_FromStringAndSize((((char *)__pyx_v_base) + __pyx_v_tok_start), (__pyx_v_tok_end - __pyx_v_tok_start)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 171, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_tok_b, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":173
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":174
  * 
  *         # split POS by last underscore
  *         last_uscore = tok_b.rfind(b'_')  # find the last underscore             # <<<<<<<<<<<<<<
  *         wn_pos = None  # default to no POS
  *         if last_uscore > 0:  # check if there was a last underscore
 */
-    __pyx_t_1 = __Pyx_CallUnboundCMethod1(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type__rfind, __pyx_v_tok_b, __pyx_mstate_global->__pyx_n_b__7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 173, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_CallUnboundCMethod1(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type__rfind, __pyx_v_tok_b, __pyx_mstate_global->__pyx_n_b__7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = __Pyx_PyIndex_AsSsize_t(__pyx_t_1); if (unlikely((__pyx_t_2 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 173, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyIndex_AsSsize_t(__pyx_t_1); if (unlikely((__pyx_t_2 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 174, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_v_last_uscore = __pyx_t_2;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":174
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":175
  *         # split POS by last underscore
  *         last_uscore = tok_b.rfind(b'_')  # find the last underscore
  *         wn_pos = None  # default to no POS             # <<<<<<<<<<<<<<
@@ -17815,7 +17823,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __Pyx_INCREF(Py_None);
     __Pyx_XDECREF_SET(__pyx_v_wn_pos, Py_None);
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":175
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":176
  *         last_uscore = tok_b.rfind(b'_')  # find the last underscore
  *         wn_pos = None  # default to no POS
  *         if last_uscore > 0:  # check if there was a last underscore             # <<<<<<<<<<<<<<
@@ -17825,7 +17833,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_t_3 = (__pyx_v_last_uscore > 0);
     if (__pyx_t_3) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":176
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":177
  *         wn_pos = None  # default to no POS
  *         if last_uscore > 0:  # check if there was a last underscore
  *             tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag             # <<<<<<<<<<<<<<
@@ -17834,14 +17842,14 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       if (unlikely(__pyx_v_tok_b == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        __PYX_ERR(0, 176, __pyx_L1_error)
+        __PYX_ERR(0, 177, __pyx_L1_error)
       }
-      __pyx_t_1 = PySequence_GetSlice(__pyx_v_tok_b, (__pyx_v_last_uscore + 1), PY_SSIZE_T_MAX); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 176, __pyx_L1_error)
+      __pyx_t_1 = PySequence_GetSlice(__pyx_v_tok_b, (__pyx_v_last_uscore + 1), PY_SSIZE_T_MAX); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_XDECREF_SET(__pyx_v_tag_b, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":177
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":178
  *         if last_uscore > 0:  # check if there was a last underscore
  *             tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag
  *             if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag             # <<<<<<<<<<<<<<
@@ -17850,12 +17858,12 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       if (unlikely(__pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_TAGS_VALID_G == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-        __PYX_ERR(0, 177, __pyx_L1_error)
+        __PYX_ERR(0, 178, __pyx_L1_error)
       }
-      __pyx_t_3 = (__Pyx_PySet_ContainsTF(__pyx_v_tag_b, __pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_TAGS_VALID_G, Py_EQ)); if (unlikely((__pyx_t_3 < 0))) __PYX_ERR(0, 177, __pyx_L1_error)
+      __pyx_t_3 = (__Pyx_PySet_ContainsTF(__pyx_v_tag_b, __pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_TAGS_VALID_G, Py_EQ)); if (unlikely((__pyx_t_3 < 0))) __PYX_ERR(0, 178, __pyx_L1_error)
       if (__pyx_t_3) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":178
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":179
  *             tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag
  *             if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag
  *                 base_b = tok_b[:last_uscore]  # if it's a real POS tag, separate out the base token             # <<<<<<<<<<<<<<
@@ -17864,14 +17872,14 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         if (unlikely(__pyx_v_tok_b == Py_None)) {
           PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-          __PYX_ERR(0, 178, __pyx_L1_error)
+          __PYX_ERR(0, 179, __pyx_L1_error)
         }
-        __pyx_t_1 = PySequence_GetSlice(__pyx_v_tok_b, 0, __pyx_v_last_uscore); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 178, __pyx_L1_error)
+        __pyx_t_1 = PySequence_GetSlice(__pyx_v_tok_b, 0, __pyx_v_last_uscore); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 179, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_XDECREF_SET(__pyx_v_base_b, ((PyObject*)__pyx_t_1));
         __pyx_t_1 = 0;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":179
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":180
  *             if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag
  *                 base_b = tok_b[:last_uscore]  # if it's a real POS tag, separate out the base token
  *                 wn_pos = MAP_G_TO_WN.get(tag_b, None)  # and convert the tag to a spaCy POS tag             # <<<<<<<<<<<<<<
@@ -17880,14 +17888,14 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         if (unlikely(__pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_MAP_G_TO_WN == Py_None)) {
           PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%.30s'", "get");
-          __PYX_ERR(0, 179, __pyx_L1_error)
+          __PYX_ERR(0, 180, __pyx_L1_error)
         }
-        __pyx_t_1 = __Pyx_PyDict_GetItemDefault(__pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_MAP_G_TO_WN, __pyx_v_tag_b, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 179, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyDict_GetItemDefault(__pyx_v_9ngramprep_12ngram_filter_7filters_7core_cy_MAP_G_TO_WN, __pyx_v_tag_b, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF_SET(__pyx_v_wn_pos, __pyx_t_1);
         __pyx_t_1 = 0;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":177
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":178
  *         if last_uscore > 0:  # check if there was a last underscore
  *             tag_b = tok_b[last_uscore + 1:]  # if there was, separate out the possible POS tag
  *             if tag_b in TAGS_VALID_G:  # see if what's after the last underscore is really a POS tag             # <<<<<<<<<<<<<<
@@ -17897,7 +17905,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         goto __pyx_L21;
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":181
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":182
  *                 wn_pos = MAP_G_TO_WN.get(tag_b, None)  # and convert the tag to a spaCy POS tag
  *             else:  # if what's after the last underscore *isn't* a POS tag...
  *                 base_b = tok_b  # the base token is just the original token             # <<<<<<<<<<<<<<
@@ -17910,7 +17918,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       }
       __pyx_L21:;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":175
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":176
  *         last_uscore = tok_b.rfind(b'_')  # find the last underscore
  *         wn_pos = None  # default to no POS
  *         if last_uscore > 0:  # check if there was a last underscore             # <<<<<<<<<<<<<<
@@ -17920,7 +17928,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       goto __pyx_L20;
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":183
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":184
  *                 base_b = tok_b  # the base token is just the original token
  *         else:  # if there wasn't a last underscore...
  *             base_b = tok_b  # the base token is just the original token             # <<<<<<<<<<<<<<
@@ -17933,7 +17941,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     }
     __pyx_L20:;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":186
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":187
  * 
  *         # Normalize token first (always needed)
  *         if do_lower:             # <<<<<<<<<<<<<<
@@ -17942,19 +17950,19 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     if (__pyx_v_do_lower) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":187
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":188
  *         # Normalize token first (always needed)
  *         if do_lower:
  *             base_b = base_b.lower()             # <<<<<<<<<<<<<<
  *         if do_lemmas:
  *             tok_s = _decode_token(base_b)
 */
-      __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type__lower, __pyx_v_base_b); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 187, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type__lower, __pyx_v_base_b); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF_SET(__pyx_v_base_b, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":186
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":187
  * 
  *         # Normalize token first (always needed)
  *         if do_lower:             # <<<<<<<<<<<<<<
@@ -17963,7 +17971,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":188
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":189
  *         if do_lower:
  *             base_b = base_b.lower()
  *         if do_lemmas:             # <<<<<<<<<<<<<<
@@ -17972,19 +17980,19 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     if (__pyx_v_do_lemmas) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":189
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":190
  *             base_b = base_b.lower()
  *         if do_lemmas:
  *             tok_s = _decode_token(base_b)             # <<<<<<<<<<<<<<
  *             pos_s = wn_pos if wn_pos is not None else "NOUN"
  *             res = lemma_gen.lemmatize(tok_s, pos=pos_s)
 */
-      __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__decode_token(__pyx_v_base_b); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 189, __pyx_L1_error)
+      __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__decode_token(__pyx_v_base_b); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 190, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_XDECREF_SET(__pyx_v_tok_s, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":190
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":191
  *         if do_lemmas:
  *             tok_s = _decode_token(base_b)
  *             pos_s = wn_pos if wn_pos is not None else "NOUN"             # <<<<<<<<<<<<<<
@@ -17995,7 +18003,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       if (__pyx_t_3) {
         __pyx_t_5 = __pyx_v_wn_pos;
         __Pyx_INCREF(__pyx_t_5);
-        if (!(likely(PyUnicode_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None) || __Pyx_RaiseUnexpectedTypeError("str", __pyx_t_5))) __PYX_ERR(0, 190, __pyx_L1_error)
+        if (!(likely(PyUnicode_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None) || __Pyx_RaiseUnexpectedTypeError("str", __pyx_t_5))) __PYX_ERR(0, 191, __pyx_L1_error)
         __pyx_t_1 = __pyx_t_5;
         __pyx_t_5 = 0;
       } else {
@@ -18005,7 +18013,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __Pyx_XDECREF_SET(__pyx_v_pos_s, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":191
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":192
  *             tok_s = _decode_token(base_b)
  *             pos_s = wn_pos if wn_pos is not None else "NOUN"
  *             res = lemma_gen.lemmatize(tok_s, pos=pos_s)             # <<<<<<<<<<<<<<
@@ -18017,31 +18025,31 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       __pyx_t_6 = 0;
       {
         PyObject *__pyx_callargs[2 + ((CYTHON_VECTORCALL) ? 1 : 0)] = {__pyx_t_5, __pyx_v_tok_s};
-        __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 191, __pyx_L1_error)
+        __pyx_t_8 = __Pyx_MakeVectorcallBuilderKwds(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 192, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
-        if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_pos, __pyx_v_pos_s, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
+        if (__Pyx_VectorcallBuilder_AddArg(__pyx_mstate_global->__pyx_n_u_pos, __pyx_v_pos_s, __pyx_t_8, __pyx_callargs+2, 0) < (0)) __PYX_ERR(0, 192, __pyx_L1_error)
         __pyx_t_1 = __Pyx_Object_VectorcallMethod_CallFromBuilder((PyObject*)__pyx_mstate_global->__pyx_n_u_lemmatize, __pyx_callargs+__pyx_t_6, (2-__pyx_t_6) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET), __pyx_t_8);
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 191, __pyx_L1_error)
+        if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 192, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
       }
       __Pyx_XDECREF_SET(__pyx_v_res, __pyx_t_1);
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":192
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":193
  *             pos_s = wn_pos if wn_pos is not None else "NOUN"
  *             res = lemma_gen.lemmatize(tok_s, pos=pos_s)
  *             normalized_token = _encode_token(<str> res, False)             # <<<<<<<<<<<<<<
  *         else:
  *             normalized_token = base_b
 */
-      __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__encode_token(((PyObject*)__pyx_v_res), 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 192, __pyx_L1_error)
+      __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__encode_token(((PyObject*)__pyx_v_res), 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 193, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_XDECREF_SET(__pyx_v_normalized_token, ((PyObject*)__pyx_t_1));
       __pyx_t_1 = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":188
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":189
  *         if do_lower:
  *             base_b = base_b.lower()
  *         if do_lemmas:             # <<<<<<<<<<<<<<
@@ -18051,7 +18059,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       goto __pyx_L23;
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":194
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":195
  *             normalized_token = _encode_token(<str> res, False)
  *         else:
  *             normalized_token = base_b             # <<<<<<<<<<<<<<
@@ -18064,7 +18072,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     }
     __pyx_L23:;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":197
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":198
  * 
  *         # BRANCH: whitelist vs. normal filtering
  *         if do_whitelist:             # <<<<<<<<<<<<<<
@@ -18073,17 +18081,17 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     if (__pyx_v_do_whitelist) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":200
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":201
  *             # Whitelist path: simple check, no other filters
  *             # Exception: always-include tokens are preserved even if not in whitelist
  *             if normalized_token in whitelist:             # <<<<<<<<<<<<<<
  *                 out_token = normalized_token
  *             elif do_always_include and normalized_token in always_include:
 */
-      __pyx_t_3 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_whitelist, Py_EQ)); if (unlikely((__pyx_t_3 < 0))) __PYX_ERR(0, 200, __pyx_L1_error)
+      __pyx_t_3 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_whitelist, Py_EQ)); if (unlikely((__pyx_t_3 < 0))) __PYX_ERR(0, 201, __pyx_L1_error)
       if (__pyx_t_3) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":201
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":202
  *             # Exception: always-include tokens are preserved even if not in whitelist
  *             if normalized_token in whitelist:
  *                 out_token = normalized_token             # <<<<<<<<<<<<<<
@@ -18093,7 +18101,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         __Pyx_INCREF(__pyx_v_normalized_token);
         __Pyx_XDECREF_SET(__pyx_v_out_token, __pyx_v_normalized_token);
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":200
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":201
  *             # Whitelist path: simple check, no other filters
  *             # Exception: always-include tokens are preserved even if not in whitelist
  *             if normalized_token in whitelist:             # <<<<<<<<<<<<<<
@@ -18103,7 +18111,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         goto __pyx_L25;
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":202
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":203
  *             if normalized_token in whitelist:
  *                 out_token = normalized_token
  *             elif do_always_include and normalized_token in always_include:             # <<<<<<<<<<<<<<
@@ -18115,12 +18123,12 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         __pyx_t_3 = __pyx_v_do_always_include;
         goto __pyx_L26_bool_binop_done;
       }
-      __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_always_include, Py_EQ)); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 202, __pyx_L1_error)
+      __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_always_include, Py_EQ)); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 203, __pyx_L1_error)
       __pyx_t_3 = __pyx_t_4;
       __pyx_L26_bool_binop_done:;
       if (__pyx_t_3) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":203
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":204
  *                 out_token = normalized_token
  *             elif do_always_include and normalized_token in always_include:
  *                 out_token = normalized_token             # <<<<<<<<<<<<<<
@@ -18130,7 +18138,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         __Pyx_INCREF(__pyx_v_normalized_token);
         __Pyx_XDECREF_SET(__pyx_v_out_token, __pyx_v_normalized_token);
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":202
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":203
  *             if normalized_token in whitelist:
  *                 out_token = normalized_token
  *             elif do_always_include and normalized_token in always_include:             # <<<<<<<<<<<<<<
@@ -18140,7 +18148,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         goto __pyx_L25;
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":205
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":206
  *                 out_token = normalized_token
  *             else:
  *                 out_token = SENTINEL_B             # <<<<<<<<<<<<<<
@@ -18148,13 +18156,13 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
  *         else:
 */
       /*else*/ {
-        __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_SENTINEL_B); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 205, __pyx_L1_error)
+        __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_mstate_global->__pyx_n_u_SENTINEL_B); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 206, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
-        if (!(likely(PyBytes_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_1))) __PYX_ERR(0, 205, __pyx_L1_error)
+        if (!(likely(PyBytes_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_1))) __PYX_ERR(0, 206, __pyx_L1_error)
         __Pyx_XDECREF_SET(__pyx_v_out_token, ((PyObject*)__pyx_t_1));
         __pyx_t_1 = 0;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":206
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":207
  *             else:
  *                 out_token = SENTINEL_B
  *                 unk_count += 1             # <<<<<<<<<<<<<<
@@ -18165,7 +18173,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       }
       __pyx_L25:;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":197
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":198
  * 
  *         # BRANCH: whitelist vs. normal filtering
  *         if do_whitelist:             # <<<<<<<<<<<<<<
@@ -18175,7 +18183,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
       goto __pyx_L24;
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":209
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":210
  *         else:
  *             # Normal filtering path: apply all checks
  *             is_unk = 0             # <<<<<<<<<<<<<<
@@ -18185,7 +18193,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     /*else*/ {
       __pyx_v_is_unk = 0;
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":210
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":211
  *             # Normal filtering path: apply all checks
  *             is_unk = 0
  *             if do_alpha:             # <<<<<<<<<<<<<<
@@ -18194,21 +18202,21 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       if (__pyx_v_do_alpha) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":213
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":214
  *                 # Check if token is alphabetic (language-agnostic)
  *                 # Try fast ASCII check first, then Unicode check for non-ASCII
  *                 if not _is_ascii_alpha_bytes(normalized_token):             # <<<<<<<<<<<<<<
  *                     # Contains non-ASCII bytes
  *                     if opt_ascii_alpha_only:
 */
-        __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_ds_unsigned_char__const__(__pyx_v_normalized_token, 0); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 213, __pyx_L1_error)
-        __pyx_t_3 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__is_ascii_alpha_bytes(__pyx_t_9); if (unlikely(__pyx_t_3 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 213, __pyx_L1_error)
+        __pyx_t_9 = __Pyx_PyObject_to_MemoryviewSlice_ds_unsigned_char__const__(__pyx_v_normalized_token, 0); if (unlikely(!__pyx_t_9.memview)) __PYX_ERR(0, 214, __pyx_L1_error)
+        __pyx_t_3 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__is_ascii_alpha_bytes(__pyx_t_9); if (unlikely(__pyx_t_3 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 214, __pyx_L1_error)
         __PYX_XCLEAR_MEMVIEW(&__pyx_t_9, 1);
         __pyx_t_9.memview = NULL; __pyx_t_9.data = NULL;
         __pyx_t_4 = (!__pyx_t_3);
         if (__pyx_t_4) {
 
-          /* "ngramprep/ngram_filter/filters/core_cy.pyx":215
+          /* "ngramprep/ngram_filter/filters/core_cy.pyx":216
  *                 if not _is_ascii_alpha_bytes(normalized_token):
  *                     # Contains non-ASCII bytes
  *                     if opt_ascii_alpha_only:             # <<<<<<<<<<<<<<
@@ -18217,7 +18225,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
           if (__pyx_v_opt_ascii_alpha_only) {
 
-            /* "ngramprep/ngram_filter/filters/core_cy.pyx":218
+            /* "ngramprep/ngram_filter/filters/core_cy.pyx":219
  *                         # If ascii_alpha_only=True, reject any non-ASCII bytes
  *                         # (even if they're valid Unicode alpha chars)
  *                         is_unk = 1             # <<<<<<<<<<<<<<
@@ -18226,7 +18234,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
             __pyx_v_is_unk = 1;
 
-            /* "ngramprep/ngram_filter/filters/core_cy.pyx":215
+            /* "ngramprep/ngram_filter/filters/core_cy.pyx":216
  *                 if not _is_ascii_alpha_bytes(normalized_token):
  *                     # Contains non-ASCII bytes
  *                     if opt_ascii_alpha_only:             # <<<<<<<<<<<<<<
@@ -18236,7 +18244,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
             goto __pyx_L30;
           }
 
-          /* "ngramprep/ngram_filter/filters/core_cy.pyx":222
+          /* "ngramprep/ngram_filter/filters/core_cy.pyx":223
  *                         # Otherwise, accept all Unicode alphabetic characters
  *                         # (including accented letters, Greek, Cyrillic, Chinese, etc.)
  *                         try:             # <<<<<<<<<<<<<<
@@ -18253,30 +18261,30 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
               __Pyx_XGOTREF(__pyx_t_12);
               /*try:*/ {
 
-                /* "ngramprep/ngram_filter/filters/core_cy.pyx":223
+                /* "ngramprep/ngram_filter/filters/core_cy.pyx":224
  *                         # (including accented letters, Greek, Cyrillic, Chinese, etc.)
  *                         try:
  *                             tok_s = _decode_token(normalized_token)             # <<<<<<<<<<<<<<
  *                             if not _is_unicode_alpha(tok_s):
  *                                 is_unk = 1
 */
-                __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__decode_token(__pyx_v_normalized_token); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L31_error)
+                __pyx_t_1 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__decode_token(__pyx_v_normalized_token); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 224, __pyx_L31_error)
                 __Pyx_GOTREF(__pyx_t_1);
                 __Pyx_XDECREF_SET(__pyx_v_tok_s, ((PyObject*)__pyx_t_1));
                 __pyx_t_1 = 0;
 
-                /* "ngramprep/ngram_filter/filters/core_cy.pyx":224
+                /* "ngramprep/ngram_filter/filters/core_cy.pyx":225
  *                         try:
  *                             tok_s = _decode_token(normalized_token)
  *                             if not _is_unicode_alpha(tok_s):             # <<<<<<<<<<<<<<
  *                                 is_unk = 1
  *                         except:
 */
-                __pyx_t_4 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__is_unicode_alpha(__pyx_v_tok_s); if (unlikely(__pyx_t_4 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 224, __pyx_L31_error)
+                __pyx_t_4 = __pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy__is_unicode_alpha(__pyx_v_tok_s); if (unlikely(__pyx_t_4 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 225, __pyx_L31_error)
                 __pyx_t_3 = (!__pyx_t_4);
                 if (__pyx_t_3) {
 
-                  /* "ngramprep/ngram_filter/filters/core_cy.pyx":225
+                  /* "ngramprep/ngram_filter/filters/core_cy.pyx":226
  *                             tok_s = _decode_token(normalized_token)
  *                             if not _is_unicode_alpha(tok_s):
  *                                 is_unk = 1             # <<<<<<<<<<<<<<
@@ -18285,7 +18293,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
                   __pyx_v_is_unk = 1;
 
-                  /* "ngramprep/ngram_filter/filters/core_cy.pyx":224
+                  /* "ngramprep/ngram_filter/filters/core_cy.pyx":225
  *                         try:
  *                             tok_s = _decode_token(normalized_token)
  *                             if not _is_unicode_alpha(tok_s):             # <<<<<<<<<<<<<<
@@ -18294,7 +18302,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
                 }
 
-                /* "ngramprep/ngram_filter/filters/core_cy.pyx":222
+                /* "ngramprep/ngram_filter/filters/core_cy.pyx":223
  *                         # Otherwise, accept all Unicode alphabetic characters
  *                         # (including accented letters, Greek, Cyrillic, Chinese, etc.)
  *                         try:             # <<<<<<<<<<<<<<
@@ -18313,7 +18321,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
               __PYX_XCLEAR_MEMVIEW(&__pyx_t_9, 1);
               __pyx_t_9.memview = NULL; __pyx_t_9.data = NULL;
 
-              /* "ngramprep/ngram_filter/filters/core_cy.pyx":226
+              /* "ngramprep/ngram_filter/filters/core_cy.pyx":227
  *                             if not _is_unicode_alpha(tok_s):
  *                                 is_unk = 1
  *                         except:             # <<<<<<<<<<<<<<
@@ -18323,7 +18331,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
               /*except:*/ {
                 __Pyx_ErrRestore(0,0,0);
 
-                /* "ngramprep/ngram_filter/filters/core_cy.pyx":228
+                /* "ngramprep/ngram_filter/filters/core_cy.pyx":229
  *                         except:
  *                             # Decoding failed, mark as invalid
  *                             is_unk = 1             # <<<<<<<<<<<<<<
@@ -18343,7 +18351,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
           }
           __pyx_L30:;
 
-          /* "ngramprep/ngram_filter/filters/core_cy.pyx":213
+          /* "ngramprep/ngram_filter/filters/core_cy.pyx":214
  *                 # Check if token is alphabetic (language-agnostic)
  *                 # Try fast ASCII check first, then Unicode check for non-ASCII
  *                 if not _is_ascii_alpha_bytes(normalized_token):             # <<<<<<<<<<<<<<
@@ -18352,7 +18360,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         }
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":210
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":211
  *             # Normal filtering path: apply all checks
  *             is_unk = 0
  *             if do_alpha:             # <<<<<<<<<<<<<<
@@ -18361,7 +18369,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":229
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":230
  *                             # Decoding failed, mark as invalid
  *                             is_unk = 1
  *             if not is_unk and do_shorts and normalized_token.__len__() < min_len:             # <<<<<<<<<<<<<<
@@ -18379,20 +18387,20 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         __pyx_t_3 = __pyx_v_do_shorts;
         goto __pyx_L43_bool_binop_done;
       }
-      __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type____len, __pyx_v_normalized_token); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_CallUnboundCMethod0(&__pyx_mstate_global->__pyx_umethod_PyBytes_Type____len, __pyx_v_normalized_token); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 230, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_8 = __Pyx_PyLong_From_int(__pyx_v_min_len); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_PyLong_From_int(__pyx_v_min_len); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 230, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_5 = PyObject_RichCompare(__pyx_t_1, __pyx_t_8, Py_LT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_5 = PyObject_RichCompare(__pyx_t_1, __pyx_t_8, Py_LT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 230, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 230, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_3 = __pyx_t_4;
       __pyx_L43_bool_binop_done:;
       if (__pyx_t_3) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":230
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":231
  *                             is_unk = 1
  *             if not is_unk and do_shorts and normalized_token.__len__() < min_len:
  *                 is_unk = 1             # <<<<<<<<<<<<<<
@@ -18401,7 +18409,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         __pyx_v_is_unk = 1;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":229
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":230
  *                             # Decoding failed, mark as invalid
  *                             is_unk = 1
  *             if not is_unk and do_shorts and normalized_token.__len__() < min_len:             # <<<<<<<<<<<<<<
@@ -18410,7 +18418,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":231
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":232
  *             if not is_unk and do_shorts and normalized_token.__len__() < min_len:
  *                 is_unk = 1
  *             if not is_unk and do_stops and normalized_token in stop_set:             # <<<<<<<<<<<<<<
@@ -18428,12 +18436,12 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         __pyx_t_3 = __pyx_v_do_stops;
         goto __pyx_L47_bool_binop_done;
       }
-      __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_stop_set, Py_EQ)); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 231, __pyx_L1_error)
+      __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_normalized_token, __pyx_v_stop_set, Py_EQ)); if (unlikely((__pyx_t_4 < 0))) __PYX_ERR(0, 232, __pyx_L1_error)
       __pyx_t_3 = __pyx_t_4;
       __pyx_L47_bool_binop_done:;
       if (__pyx_t_3) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":232
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":233
  *                 is_unk = 1
  *             if not is_unk and do_stops and normalized_token in stop_set:
  *                 is_unk = 1             # <<<<<<<<<<<<<<
@@ -18442,7 +18450,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         __pyx_v_is_unk = 1;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":231
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":232
  *             if not is_unk and do_shorts and normalized_token.__len__() < min_len:
  *                 is_unk = 1
  *             if not is_unk and do_stops and normalized_token in stop_set:             # <<<<<<<<<<<<<<
@@ -18451,7 +18459,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":234
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":235
  *                 is_unk = 1
  * 
  *             if is_unk:             # <<<<<<<<<<<<<<
@@ -18460,20 +18468,20 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
       if (__pyx_v_is_unk) {
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":235
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":236
  * 
  *             if is_unk:
  *                 out_token = SENTINEL_B             # <<<<<<<<<<<<<<
  *                 unk_count += 1
  *             else:
 */
-        __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_SENTINEL_B); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 235, __pyx_L1_error)
+        __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_SENTINEL_B); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 236, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
-        if (!(likely(PyBytes_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_5))) __PYX_ERR(0, 235, __pyx_L1_error)
+        if (!(likely(PyBytes_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None) || __Pyx_RaiseUnexpectedTypeError("bytes", __pyx_t_5))) __PYX_ERR(0, 236, __pyx_L1_error)
         __Pyx_XDECREF_SET(__pyx_v_out_token, ((PyObject*)__pyx_t_5));
         __pyx_t_5 = 0;
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":236
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":237
  *             if is_unk:
  *                 out_token = SENTINEL_B
  *                 unk_count += 1             # <<<<<<<<<<<<<<
@@ -18482,7 +18490,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
         __pyx_v_unk_count = (__pyx_v_unk_count + 1);
 
-        /* "ngramprep/ngram_filter/filters/core_cy.pyx":234
+        /* "ngramprep/ngram_filter/filters/core_cy.pyx":235
  *                 is_unk = 1
  * 
  *             if is_unk:             # <<<<<<<<<<<<<<
@@ -18492,7 +18500,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
         goto __pyx_L50;
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":238
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":239
  *                 unk_count += 1
  *             else:
  *                 out_token = normalized_token             # <<<<<<<<<<<<<<
@@ -18507,7 +18515,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     }
     __pyx_L24:;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":241
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":242
  * 
  *         # write token (single exit path)
  *         if token_count > 0:             # <<<<<<<<<<<<<<
@@ -18517,16 +18525,16 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_t_3 = (__pyx_v_token_count > 0);
     if (__pyx_t_3) {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":242
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":243
  *         # write token (single exit path)
  *         if token_count > 0:
  *             outbuf.append(32)  # ' '             # <<<<<<<<<<<<<<
  *         outbuf.extend(out_token)
  *         token_count += 1
 */
-      __pyx_t_13 = __Pyx_PyByteArray_Append(__pyx_v_outbuf, 32); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 242, __pyx_L1_error)
+      __pyx_t_13 = __Pyx_PyByteArray_Append(__pyx_v_outbuf, 32); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 243, __pyx_L1_error)
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":241
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":242
  * 
  *         # write token (single exit path)
  *         if token_count > 0:             # <<<<<<<<<<<<<<
@@ -18535,49 +18543,50 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
 */
     }
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":243
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":244
  *         if token_count > 0:
  *             outbuf.append(32)  # ' '
  *         outbuf.extend(out_token)             # <<<<<<<<<<<<<<
  *         token_count += 1
  * 
 */
-    __pyx_t_5 = __Pyx_CallUnboundCMethod1(&__pyx_mstate_global->__pyx_umethod_PyByteArray_Type__extend, __pyx_v_outbuf, __pyx_v_out_token); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 243, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_CallUnboundCMethod1(&__pyx_mstate_global->__pyx_umethod_PyByteArray_Type__extend, __pyx_v_outbuf, __pyx_v_out_token); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 244, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":244
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":245
  *             outbuf.append(32)  # ' '
  *         outbuf.extend(out_token)
  *         token_count += 1             # <<<<<<<<<<<<<<
  * 
- *     # if everything became <UNK>, return empty
+ *     # Check if n-gram has sufficient context (at least min_context_tokens non-<UNK> tokens)
 */
     __pyx_v_token_count = (__pyx_v_token_count + 1);
   }
   __pyx_L10_break:;
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":247
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":248
  * 
- *     # if everything became <UNK>, return empty
- *     if token_count > 0 and unk_count == token_count:             # <<<<<<<<<<<<<<
+ *     # Check if n-gram has sufficient context (at least min_context_tokens non-<UNK> tokens)
+ *     non_unk_count = token_count - unk_count             # <<<<<<<<<<<<<<
+ *     if non_unk_count < min_context_tokens:
+ *         return b""
+*/
+  __pyx_v_non_unk_count = (__pyx_v_token_count - __pyx_v_unk_count);
+
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":249
+ *     # Check if n-gram has sufficient context (at least min_context_tokens non-<UNK> tokens)
+ *     non_unk_count = token_count - unk_count
+ *     if non_unk_count < min_context_tokens:             # <<<<<<<<<<<<<<
  *         return b""
  * 
 */
-  __pyx_t_4 = (__pyx_v_token_count > 0);
-  if (__pyx_t_4) {
-  } else {
-    __pyx_t_3 = __pyx_t_4;
-    goto __pyx_L53_bool_binop_done;
-  }
-  __pyx_t_4 = (__pyx_v_unk_count == __pyx_v_token_count);
-  __pyx_t_3 = __pyx_t_4;
-  __pyx_L53_bool_binop_done:;
+  __pyx_t_3 = (__pyx_v_non_unk_count < __pyx_v_min_context_tokens);
   if (__pyx_t_3) {
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":248
- *     # if everything became <UNK>, return empty
- *     if token_count > 0 and unk_count == token_count:
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":250
+ *     non_unk_count = token_count - unk_count
+ *     if non_unk_count < min_context_tokens:
  *         return b""             # <<<<<<<<<<<<<<
  * 
  *     return bytes(outbuf)
@@ -18587,16 +18596,16 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     __pyx_r = __pyx_mstate_global->__pyx_kp_b__6;
     goto __pyx_L0;
 
-    /* "ngramprep/ngram_filter/filters/core_cy.pyx":247
- * 
- *     # if everything became <UNK>, return empty
- *     if token_count > 0 and unk_count == token_count:             # <<<<<<<<<<<<<<
+    /* "ngramprep/ngram_filter/filters/core_cy.pyx":249
+ *     # Check if n-gram has sufficient context (at least min_context_tokens non-<UNK> tokens)
+ *     non_unk_count = token_count - unk_count
+ *     if non_unk_count < min_context_tokens:             # <<<<<<<<<<<<<<
  *         return b""
  * 
 */
   }
 
-  /* "ngramprep/ngram_filter/filters/core_cy.pyx":250
+  /* "ngramprep/ngram_filter/filters/core_cy.pyx":252
  *         return b""
  * 
  *     return bytes(outbuf)             # <<<<<<<<<<<<<<
@@ -18608,7 +18617,7 @@ static PyObject *__pyx_f_9ngramprep_12ngram_filter_7filters_7core_cy_process_tok
     PyObject *__pyx_callargs[2] = {__pyx_t_8, __pyx_v_outbuf};
     __pyx_t_5 = __Pyx_PyObject_FastCall((PyObject*)(&PyBytes_Type), __pyx_callargs+__pyx_t_6, (2-__pyx_t_6) | (__pyx_t_6*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
     __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
-    if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 250, __pyx_L1_error)
+    if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 252, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
   }
   __pyx_r = ((PyObject*)__pyx_t_5);
@@ -18668,6 +18677,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   int __pyx_v_opt_lower;
   int __pyx_v_opt_alpha;
   int __pyx_v_opt_ascii_alpha_only;
+  int __pyx_v_min_context_tokens;
   int __pyx_v_opt_shorts;
   int __pyx_v_opt_stops;
   int __pyx_v_opt_lemmas;
@@ -18681,7 +18691,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   CYTHON_UNUSED Py_ssize_t __pyx_nargs;
   #endif
   CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
-  PyObject* values[13] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
+  PyObject* values[14] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -18697,11 +18707,15 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   #endif
   __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
   {
-    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_ngram,&__pyx_mstate_global->__pyx_n_u_opt_lower,&__pyx_mstate_global->__pyx_n_u_opt_alpha,&__pyx_mstate_global->__pyx_n_u_opt_ascii_alpha_only,&__pyx_mstate_global->__pyx_n_u_opt_shorts,&__pyx_mstate_global->__pyx_n_u_opt_stops,&__pyx_mstate_global->__pyx_n_u_opt_lemmas,&__pyx_mstate_global->__pyx_n_u_min_len,&__pyx_mstate_global->__pyx_n_u_stop_set,&__pyx_mstate_global->__pyx_n_u_lemma_gen,&__pyx_mstate_global->__pyx_n_u_whitelist,&__pyx_mstate_global->__pyx_n_u_always_include,&__pyx_mstate_global->__pyx_n_u_outbuf,0};
+    PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_ngram,&__pyx_mstate_global->__pyx_n_u_opt_lower,&__pyx_mstate_global->__pyx_n_u_opt_alpha,&__pyx_mstate_global->__pyx_n_u_opt_ascii_alpha_only,&__pyx_mstate_global->__pyx_n_u_min_context_tokens,&__pyx_mstate_global->__pyx_n_u_opt_shorts,&__pyx_mstate_global->__pyx_n_u_opt_stops,&__pyx_mstate_global->__pyx_n_u_opt_lemmas,&__pyx_mstate_global->__pyx_n_u_min_len,&__pyx_mstate_global->__pyx_n_u_stop_set,&__pyx_mstate_global->__pyx_n_u_lemma_gen,&__pyx_mstate_global->__pyx_n_u_whitelist,&__pyx_mstate_global->__pyx_n_u_always_include,&__pyx_mstate_global->__pyx_n_u_outbuf,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
     if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 96, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
+        case 14:
+        values[13] = __Pyx_ArgRef_FASTCALL(__pyx_args, 13);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[13])) __PYX_ERR(0, 96, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
         case 13:
         values[12] = __Pyx_ArgRef_FASTCALL(__pyx_args, 12);
         if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[12])) __PYX_ERR(0, 96, __pyx_L3_error)
@@ -18760,55 +18774,59 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
       if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "process_tokens", 0) < (0)) __PYX_ERR(0, 96, __pyx_L3_error)
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":105
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
  *     bint opt_lemmas = False,
  *     int  min_len = 3,
  *     object stop_set = None,             # <<<<<<<<<<<<<<
  *     object lemma_gen = None,
  *     object whitelist = None,
 */
-      if (!values[8]) values[8] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[9]) values[9] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
  *     int  min_len = 3,
  *     object stop_set = None,
  *     object lemma_gen = None,             # <<<<<<<<<<<<<<
  *     object whitelist = None,
  *     object always_include = None,
 */
-      if (!values[9]) values[9] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[10]) values[10] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
  *     object stop_set = None,
  *     object lemma_gen = None,
  *     object whitelist = None,             # <<<<<<<<<<<<<<
  *     object always_include = None,
  *     bytearray outbuf = None
 */
-      if (!values[10]) values[10] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[11]) values[11] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
  *     object lemma_gen = None,
  *     object whitelist = None,
  *     object always_include = None,             # <<<<<<<<<<<<<<
  *     bytearray outbuf = None
  * ):
 */
-      if (!values[11]) values[11] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[12]) values[12] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":110
  *     object whitelist = None,
  *     object always_include = None,
  *     bytearray outbuf = None             # <<<<<<<<<<<<<<
  * ):
  *     """
 */
-      if (!values[12]) values[12] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[13]) values[13] = __Pyx_NewRef(((PyObject*)Py_None));
       for (Py_ssize_t i = __pyx_nargs; i < 1; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("process_tokens", 0, 1, 13, i); __PYX_ERR(0, 96, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("process_tokens", 0, 1, 14, i); __PYX_ERR(0, 96, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
+        case 14:
+        values[13] = __Pyx_ArgRef_FASTCALL(__pyx_args, 13);
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[13])) __PYX_ERR(0, 96, __pyx_L3_error)
+        CYTHON_FALLTHROUGH;
         case 13:
         values[12] = __Pyx_ArgRef_FASTCALL(__pyx_args, 12);
         if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[12])) __PYX_ERR(0, 96, __pyx_L3_error)
@@ -18864,50 +18882,50 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
         default: goto __pyx_L5_argtuple_error;
       }
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":105
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
  *     bint opt_lemmas = False,
  *     int  min_len = 3,
  *     object stop_set = None,             # <<<<<<<<<<<<<<
  *     object lemma_gen = None,
  *     object whitelist = None,
 */
-      if (!values[8]) values[8] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[9]) values[9] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":106
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
  *     int  min_len = 3,
  *     object stop_set = None,
  *     object lemma_gen = None,             # <<<<<<<<<<<<<<
  *     object whitelist = None,
  *     object always_include = None,
 */
-      if (!values[9]) values[9] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[10]) values[10] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":107
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
  *     object stop_set = None,
  *     object lemma_gen = None,
  *     object whitelist = None,             # <<<<<<<<<<<<<<
  *     object always_include = None,
  *     bytearray outbuf = None
 */
-      if (!values[10]) values[10] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[11]) values[11] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":108
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
  *     object lemma_gen = None,
  *     object whitelist = None,
  *     object always_include = None,             # <<<<<<<<<<<<<<
  *     bytearray outbuf = None
  * ):
 */
-      if (!values[11]) values[11] = __Pyx_NewRef(((PyObject *)Py_None));
+      if (!values[12]) values[12] = __Pyx_NewRef(((PyObject *)Py_None));
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":109
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":110
  *     object whitelist = None,
  *     object always_include = None,
  *     bytearray outbuf = None             # <<<<<<<<<<<<<<
  * ):
  *     """
 */
-      if (!values[12]) values[12] = __Pyx_NewRef(((PyObject*)Py_None));
+      if (!values[13]) values[13] = __Pyx_NewRef(((PyObject*)Py_None));
     }
     __pyx_v_ngram = ((PyObject*)values[0]);
     if (values[1]) {
@@ -18932,7 +18950,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
  *     bint opt_lower = False,
  *     bint opt_alpha = False,             # <<<<<<<<<<<<<<
  *     bint opt_ascii_alpha_only = False,
- *     bint opt_shorts = False,
+ *     int min_context_tokens = 2,
 */
       __pyx_v_opt_alpha = ((int)0);
     }
@@ -18944,30 +18962,35 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
  *     bint opt_lower = False,
  *     bint opt_alpha = False,
  *     bint opt_ascii_alpha_only = False,             # <<<<<<<<<<<<<<
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,
- *     bint opt_stops = False,
 */
       __pyx_v_opt_ascii_alpha_only = ((int)0);
     }
     if (values[4]) {
-      __pyx_v_opt_shorts = __Pyx_PyObject_IsTrue(values[4]); if (unlikely((__pyx_v_opt_shorts == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 101, __pyx_L3_error)
+      __pyx_v_min_context_tokens = __Pyx_PyLong_As_int(values[4]); if (unlikely((__pyx_v_min_context_tokens == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 101, __pyx_L3_error)
+    } else {
+      __pyx_v_min_context_tokens = ((int)2);
+    }
+    if (values[5]) {
+      __pyx_v_opt_shorts = __Pyx_PyObject_IsTrue(values[5]); if (unlikely((__pyx_v_opt_shorts == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 102, __pyx_L3_error)
     } else {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":101
- *     bint opt_alpha = False,
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":102
  *     bint opt_ascii_alpha_only = False,
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,             # <<<<<<<<<<<<<<
  *     bint opt_stops = False,
  *     bint opt_lemmas = False,
 */
       __pyx_v_opt_shorts = ((int)0);
     }
-    if (values[5]) {
-      __pyx_v_opt_stops = __Pyx_PyObject_IsTrue(values[5]); if (unlikely((__pyx_v_opt_stops == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 102, __pyx_L3_error)
+    if (values[6]) {
+      __pyx_v_opt_stops = __Pyx_PyObject_IsTrue(values[6]); if (unlikely((__pyx_v_opt_stops == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L3_error)
     } else {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":102
- *     bint opt_ascii_alpha_only = False,
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":103
+ *     int min_context_tokens = 2,
  *     bint opt_shorts = False,
  *     bint opt_stops = False,             # <<<<<<<<<<<<<<
  *     bint opt_lemmas = False,
@@ -18975,11 +18998,11 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       __pyx_v_opt_stops = ((int)0);
     }
-    if (values[6]) {
-      __pyx_v_opt_lemmas = __Pyx_PyObject_IsTrue(values[6]); if (unlikely((__pyx_v_opt_lemmas == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L3_error)
+    if (values[7]) {
+      __pyx_v_opt_lemmas = __Pyx_PyObject_IsTrue(values[7]); if (unlikely((__pyx_v_opt_lemmas == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 104, __pyx_L3_error)
     } else {
 
-      /* "ngramprep/ngram_filter/filters/core_cy.pyx":103
+      /* "ngramprep/ngram_filter/filters/core_cy.pyx":104
  *     bint opt_shorts = False,
  *     bint opt_stops = False,
  *     bint opt_lemmas = False,             # <<<<<<<<<<<<<<
@@ -18988,20 +19011,20 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 */
       __pyx_v_opt_lemmas = ((int)0);
     }
-    if (values[7]) {
-      __pyx_v_min_len = __Pyx_PyLong_As_int(values[7]); if (unlikely((__pyx_v_min_len == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 104, __pyx_L3_error)
+    if (values[8]) {
+      __pyx_v_min_len = __Pyx_PyLong_As_int(values[8]); if (unlikely((__pyx_v_min_len == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 105, __pyx_L3_error)
     } else {
       __pyx_v_min_len = ((int)3);
     }
-    __pyx_v_stop_set = values[8];
-    __pyx_v_lemma_gen = values[9];
-    __pyx_v_whitelist = values[10];
-    __pyx_v_always_include = values[11];
-    __pyx_v_outbuf = ((PyObject*)values[12]);
+    __pyx_v_stop_set = values[9];
+    __pyx_v_lemma_gen = values[10];
+    __pyx_v_whitelist = values[11];
+    __pyx_v_always_include = values[12];
+    __pyx_v_outbuf = ((PyObject*)values[13]);
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("process_tokens", 0, 1, 13, __pyx_nargs); __PYX_ERR(0, 96, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("process_tokens", 0, 1, 14, __pyx_nargs); __PYX_ERR(0, 96, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -19013,8 +19036,8 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_ngram), (&PyBytes_Type), 1, "ngram", 1))) __PYX_ERR(0, 97, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outbuf), (&PyByteArray_Type), 1, "outbuf", 1))) __PYX_ERR(0, 109, __pyx_L1_error)
-  __pyx_r = __pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(__pyx_self, __pyx_v_ngram, __pyx_v_opt_lower, __pyx_v_opt_alpha, __pyx_v_opt_ascii_alpha_only, __pyx_v_opt_shorts, __pyx_v_opt_stops, __pyx_v_opt_lemmas, __pyx_v_min_len, __pyx_v_stop_set, __pyx_v_lemma_gen, __pyx_v_whitelist, __pyx_v_always_include, __pyx_v_outbuf);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outbuf), (&PyByteArray_Type), 1, "outbuf", 1))) __PYX_ERR(0, 110, __pyx_L1_error)
+  __pyx_r = __pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(__pyx_self, __pyx_v_ngram, __pyx_v_opt_lower, __pyx_v_opt_alpha, __pyx_v_opt_ascii_alpha_only, __pyx_v_min_context_tokens, __pyx_v_opt_shorts, __pyx_v_opt_stops, __pyx_v_opt_lemmas, __pyx_v_min_len, __pyx_v_stop_set, __pyx_v_lemma_gen, __pyx_v_whitelist, __pyx_v_always_include, __pyx_v_outbuf);
 
   /* "ngramprep/ngram_filter/filters/core_cy.pyx":96
  * # ======================== per-ngram processing (bytes-only) ========================
@@ -19041,7 +19064,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_ngram, int __pyx_v_opt_lower, int __pyx_v_opt_alpha, int __pyx_v_opt_ascii_alpha_only, int __pyx_v_opt_shorts, int __pyx_v_opt_stops, int __pyx_v_opt_lemmas, int __pyx_v_min_len, PyObject *__pyx_v_stop_set, PyObject *__pyx_v_lemma_gen, PyObject *__pyx_v_whitelist, PyObject *__pyx_v_always_include, PyObject *__pyx_v_outbuf) {
+static PyObject *__pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_tokens(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_ngram, int __pyx_v_opt_lower, int __pyx_v_opt_alpha, int __pyx_v_opt_ascii_alpha_only, int __pyx_v_min_context_tokens, int __pyx_v_opt_shorts, int __pyx_v_opt_stops, int __pyx_v_opt_lemmas, int __pyx_v_min_len, PyObject *__pyx_v_stop_set, PyObject *__pyx_v_lemma_gen, PyObject *__pyx_v_whitelist, PyObject *__pyx_v_always_include, PyObject *__pyx_v_outbuf) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -19051,10 +19074,11 @@ static PyObject *__pyx_pf_9ngramprep_12ngram_filter_7filters_7core_cy_process_to
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("process_tokens", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2.__pyx_n = 12;
+  __pyx_t_2.__pyx_n = 13;
   __pyx_t_2.opt_lower = __pyx_v_opt_lower;
   __pyx_t_2.opt_alpha = __pyx_v_opt_alpha;
   __pyx_t_2.opt_ascii_alpha_only = __pyx_v_opt_ascii_alpha_only;
+  __pyx_t_2.min_context_tokens = __pyx_v_min_context_tokens;
   __pyx_t_2.opt_shorts = __pyx_v_opt_shorts;
   __pyx_t_2.opt_stops = __pyx_v_opt_stops;
   __pyx_t_2.opt_lemmas = __pyx_v_opt_lemmas;
@@ -21157,7 +21181,7 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
  *     bytes ngram,
  *     bint opt_lower = False,
 */
-  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(12, Py_False, Py_False, Py_False, Py_False, Py_False, Py_False, __pyx_mstate_global->__pyx_int_3, Py_None, Py_None, Py_None, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 96, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[2] = PyTuple_Pack(13, Py_False, Py_False, Py_False, __pyx_mstate_global->__pyx_int_2, Py_False, Py_False, Py_False, __pyx_mstate_global->__pyx_int_3, Py_None, Py_None, Py_None, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_tuple[2])) __PYX_ERR(0, 96, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[2]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[2]);
   #if CYTHON_IMMORTAL_CONSTANTS
@@ -21195,31 +21219,31 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 10; } index[] = {{2},{68},{35},{54},{37},{60},{24},{52},{26},{34},{29},{33},{45},{22},{15},{179},{37},{4},{30},{32},{1},{1},{1},{1},{1},{8},{5},{6},{15},{23},{25},{7},{6},{2},{6},{35},{9},{30},{50},{8},{21},{46},{20},{32},{22},{30},{37},{3},{3},{3},{5},{5},{3},{8},{3},{15},{4},{3},{4},{5},{5},{20},{10},{8},{4},{15},{1},{3},{15},{14},{6},{18},{4},{1},{9},{17},{5},{18},{5},{8},{15},{6},{9},{5},{6},{5},{6},{7},{8},{3},{12},{2},{10},{5},{13},{7},{5},{8},{9},{9},{7},{5},{8},{7},{7},{4},{10},{4},{8},{4},{7},{5},{38},{3},{9},{20},{10},{9},{10},{9},{6},{4},{3},{3},{14},{14},{11},{10},{19},{14},{12},{10},{17},{13},{8},{5},{12},{10},{12},{19},{5},{4},{5},{4},{4},{8},{6},{8},{6},{6},{6},{9},{1},{5},{1},{0},{714},{3},{3},{3},{4},{3},{4},{3},{1},{4},{5},{4},{1},{1},{2}};
-    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1846 bytes) */
-const char* const cstring = "BZh91AY&SY\356\335@\264\000\001\016\377\377\377\357\377\377\377\377\367\337\277\377\377\300\277\377\377\366@@@@@@@@@@@@@\000@\000`\006n\356\215\270\2315\234\337{k\274\347{w6\327\013\302Q)\246\215\006\201\244\303SMOByOL\215L\201\246A\246\201\240h\r\003\010\0312z\003F\247\240\206\324\032 j2\r\004\322e\033\324\311=& \032\002d\300\010\032a4`\000\000\000\232i\223L\003S&\020\215MMOP\006@\000\000\000\323@4\001\240\000\000\0004h\323CM\000i\222\021\242)\264\217I\264\2326SG\244\323@h4d4\006\200\000\000\000\000\000\000i\242\014\000\023\000\0010\000\000\000\000\000\000\000\000\000\000\000\000J\021\032\236\252~\3214\325\036\215&\364\2402h\001\240\001\240\003 \014\200\000\000\000\000\000\331Ap\025\002\"\232B]\343\025oq\257//#M\212\327\373\234Q\025a\243\2429|D\231\005\026\221$\001lP\300\340\n\014\343\"\314\t'R\324\013\222\003I @\210\221@\210\021\004\322\264ng\"\274.\027_\266\251 \032\013\3760\256\322\230\247\366b\355K44X\201b\tk\n\272\363\022\311u\3034n\306Xt\213831\014IJ\r7(WIHBR\033%\317\2310\365\276P\314\036\340\231\221\313/\203\365>\362Q\221\027\3071\223n\\ek\203\255\010\210t\242\033\026f(\017$\345<\346\260\034Q2\244u*\300\261\377[\256\212K\013!\225R\300g\365\272\300\225X\234\177\t\022\302\n3o\321\010!F\352\320 \236\024s\235K6oi\331\"8\270M3\224\356\302\210\321\030`=\024\330\256V\315\356\035\326\314$j\267\017\225\230F\306\234\274\305!\223046\371u{\030`\200O\270\210X\032\032\360\335\253\034\227\"\243\255\351x\233.C\276\370-\240\364rhiI\253r7\006s\306g@\250\306\0243t\364\264Z\204\336\025\021\242\325+\366`\203\251\215%\341\213\024\367\332\326\352[\250'\302g\014\033[eb\356\313r\354\205\0322\330`\004\005\235\302Xow\212\333\267:OZ*J\255\207nx\242Yq\371q\244Q\220\\|\177\n}\024\335\2173\005\352\024\"o6\367B\224\t\003\303\264\331\"%\322.%8t`\311\342\n)?\325\214p\230+\014E\243^\0067\nd\260#\304\250\244%\212\275\342\272\301\236,\3273p\272\005d3\333\223w\375\315\246\331\345C\215j\302\332I\242z\254\027\334?\007d\250\351|/n\245\330\210\017\265w0\266\321f\204\025\342\032\365\370\266i\275""\227\2411\027Q\330%\r\351@J\324\323\203;3\204\351#\362C\306\313M\300@\314,\343\002\320J/'\244\242\300\226\234\250p\3038\333!\251\250\303Z\204\032\377\313V\246HFr\232G\3430\244{\371s\317_\314<`\345\331I\353:\222\211\003'\352(<\200P\033\345\260\204Cp\013amV\330\002g\033\302\237`7\222\216`\323\220\027 \336\034V\332Q\374<\\\233Q\350S\037#\0309\340\320\020\002t\2468b\307\215\342~U\030\347\252\202\241q\001Qvs\252\254\344D46t\036\025\004\033\r\270\264{2!\377\354\023\021\t\306\n\010\264\204\001\030u\301\201a\360\221A\027qh!\010]4\343\312\330\256\206Q\305.(aa\321aR\t\213\021\305t\342\016\003\321\213^>\215a\316\275\\\307|X\223\220\360\276\350\370\037\021\310\246l(\312\241$g\206\034\313<\250\035\314,\316\245\017\331\000D\034\332'9C\023\005\020\235\300\260\335qLET\257U\\\006\205\341\302\005\010\300\256F\266\373\242z.\317\224\023\020\347\007\304\325Q\203\032\212u\312\251\215\220\306\034Q\024\330-Q\334\021\366%\212*\252\217\302\004\026%\252Zno\266\272\350m\361\264i}\n\302R22eU%\355m\221\032r\254\304v\000,x%\210(Ui!X\253\024|Ut\030\217\255%B\004:S\210]w\246\260X\242\016\034C3\006m\225\3456 .l\014\203\360\022Y\225\202F\250\310P\340\224S1JL\242\254\363\210e\005\300|G\340~\242\030%\2235\025\306\214A\360s)\203V\224\253\021\310`>\213\026\005\210\006\221\341c\226O\266\303\n\023\300\"3u?\342\340\032R\005\001\001\207\0018\213!B\231\205`\243I\"\300Z\024\200(\004a\006\320J\014\324t\204\035Eb\3225\210E\022\n{\216\360\000\301\334\203P\317\200\327Z\255\243\014\332T\330\004\257\246Rw\002@\330\"\270\246\252\373\340\250N@\032\230W1h\222\t\004N\261@\024\"A\316GV\264\216\263\034\"\241*\n%ZB\351\244[`\021|\321\037\205\250`l\247\346\224\274.\004p\251\262\277]\265-\032qb=\314Db\253\310\216L{\300\252*\205T/\022\342)\247\234`\031\305\2063$\220\250\214e\212\226\362E\273%iD\252\225\323A\002\\\301\325\021\252S\320\311\203\231\235\\\257e\225\225\221a*(\224\326\222\014F\024RL\306\311c\344\327\204,\261\026g\223\306\201(\3263\3355\255;\311#\220d\032vD\360Vq\2522/1\245\004R\220\253\030\311FPg\260\022\224\022X""\311\021\0136E\325\271\214\206\242\333a\0347d\0310,\027\224\356\204Z\352\034\032FeZ\203\203\314O\"\316]\341\030kT2\232JO\025\035\006X\301\200\313h\014`CP\003)\302*j=o\244\006\230\204\233V\220\204\310\345\250\252%\315\023\\UA\3226\321t\206R\310\020.\241\212\205i=D\361\251Z\000N\2466C\270l\223U\021\245\211\224pU8\211]\032\273\332\334-\032\204\300\261\247PY\003<\264,\tX\311\247\232aP<\245~\204\254,\247\3052\200\305z\217\020\274\222lh@`\224B@\303\276\205\232\202$\201\326V\300,&\2101X\203\033\211\027\025\250F\272\030C\177\020(k\316*\022\322\032\273N\206\326\260\347\350\324\024U\327\271{\027p\311SU\023\217\"\271\267\353'\251\275\272)\317\265L\\u\224)\217\364\266\366[4\265\2234\321{\203cGA\225\005\006\033\345\311\355s\014\312\365i\320\204l\241\262nM\372\336.\376\322\257X\346\324\\BYz\331&.\376\277#\n\314\267\374\253\237\335\373Uzi\252a\035]\251\276\307n\027\357\354<\251\340\312\247\025-F\333\307\261\301\337?\261\253\343gp\277\034\347\257\331=:\027\331\230\347r\366\005\007\262\311\273\225\037\363i\037\013\265\307\310I\306\216\3264\300\251\007\201\225!\nd\013\2115\201\306\024hG\225\305$\344\265h,\253TDZ\300\342\310HF\261\251 QG\377\213\271\"\234(Hwn\240Z\000";
-    PyObject *data = __Pyx_DecompressString(cstring, 1846, 2);
+    const struct { const unsigned int length: 10; } index[] = {{2},{68},{35},{54},{37},{60},{24},{52},{26},{34},{29},{33},{45},{22},{15},{179},{37},{4},{30},{32},{1},{1},{1},{1},{1},{8},{5},{6},{15},{23},{25},{7},{6},{2},{6},{35},{9},{30},{50},{8},{21},{46},{20},{32},{22},{30},{37},{3},{3},{3},{5},{5},{3},{8},{3},{15},{4},{3},{4},{5},{5},{20},{10},{8},{4},{15},{1},{3},{15},{14},{6},{18},{4},{1},{9},{17},{5},{18},{5},{8},{15},{6},{9},{5},{6},{5},{6},{7},{8},{3},{12},{2},{10},{5},{13},{7},{5},{8},{9},{9},{7},{5},{8},{7},{18},{7},{4},{10},{4},{8},{4},{7},{5},{38},{3},{9},{20},{10},{9},{10},{9},{6},{4},{3},{3},{14},{14},{11},{10},{19},{14},{12},{10},{17},{13},{8},{5},{12},{10},{12},{19},{5},{4},{5},{4},{4},{8},{6},{8},{6},{6},{6},{9},{1},{5},{1},{0},{718},{3},{3},{3},{4},{3},{4},{3},{1},{4},{5},{4},{1},{1},{2}};
+    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1849 bytes) */
+const char* const cstring = "BZh91AY&SY\217\263v\016\000\001\020\377\377\377\357\377\377\377\377\367\337\277\377\377\300\277\377\377\363@@@@@@@@@@@@@\000@\000`\006\210\345a\215\005W\320h\002\215\303\270jh\215!\246\205=\225?CI\262j&\236jf\251\3514\003 \320\320\003\324\320z\201\246\3244i\352oQ\241\224\365<\204m\252\tM M\004\304\3211\r\032\211\341!\017S\324\320i\243L\232\032\r\000\000\000\000\001\243\3244\310\321\006\000\t\200\000\230\000\000\000\000\000\000\000\000\000\000\000\0004\321\r\024\364)\000h\320\032\001\240\036\240\323M\000\323@\032\000\000\000\003F\2154\000\020`\000\230\000\t\200\000\000\000\000\000\000\000\000\000\000\000\003STh\3654LF\324\364\231\032a\032\001\223\010\031\031\001\223@4\001\204hi\210\323 \r\030&D\322 \331\030\tD.\003b\310E\217!q\361\361(\220ANQ\224\0201\024\203L\006\223\0301\264\"\362i\244\200\331F\026%\025e4\314$\2273P\3370\367]\304\022&\231!\"<\363\2063\242Z\214Ls\277\010\330\023i{\256J\223\262\245\277\372\246<\2476\360\306\206\221/\263d\233M;\032\r\r/\354\316\376v\335\332\333\310\3661\302\230\320\357\233\232\361k\030\032(\332G\023F\305\307\246y\2038{\0043\2334\373\237\245\365\234FS>J\214\2733Zv8[o\022GA\204\261\350\242\360\\\265\235?R\250V\2043&\266\233P\344\376o\363\341<\366T\243\030T+\3738\334G\tA\341\376\243\005\221#\332\316\330\242*\030\341i\022\271C\333\244\227\265Z^\367X\235\234B\346*\314\201\342\361\206\003<\354\254\264G[\310\305\326!$o0\233k\212F$\357\342\254\206\316@\020h\277\007\316\202\353\000\306\214\340\200\036\314\n\302\242Vmc\316\350\337\224%\277T\235ut*\0136\253\331\362 md\253A\241\247T>s\215M\213\226\352,\227\\\n\013U#\262\251\246\033Bs@\344\270\367Z\273\322\211\360o{8U\265\272+\014W\223>\310\0169<\341\260\020T0\213\t\277\373\212f\n\355Z\017\363+f\305D\0205\2314\347\313\232\344\321\202\230\246\355\027\r}\206s\032\245JV\372Z\253Q\023CBc\307\232\211X\202\371\317+\317,\277\270\355g\371\201\317u\343\356\310\330t\207<\314l\320\245\245h\364h\031\371Mz\304\270vsG\337\303Q\255\2162\345\360}\233\373\345d\326Z\337vX\264\2143\320\352\346=\031\362\315cm\335R""\361sp`\362\335\277o\216L\321\213\362Cr\355\223|U\313\311\363*J\017.\367x\372)\302yU\340*\333HRd}\310h\332\221\244\000`h\027\202`R\n\262gg*P\022\224\223\260\307\244\245by=\"\242\345\321\267\327\363s\215\214\225U2\377w\230\236_c\0145\373\205\246\337cLW\222x\266L&\267\304\345\254\016\037\022\021c\"[M\227l\317f\201M\352\321\355\320V\263\253\310\326\013\337\037\314\252\234Q\321\341\354\362x\360\341\326t\027\235>\260D\010\006\354\336\247f\027\372\375\031\363\345\305\3656\250d\017\224\367\317=j\312QQG\353\332=\324<\310x\315\207\365\345\025\355\304\275\230\300\315\307M2\"7]\026\023\037\322i\307P\201\220\344c\326\254\360\317as\242\307\010\260t\0262\224\027\224*\024#!\225\204\030\006|*\341\377*\030\353\327\007\r\272$\227t\033:F\232S\215\022\253\314\266r\221\033\035\372J:\327(\224\243\222\253\340\233\334 \022\035d\313I\246\247Cz\005\334\n\253\307\035CF&\353b\340I.\030\300\243\"\3063\2779\344\2743\343Q\224h\260\027\251\346\272\021\342zs>q\225\210\335\303#\035\r\216\231\203\255H\351\020\"\"\010a\200\016H\206\304\033\r\005i\251\312b\006sT\214\231\205\350\013\327\207}\267\343\201\237\213+c^\355\033T\001a#\317\223\035\321jy\375\327\035\002Z\201\333\241qLB\316;\212|=\233bh\354L\365\022BR\255\255\177\000\346\225\311\213v\2654\360\021,\223\2465L\246\254o0i!)\314c\274,\010\324\216\370\362\246\373\373evU\273\230\215 \350\337\3466\t\314\271\010-\325\244\003J\007j\335\031\301\255\331\242\034\302\342\224\217\241\207\306\230I\254\034.:X\254\013\232\325W%2G\013\026\213\232,&#1\247\267\032\265\036\263\202$\342.d\221\260B*H*\330,\320\000\301\230\241\250\342@k\263\365H\303\032\307\253\003\277k\263\316\020\t\212\364]'k{a\255\343Y\202\265\213\252d\222\022\021[\212\005\000\244 \020\311`CN\200\252\013\356.\277&\246&\325\323@\251\031T\217\027\271\301\373\343\363\214\"\0261^(\367\273r\347\324\256\353\025H\301\312\216j\315\232\r\321\230$$6wu\025\340\327\341\201\264\336\333\262\276\226]\233#\301\223\302\326\244'\313]5U\353;\356\241Nh\232\220\321\343\275\217$\275/?\325\363\217:\017\336\236\352&Cu\256,;""9\316\331i3Y\320m\3301\257[)D\235n\032\356\347\214%\322\363\211{A\207a\346\354\337\233#\345j;3s\234E\216\345\275Jo)\305\241x\3578\273\277S\272#\206\007[\372\022\231\246\306\332\267A\234\215\343m\352l'\033\262\2345L\223$\332\334\231j0\262\n\277\t\221)9\340T\253Zf\265&\347\020Gf\2421(\234\017\002\273'\225-\205\270\201\022'Zm\344\202\266NLA!)U\231(\032\202\375\032\300\244h\036\3431\200\206\346\"\323\324N\272\223\320\n\226\262\300\204\006\361+i+\031)\3137\263\203\277Y\313\301\263\376\324\260.\315\342\375\307\310M\035e3:\373\373/2\027&\343\325X\267%\352\246\270\337\305\326\363\213R\376\024`\333R\353\010\256\3270\264t\220}\247\330\010j\272\024\237\201\307\326\222\220\271B\n\227\034\301\010\212\2009\234\"F\014\214\260\2341k\3458\221\246:\301\002*\037\037\216\352\210\0046Ll\220\3007}B\211\r\373\340\205\347AY)\300\267\n\037\242#\353\036\345\333d5\003<;v\374g|\020\007\034\003\005\0059\001\364\265\366\022/\030^\033\315}q\214_\303g\3656\213\223d\263\253\023#\034B{\034\033|G\256x\277\265\273\372\273\\\326\305\320\350\351\3565\354c\000\216?\313$mm'\2275\251{\320\330\341\326\037\351z\0265p\323`e\257\330\032\376H\317\247'\313\215\272Mx\010\236\203*H\321\227\331\006\242\204\034\350\034\260\327\220\241\035!\n\024\246\024N@\260\222X9c\037\230\334\236)\256A{\252,\2727\006\026\310+J\006\005b\332\224I\026\323\377\213\271\"\234(HG\331\273\007\000";
+    PyObject *data = __Pyx_DecompressString(cstring, 1849, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1722 bytes) */
-const char* const cstring = "x\332}UKs\333F\02267\364F)\313k\321\226\245\310\217\365\310N\3028\221\351\330\245$\256\204Q\212\226\350]9\021%\352\025\337\246\206\300\220\234\030\030@\230\201$\246v\253|\344\021G\034q\344\221G\036}\364QG\034\371\023\374\023\322=\200(9N\271\212\004\0323=\375\370\372\353\236\037H\315q\210-\\.\225\360\244\"~\300-n\013\3319[$\237\333\304\r\225&-N\204\264\3711\267\t\2236\221\236&\312\021\240\3764l\267y@\016\005?\"\266\307\225\331\342\307\276\2478Q:\0206W\253L\022O:=b\005\234iN\030ie\207t\227i\"\024\261<\251E'\364B\005N\210\313]/\350U\340\024\232bJ\211\216$\332#p\330~`\354d\032\3502W\312\r\037\005B\263\226\303s\205,\250v\340\271\037:k\322\"GBw\211\356\371\234\224\363u\0350\251L\032gG258!\000*}\016\273\265\363\200\211\014\204L\251\356\372\272GT\227\201i\035\372\020\\\333\013\210\325\323]OVX\020\260\336\272\t\300\0135\361\332\244\345\205\322V\344Kv\014V>\267\357\257\277\357+\003?\364}/\320\334^\227\207\314\021P%\317\346K\010<(C\221\312V\231\200\23728\303D\312K\244\003\247N\225\263p\000k\343\246\272a\022\334\307\004!\204\206\007P\232\322\254\232(1\037\233;\242\305\003\000\031 \304\262\202\023S?I\266\352[\017\226\237,\033Z\004\374wp\257 \272\226\345@\345\200\016\230S(\034\r\316\020^U!\353m\322\363B\"9\204\te\365A\357\374\001\335\345\222(\256Q eS\013\246!o\n\307\201\233\345\034Wq\310\361\3643\346(^\331|\007<\0109'\030\263,\256N\321\2546\233\315\035\315}\342\262\236\301\0208\375\007\017\2743\260\367\244a\017\230\005F\036\362\000\310\241\271\213\337^\013\023\253\254\224\357\377\314l\233J\204\010\023&\200\3227\307\226\3478\030\022\024\247\302ZV\365\034\237Q)\013x\345\257\313\2474Z\261\205B\277\334x\357X\344K,U\3070\010\263\300\206\344\307\232Km\332\343\2547\205\312\216\330\030\245\022\177pR\375\211|\363\036\277\244\007\345k\263\320\321\204\322\200\333\241\305)%vh\022\225\236|\000\345<\024\314\201]KH\241a3KwEq\247]\221\314\345\247\224nx\222\253\300z(;\001sa\\\370\231D\333P`\036<\314^\352\241\345\005\234Z\275\212\337;\256f3\300~\007\210\367\327\220\253\023<\336\331\237\254\206""\223\3420\307\361,3H0=b3\315*\177\263\233\221\034m\344s\250R[{^[\333\252\255\355\327vV\327\327WW7\033\317\327\352\273u\307\021\276\022\352\331\306\356F}\267\266V\333\255\321\255\355\372\263\365\027\215\315\275Fcock{\263\001\377\255\306\326^cu\227\322\255\3361\374\327\240\007h\003\n\263\315\333;\365\306\356z\243\376+}\272\303\017B.-\276_\337~\212\rU9\353\255\027@\215\323\340hFP\346\034\261\236\242BZNhs\346\373\\\332L\365\244%\274\n\200\0103A\000\340-\246\270\005\305\301\006\241\364T\350p\215u\307O\316\002\313\001M0D\241\333-\336b\326K\013\232\001jic\230\324\306\336\243B\321\254\262\020!\214\013.C\327\3644\017\002\250\030R\314n;\254\243\200A.\323\371\350\240\264\035Jp\017\376\314Ci\214\237\n\033\376.\316 x\343\004C\353\223\230\201\321\216\337e\0311sv:\334u\031X\220F\320\260B\251\303\301\276\343\035\361\200R\227A\370\024\206-NZ\027d\330\304\251\006k\236\035:\360F*N\236\320\007\360\344G\360@\016N(Y9O\311JN\311JNIH\337\36355\301\031AYBd\237\024\257\007\\3\341)#a`(\250.\344i\226\224\366|\0059B\375|\000\331\367`\014+?\360p\316P\355\275\204\326\244\024xO\255.\267^\252\320\315\276r\320P4\2250R(}a\275\204\304\352\362T\357\320\334_X\344\203\2209Y\246gM;\221\262\366>\267\000\360\203\330\021\n\222\r\332P\017Ja\204\346P\201\224\017\000#\347\261\234\223O\315\231\216\301R\3012\344\013\263\322\244\013\377L7\010\221K\032\266)\006\017\371\207>t\037\207K%\344\352\250\013\225v \204\343\352^\343\227\225\312\253\302\370\372\\\n?\262\230\316\315\243\000\317k\263\370\234\377\024\177\267n\303\363\355\334\205\213\013\361\305\370E\322L\213\037\277\n\372\327\372\265t\352J\377\340\355?/\\\274\031/\246\305\233\361\217\211=\370j\370\237\321\243\264\370\357\370\367\301\307\203\203\264x/\371yX\036\225\322\342\r\324\271\221)\376\220\354\016\026p\031\017O\275:\352[Q)\235*E\013\361\342x\352_\375vT\303\215\371\223\271/\022\226\034\214\213\237\306\205q\361n\002gIRx{\343\302\305K\375\273\375\247}\206\312\255\350\037\321\335\250\036\337\031\024\007\265\301\356\360\332\260\226N\227\320\336\245\376\343\376NT""H\247/\247S\263\021D\373!\345\253\321\"\370\374\244t2s\177P\032\224\207\327\207\255\321\245\327O\336<~\323\304\365\371\210\307\337%%\010a*\267]\215\202\270\224N\317\202\265R\274\224\264\006\340\350J\3770\332\211\013\351\314B|=n%F\270\231\254\r\n\203\371aa\014\037\245\361\364\365\310\030\234\356?JA\336G\253h\356\021\232\3320\036@x\036w\222\337\006\317\207,\235\276\032\335\007\274\232I\007\302\005\177w\342\377C\344\373\303oG\2051|\034\344\266\340uy\346\344\nI>J\036\2453\267\342ZZ\272\227,\237\224\237\214>\032e\013c\263:s;F\367\227\347\242&\206\213\307K\263\321\362\311\374\022Xm\216g\347#\\Z\270\233\224\336N]X\270\221\336\372,\331\030\226\206\213\351\255;\261>\271\267<\254\r\233)\001\210@\353\366\027\2111\242\243\357\343\317\240\336\305\223\245\352\350\277\257W_\007oJ\230y\351lS$\372\344\353\352hut\220f(\200\353t\022\220\t-K$G\365jT\006T\027\261d\235\250\031\261t*\013\014\310\362\277\350q\264\035i\300d\007 G\006\216\213\227\372\337F\205\2504\2717\362\033#\277\0276'\027\003N\373\027\320Q\177\002\344}C#";
-    PyObject *data = __Pyx_DecompressString(cstring, 1722, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1735 bytes) */
+const char* const cstring = "x\332}UKs\333F\0226\023j\255\224\345\265h\353\021\371\021\217\354$\21472\035\247\224]W\226\253\024-\321\273\362F\224\250\327\37265\004\206\344\304\300\000\302\014$1UI\371\310#\2168\342\310#\217<\372\350\243\2168\362'\370'l\367\000\242\344\365V\252H\2401\323\323\375u\367\327=?\222\232\343\020[\270\\*\341IE\374\200[\334\026\262s\261H\276\262\211\033*MZ\234\010i\363Sn\023&m\"=M\224#@\375y\330n\363\200\034\013~Bl\217+\263\305O}Oq\242t l\256\326\231$\236tz\304\n8\323\2340\322\312\016\351.\323D(byR\213N\350\205\n\234\020\227\273^\320\253\300)4\305\224\022\035I\264G\340\260\375\330\330\3114\320e\256\224\033>\t\204f-\207\347\n\031\250v\340\271\177t\326\204EN\204\356\022\335\3639)\347\353:`R\2310.\216djpB@\252\364\245\334m\\N\230\310\222\220)\325]_\367\210\35220\255C\037\300\265\275\200X=\335\365d\205\005\001\353m\032\000^\250\211\327&-/\224\266\"\337\260S\260\362\225\375h\363c_Y\362C\337\367\002\315\355My\314\034\001U\362l\276\202\211\007e(R\331*\023\360S\006g\030Hy\205t\340\324\271r\006\007rm\334T\267L\200\207\030 @hx\220JS\232u\203\022\343\261\271#Z<\200$C\n\261\254\340\304\324O\222\235\372\316\343\325g\253\206\026\001\377\005\334+@\327\262\034\250\034\320\001c\n\205\243\301\031\246WU\310f\233\364\274\220H\0160\241\254>\350]>\240\273\\\022\3055\n\244lj\3014\304M\3418p\263\234\347U\034s<\375\2029\212W\266?H\036@\316\t\306,\213\253\363lV\233\315\346\236\346>qY\317\344\0208\375+\017\274\213d\037H\303\0360\013\214<\346\001\220Cs\027\277\275\026\006VY+?\372\211\3316\225\230\"\014\230@\226\276;\265<\307AHP\234\nkY\325K|F\245\014\360\332\377.\237\323h\315\026\n\375r\343\275c\221o\260T\035\303 \214\002\033\222\237j.\265i\217\213\336\024*;b#J%~\345\244\372\017\362\335G\374\222\036\224\257\315BG\023J\003n\207\026\247\224\330\241\tTz\3621\224\363X0\007v-!\205\206\315,\3345\305\235vE2\227\237S\272\341I\256\002\353\211\354\004\314\205q\341g\022mC\201y\360${\251'\226\027pj\365*~\357\264\232\315\000\373\203D|\274\206\\\235\344\343\203\375\311j8)\016s\034\3172\203\004\303#6\323\254\362""\177v3\222\243\215|\016Uj\033/k\033;\265\215\303\332\336\372\346\346\372\372v\343\345F}\277\3568\302WB\275\330\332\337\252\357\3276j\3735\272\263[\177\261\371\252\261}\320h\034l\355\354n7\340\277\323\3309h\254\357S\272\323;\205\377\006\364\000m@avy{\257\336\330\337l\324\177\246\317\367\370Q\310\245\305\017\353\273\317\261\241*\027\275\365\n\250q\016\216f\004e\316\t\353)*\244\345\2046g\276\317\245\315TOZ\302\253@\022a&\010Hx\213)nAq\260A(=\027:\\c\335\361\223\263\300r@\023\014Q\350v\213\267\230\365\332\202f\200Z\332\010\223\332\330{T(\232U\026\020\302\270\3402tMO\363 \200\212!\305\354\266\303:\n\030\3442\235\217\016J\333\241\004\367\340\317<\224F\374T\330\360wq\006\301\033'\030Z\237`\006F;~\227e\304\314\331\351p\327e`A\032A\303\n\245\016\007\373\216w\302\003J]\006\360)\014[\234\264.\310\330/\200\212j\35750\036W@\035\347\034hyv\350\300\033\3119yBg\300\223\237\300\003Y9!i\3452I+9I+9I!!\236\257\251\201k\004e\t\221}R\2740p\315\000VFB\250(\250.Dn\226\224\366|\005QCE}H\273\357\301`V~\340\341\344\311\241S\n\235@\255.\267^\253\320\315\276\3624\242hjc\244P\372\302z\r\201\325\345\271\336\261\271\321\260\354G!s\262H/\332x\"e\r\177i\001\n\002bG(\0106hC\205(\205\241\232\247\n\244|$\0309\307rI>7gz\010\213\007\313\020/LO\023.\3743\335 Dvi\330\246\010\036\342\017}\350G\016\327L\310\325I\027j\357\000\204\323\352A\343\337k\2257\205\361\374B\n?\262\234\336\373\"]XD\031\236\267\346\360\271\3709\376\356\336\203\347\373\205+SK\361T\374*i\246\305\253o\202\376\255~-\235\276\321?z\377\247+Sw\342\345\264x'\376{b\017\3762\374\347\350iZ\374\"\376epup\224\026\037&?\r\313\243RZ\274\215:\2673\305\037\223\375\301\022.\343\341\3517'}+*\245\323\245h)^\036O\377\271\337\216j\270\261x\266\360u\302\222\243q\361\363\2700.>H\340,I\n\357o_\231\272\326\177\320\177\336g\250\334\212>\211\036D\365\370\376\2408\250\r\366\207\267\206\265t\246\204\366\256\365\277\357\357E\205t\346z:=\027\001\332?R\276\031-\203\317\317Jg\263\217\006\245Ay8?l\215\256\275}\366\356\373wM\\_\214x\374\327\244\004\020\246s\333\325(\210K""\351\314\034X+\305+Ik\000\216n\364\217\243\275\270\220\316.\305\363q+1\302\235dcP\030,\016\013c\370(\215g\346#cp\246\3774\005\371\020\255\242\271\247hj\313x\000\341e\334I\3763x9d\351\314\315\350\021\344\253\231t\000.\370\273\037\377\006\310\017\207?\214\nc\3708\312m\301\353\372\354\331\r\222|\232<Mg\357\306\265\264\3640Y=+?\033}:\312\026\306fu\366^\214\356\257/DM\204\213\307Ks\321\352\331\342\nXm\216\347\026#\\Zz\220\224\336O_Y\272\235\336\3752\331\032\226\206\313\351\335\373\261>{\270:\254\r\233)\201\024\201\326\275\257\023cDG\177\213\277\204z\027\317V\252\243\177\275]\177\033\274+a\344\245\213M\221\350\263o\253\243\365\321Q\232e\001\\\247\023@\006Z\026H\236\325\233Q\031\262\272\214%\353D\315\210\245\323\031\260\251\371\350\347\344\023$\302\3257\277G\273\321\221\241\340\270x\255\377CT\210J\223\333$\277G\362\333b{r]\340\035\360\n\272\352\277|\267K\317";
+    PyObject *data = __Pyx_DecompressString(cstring, 1735, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (2899 bytes) */
-const char* const bytes = ": All dimensions preceding dimension %d must be indexed and not slicedBuffer view does not expose stridesCan only create a buffer that is contiguous in memory.Cannot assign to read-only memoryviewCannot create writable memory view from read-only memoryviewCannot index with type 'Cannot transpose memoryview with indirect dimensionsDimension %d is not directEmpty shape tuple for cython.arrayIndex out of bounds (axis %d)Indirect dimensions not supportedInvalid mode, expected 'c' or 'fortran', got Invalid shape in axis <MemoryView of Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.Out of bounds on buffer access (axis <QQQStep may not be zero (axis %d)Unable to convert item to object.>')?add_note and  at 0xcollections.abc<contiguous and direct><contiguous and indirect>disableenablegc (got got differing extents in dimension isenableditemsize <= 0 for cython.arrayno default __reduce__ due to non-trivial __cinit__ object>self.name is not Nonesrc/ngramprep/ngram_filter/filters/core_cy.pyx<strided and direct><strided and direct or indirect><strided and indirect>unable to allocate array data.unable to allocate shape and strides.ADJADPADVASCIICCONJDETEllipsisFMTMETADATA_PREFIXNOUNNUMPRONPROPNPUNCT__Pyx_PyDict_NextRefSENTINEL_BSequenceVERBView.MemoryViewXabcallocate_bufferalways_includeappendasyncio.coroutinesbasec__class____class_getitem__clearcline_in_tracebackcount__dict__dtype_is_objectencodeenumerateerrorextendflagsformatfortran__func__get__getstate__id__import__index_is_coroutineisalphaitemsitemsizelemma_genlemmatize__len__lower__main__memviewmin_lenmode__module__name__name__ndim__new__ngramngramprep.ngram_filter.filters.core_cyobjopt_alphaopt_ascii_alpha_onlyopt_lemmasopt_loweropt_shortsopt_stopsoutbufpackpopposprocess_tokens__pyx_checksum__pyx_state__pyx_type__pyx_unpickle_Enum__pyx_vtable____qualname____reduce____reduce_cython____reduce_ex__""registerrfind__set_name__setdefault__setstate____setstate_cython__shapesizestartstepstopstop_setstruct__test__unpackupdatevalueswhitelistx<UNK>.\200\001\340\025\026\330\025\026\330 !\330\026\027\330\025\026\330\026\027\330\023\024\330\026\027\330\027\030\330\027\030\330\034\035\330\027\030\360\026\000\005\031\230\005\230X\240Q\330\004\007\200r\210\023\210A\330\010\017\210q\360\006\000\005\033\230!\330\004\033\230;\240d\250*\260G\2701\330\004\036\230j\250\007\250q\330\004#\240?\260'\270\021\330\004\032\230!\330\004\032\230!\330\004\033\230:\240T\250\031\260'\270\021\360\006\000\005\010\200w\210c\220\021\330\010\021\220\031\230!\340\010\016\210f\220A\360\006\000\005\027\320\026&\240a\240q\340\004\030\230\001\340\004\"\240!\330\004 \240\001\360\032\000\005\013\210\"\210B\210a\340\010\016\210b\220\002\220\"\220E\230\037\250\004\250A\250T\260\023\260A\330\014\021\220\021\330\010\013\2102\210S\220\001\330\014\r\330\010\024\220A\330\010\016\210b\220\002\220\"\220E\230\037\250\004\250A\250T\260\023\260A\330\014\021\220\021\330\010\022\220!\360\006\000\t\021\320\020)\250\021\250'\260\025\260b\270\013\3008\3102\310Q\360\006\000\t\027\220e\2306\240\021\240!\330\010\021\220\021\330\010\013\210<\220r\230\021\330\014\024\220E\230\021\230,\240b\250\001\330\014\017\210v\220S\230\001\330\020\031\230\025\230b\240\001\330\020\031\230\033\240D\250\001\250\027\260\001\340\020\031\230\021\340\014\025\220Q\360\006\000\t\014\2101\330\014\025\220V\2306\240\021\330\010\013\2101\330\014\024\220M\240\021\240!\330\014\024\220J\230g\240W\250J\260a\330\014\022\220)\230:\240Q\240g\250T\260\021\330\014\037\230}\250A\250V\2605\270\001\340\014\037\230q\360\006\000\t\014\2101\360\006\000\r\020\320\017 \240\003\2401\330\020\034\230A\330\021#\2404\320'8\270\003\2701\330\020\034\230A\340\020\034\230A\330\020\035\230Q\360\006\000\r\026\220Q\330\014\017\210q\360\006\000\021\024\2204\320\027,\250A\250Q\340\024\027\220q\360\006\000\031\"\240\021\360\010\000\031\032\330\034$\240M\260\021\260!\330\034\037\230t""\320#4\260A\260Q\330 )\250\021\360\006\000\035&\240Q\330\014\017\210t\2207\230$\230j\250\004\320,<\270H\300C\300r\310\021\330\020\031\230\021\330\014\017\210t\2207\230$\230i\240t\320+<\270C\270q\330\020\031\230\021\340\014\017\210q\330\020\034\230A\330\020\035\230Q\340\020\034\230A\360\006\000\t\014\210<\220r\230\021\330\014\022\220'\230\021\230!\330\010\016\210g\220Q\220a\330\010\027\220q\360\006\000\005\010\200|\2202\220R\220t\230:\240S\250\001\330\010\017\210q\340\004\013\2105\220\001\220\021ADJADPADVCONJDETNOUNNUMOPRONPROPNVERBX___";
+    #else /* compression: none (2921 bytes) */
+const char* const bytes = ": All dimensions preceding dimension %d must be indexed and not slicedBuffer view does not expose stridesCan only create a buffer that is contiguous in memory.Cannot assign to read-only memoryviewCannot create writable memory view from read-only memoryviewCannot index with type 'Cannot transpose memoryview with indirect dimensionsDimension %d is not directEmpty shape tuple for cython.arrayIndex out of bounds (axis %d)Indirect dimensions not supportedInvalid mode, expected 'c' or 'fortran', got Invalid shape in axis <MemoryView of Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.Out of bounds on buffer access (axis <QQQStep may not be zero (axis %d)Unable to convert item to object.>')?add_note and  at 0xcollections.abc<contiguous and direct><contiguous and indirect>disableenablegc (got got differing extents in dimension isenableditemsize <= 0 for cython.arrayno default __reduce__ due to non-trivial __cinit__ object>self.name is not Nonesrc/ngramprep/ngram_filter/filters/core_cy.pyx<strided and direct><strided and direct or indirect><strided and indirect>unable to allocate array data.unable to allocate shape and strides.ADJADPADVASCIICCONJDETEllipsisFMTMETADATA_PREFIXNOUNNUMPRONPROPNPUNCT__Pyx_PyDict_NextRefSENTINEL_BSequenceVERBView.MemoryViewXabcallocate_bufferalways_includeappendasyncio.coroutinesbasec__class____class_getitem__clearcline_in_tracebackcount__dict__dtype_is_objectencodeenumerateerrorextendflagsformatfortran__func__get__getstate__id__import__index_is_coroutineisalphaitemsitemsizelemma_genlemmatize__len__lower__main__memviewmin_context_tokensmin_lenmode__module__name__name__ndim__new__ngramngramprep.ngram_filter.filters.core_cyobjopt_alphaopt_ascii_alpha_onlyopt_lemmasopt_loweropt_shortsopt_stopsoutbufpackpopposprocess_tokens__pyx_checksum__pyx_state__pyx_type__pyx_unpickle_Enum__pyx_vtable____qualname____reduce____reduce_cyt""hon____reduce_ex__registerrfind__set_name__setdefault__setstate____setstate_cython__shapesizestartstepstopstop_setstruct__test__unpackupdatevalueswhitelistx<UNK>.\200\001\340\025\026\330\025\026\330 !\330\035\036\330\026\027\330\025\026\330\026\027\330\023\024\330\026\027\330\027\030\330\027\030\330\034\035\330\027\030\360\026\000\005\031\230\005\230X\240Q\330\004\007\200r\210\023\210A\330\010\017\210q\360\006\000\005\033\230!\330\004\033\230;\240d\250*\260G\2701\330\004\036\230j\250\007\250q\330\004#\240?\260'\270\021\330\004\032\230!\330\004\032\230!\330\004\033\230:\240T\250\031\260'\270\021\360\006\000\005\010\200w\210c\220\021\330\010\021\220\031\230!\340\010\016\210f\220A\360\006\000\005\027\320\026&\240a\240q\340\004\030\230\001\340\004\"\240!\330\004 \240\001\360\032\000\005\013\210\"\210B\210a\340\010\016\210b\220\002\220\"\220E\230\037\250\004\250A\250T\260\023\260A\330\014\021\220\021\330\010\013\2102\210S\220\001\330\014\r\330\010\024\220A\330\010\016\210b\220\002\220\"\220E\230\037\250\004\250A\250T\260\023\260A\330\014\021\220\021\330\010\022\220!\360\006\000\t\021\320\020)\250\021\250'\260\025\260b\270\013\3008\3102\310Q\360\006\000\t\027\220e\2306\240\021\240!\330\010\021\220\021\330\010\013\210<\220r\230\021\330\014\024\220E\230\021\230,\240b\250\001\330\014\017\210v\220S\230\001\330\020\031\230\025\230b\240\001\330\020\031\230\033\240D\250\001\250\027\260\001\340\020\031\230\021\340\014\025\220Q\360\006\000\t\014\2101\330\014\025\220V\2306\240\021\330\010\013\2101\330\014\024\220M\240\021\240!\330\014\024\220J\230g\240W\250J\260a\330\014\022\220)\230:\240Q\240g\250T\260\021\330\014\037\230}\250A\250V\2605\270\001\340\014\037\230q\360\006\000\t\014\2101\360\006\000\r\020\320\017 \240\003\2401\330\020\034\230A\330\021#\2404\320'8\270\003\2701\330\020\034\230A\340\020\034\230A\330\020\035\230Q\360\006\000\r\026\220Q\330\014\017\210q\360\006\000\021\024\2204\320\027,\250A\250Q\340\024\027\220q\360\006\000\031\"\240\021\360\010\000\031\032\330\034$\240M""\260\021\260!\330\034\037\230t\320#4\260A\260Q\330 )\250\021\360\006\000\035&\240Q\330\014\017\210t\2207\230$\230j\250\004\320,<\270H\300C\300r\310\021\330\020\031\230\021\330\014\017\210t\2207\230$\230i\240t\320+<\270C\270q\330\020\031\230\021\340\014\017\210q\330\020\034\230A\330\020\035\230Q\340\020\034\230A\360\006\000\t\014\210<\220r\230\021\330\014\022\220'\230\021\230!\330\010\016\210g\220Q\220a\330\010\027\220q\360\006\000\005\025\220L\240\002\240!\330\004\007\200~\220R\220q\330\010\017\210q\340\004\013\2105\220\001\220\021ADJADPADVCONJDETNOUNNUMOPRONPROPNVERBX___";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
     PyObject **stringtab = __pyx_mstate->__pyx_string_tab;
     Py_ssize_t pos = 0;
-    for (int i = 0; i < 153; i++) {
+    for (int i = 0; i < 154; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyUnicode_DecodeUTF8(bytes + pos, bytes_length, NULL);
       if (likely(string) && i >= 47) PyUnicode_InternInPlace(&string);
@@ -21230,7 +21254,7 @@ const char* const bytes = ": All dimensions preceding dimension %d must be index
       stringtab[i] = string;
       pos += bytes_length;
     }
-    for (int i = 153; i < 171; i++) {
+    for (int i = 154; i < 172; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyBytes_FromStringAndSize(bytes + pos, bytes_length);
       stringtab[i] = string;
@@ -21241,14 +21265,14 @@ const char* const bytes = ": All dimensions preceding dimension %d must be index
       }
     }
     Py_XDECREF(data);
-    for (Py_ssize_t i = 0; i < 171; i++) {
+    for (Py_ssize_t i = 0; i < 172; i++) {
       if (unlikely(PyObject_Hash(stringtab[i]) == -1)) {
         __PYX_ERR(0, 1, __pyx_L1_error)
       }
     }
     #if CYTHON_IMMORTAL_CONSTANTS
     {
-      PyObject **table = stringtab + 153;
+      PyObject **table = stringtab + 154;
       for (Py_ssize_t i=0; i<18; ++i) {
         #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
         Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
@@ -21261,17 +21285,17 @@ const char* const bytes = ": All dimensions preceding dimension %d must be index
   }
   {
     PyObject **numbertab = __pyx_mstate->__pyx_number_tab + 0;
-    int8_t const cint_constants_1[] = {0,-1,1,3};
+    int8_t const cint_constants_1[] = {0,-1,1,2,3};
     int32_t const cint_constants_4[] = {136983863L};
-    for (int i = 0; i < 5; i++) {
-      numbertab[i] = PyLong_FromLong((i < 4 ? cint_constants_1[i - 0] : cint_constants_4[i - 4]));
+    for (int i = 0; i < 6; i++) {
+      numbertab[i] = PyLong_FromLong((i < 5 ? cint_constants_1[i - 0] : cint_constants_4[i - 5]));
       if (unlikely(!numbertab[i])) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   #if CYTHON_IMMORTAL_CONSTANTS
   {
     PyObject **table = __pyx_mstate->__pyx_number_tab;
-    for (Py_ssize_t i=0; i<5; ++i) {
+    for (Py_ssize_t i=0; i<6; ++i) {
       #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
       Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
       #else
@@ -21308,8 +21332,8 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {13, 0, 0, 13, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 96};
-    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_ngram, __pyx_mstate->__pyx_n_u_opt_lower, __pyx_mstate->__pyx_n_u_opt_alpha, __pyx_mstate->__pyx_n_u_opt_ascii_alpha_only, __pyx_mstate->__pyx_n_u_opt_shorts, __pyx_mstate->__pyx_n_u_opt_stops, __pyx_mstate->__pyx_n_u_opt_lemmas, __pyx_mstate->__pyx_n_u_min_len, __pyx_mstate->__pyx_n_u_stop_set, __pyx_mstate->__pyx_n_u_lemma_gen, __pyx_mstate->__pyx_n_u_whitelist, __pyx_mstate->__pyx_n_u_always_include, __pyx_mstate->__pyx_n_u_outbuf};
+    const __Pyx_PyCode_New_function_description descr = {14, 0, 0, 14, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 96};
+    PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_ngram, __pyx_mstate->__pyx_n_u_opt_lower, __pyx_mstate->__pyx_n_u_opt_alpha, __pyx_mstate->__pyx_n_u_opt_ascii_alpha_only, __pyx_mstate->__pyx_n_u_min_context_tokens, __pyx_mstate->__pyx_n_u_opt_shorts, __pyx_mstate->__pyx_n_u_opt_stops, __pyx_mstate->__pyx_n_u_opt_lemmas, __pyx_mstate->__pyx_n_u_min_len, __pyx_mstate->__pyx_n_u_stop_set, __pyx_mstate->__pyx_n_u_lemma_gen, __pyx_mstate->__pyx_n_u_whitelist, __pyx_mstate->__pyx_n_u_always_include, __pyx_mstate->__pyx_n_u_outbuf};
     __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_src_ngramprep_ngram_filter_filte, __pyx_mstate->__pyx_n_u_process_tokens, __pyx_mstate->__pyx_kp_b_iso88591_XQ_r_A_q_d_G1_j_q_T_wc_fA_aq_Ba, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);

@@ -15,7 +15,8 @@ class FilterConfig:
     filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
-    min_len: int = 2
+    min_context_tokens: int = 2
+    min_len: int = 3
     stop_set: Optional[Set[str]] = None
     lemma_gen: Any = None
     tag_map: Optional[Dict] = None
@@ -33,6 +34,9 @@ class FilterConfig:
 
     # Year binning configuration
     bin_size: int = 1  # Aggregate years into bins (1 = annual data, 5 = 5-year bins, etc.)
+
+    # Minimum context requirement for n-grams
+    min_context_tokens: int = 2  # Reject n-grams with fewer than this many non-<UNK> tokens
 
 
 # Pipeline orchestration options

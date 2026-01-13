@@ -62,6 +62,7 @@ def build_processor(cfg: FilterConfig) -> ProcessorProtocol:
             opt_stops=cfg.filter_stops,
             opt_lemmas=cfg.apply_lemmatization,
             min_len=cfg.min_len,
+            min_context_tokens=cfg.min_context_tokens,
             stop_set=stop_set_b,
             lemma_gen=cfg.lemma_gen,
             whitelist=cfg.whitelist,
