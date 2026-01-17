@@ -48,7 +48,7 @@ def compute_yearly_word_relatedness(args):
 def track_word_relatedness(
     word, start_year, end_year, model_dir,
     excluded_words=None, year_step=1, plot=True, smooth=False, sigma=2,
-    num_workers=None
+    num_workers=None, plot_derivative=True
 ):
     """
     Track the semantic relatedness/centrality of word(s) over time.
@@ -183,13 +183,16 @@ def track_word_relatedness(
             polyorder = min(3, window_length - 1)
             derivative = savgol_filter(smoothed_values, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(years)))
 
-            ax2 = ax.twinx()
-            ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
-            ax2.set_ylabel("Rate of Change")
-            ax2.set_ylim(-0.005, 0.003)
+            if plot_derivative:
+                ax2 = ax.twinx()
+                ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+                ax2.set_ylabel("Rate of Change")
+                ax2.set_ylim(-0.005, 0.003)
 
-            ax.legend(loc="upper left")
-            ax2.legend(loc="upper right")
+                ax.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+            else:
+                ax.legend()
         else:
             ax.legend()
 

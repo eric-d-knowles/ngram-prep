@@ -255,18 +255,23 @@ def plot_evaluation_results(
         # Create subplot grid (not for 3D plots initially)
         is_3d_plot = plot_type == "surface" or (plot_type == "contour" and len(x_vars) == 3)
 
+        # Use smaller panel size for better readability (4x4 instead of 8x8)
+        panel_size = 4
+        
         if is_3d_plot:
-            fig = plt.figure(figsize=(8 * n_cols, 8 * n_rows), dpi=display_dpi, facecolor='white')
+            fig = plt.figure(figsize=(panel_size * n_cols, panel_size * n_rows), dpi=display_dpi, facecolor='white')
         else:
-            fig, axes = plt.subplots(n_rows, n_cols, figsize=(8 * n_cols, 8 * n_rows), dpi=display_dpi,
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(panel_size * n_cols, panel_size * n_rows), dpi=display_dpi,
                                     squeeze=False, sharey=True, facecolor='white')
             axes = axes.flatten()
             # Add vertical spacing between rows
             fig.subplots_adjust(hspace=0.5, wspace=0.3)
 
         # Compute text scale factor based on figsize relative to default (12, 6)
+        # Cap the scale to avoid huge text with many panels
         figsize = fig.get_size_inches()
         text_scale = np.sqrt((figsize[0] * figsize[1]) / (12 * 6))
+        text_scale = min(text_scale, 1.5)  # Cap at 1.5x to keep text readable
 
         # Calculate global y-axis limits for consistent scaling
         if not is_3d_plot and plot_type == "line":

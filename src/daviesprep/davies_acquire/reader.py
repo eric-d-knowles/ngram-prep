@@ -14,6 +14,7 @@ __all__ = [
     "extract_year_from_filename",
     "extract_genre_from_filename",
     "extract_year_from_document_filename",
+    "extract_text_id_from_marker",
     "read_text_file",
     "read_text_file_with_genre",
 ]
@@ -141,6 +142,50 @@ def extract_year_from_document_filename(filename: str) -> Optional[int]:
     return None
 
 
+def extract_text_id_from_marker(content: str) -> Optional[int]:
+    """
+    Extract textID from marker at start of Davies corpus text.
+
+    Davies corpora include a document identifier marker at the start of each text file:
+    - Most corpora: @@textID (e.g., @@552651)
+    - GloWbE corpus: ##textID (e.g., ##703)
+    
+    The marker may be preceded by whitespace (e.g., "\\r\\n@@552651").
+
+    Args:
+        content: Text content containing marker
+
+    Returns:
+        TextID as integer (e.g., 552651) or None if marker not found
+
+    Example:
+        >>> extract_text_id_from_marker("@@552651\\nSome text...")
+        552651
+        >>> extract_text_id_from_marker("##703\\nSome text...")
+        703
+    """
+    # Strip leading whitespace and check for markers
+    stripped = content.lstrip()
+    
+    # Check for @@ marker (Movies, TV, COCA, COHA, etc.)
+    if stripped.startswith('@@'):
+        lines = stripped.split('\n', 1)
+        marker_line = lines[0]
+        match = re.match(r'@@(\d+)', marker_line)
+        if match:
+            return int(match.group(1))
+    
+    # Check for ## marker (GloWbE)
+    if stripped.startswith('##'):
+        lines = stripped.split('\n', 1)
+        marker_line = lines[0]
+        match = re.match(r'##(\d+)', marker_line)
+        if match:
+            return int(match.group(1))
+    
+    return None
+
+
 def read_text_file(
     zip_path: Path,
     year: int,
@@ -203,16 +248,18 @@ def read_text_file(
 def read_text_file_with_genre(
     zip_path: Path,
     year: int,
+    metadata_loader=None,
 ) -> Iterator[Tuple[int, str, Optional[str]]]:
     """
     Read and yield document text with genre metadata from a Davies corpus zip file.
 
-    Each zip contains multiple text documents with filenames like genre_year_docid.txt.
-    This function yields the text content of each document along with its year and genre.
+    Each zip contains multiple text documents. If metadata_loader is provided,
+    uses authoritative metadata; otherwise falls back to filename parsing.
 
     Args:
         zip_path: Path to zip file
         year: Year associated with this file (for fallback)
+        metadata_loader: Optional DaviesMetadataLoader for authoritative metadata lookup
 
     Yields:
         Tuples of (year, document_text, genre_code)
@@ -235,21 +282,33 @@ def read_text_file_with_genre(
 
             for txt_file in txt_files:
                 try:
-                    # Extract genre and year from filename
-                    filename = Path(txt_file).name
-                    genre = extract_genre_from_filename(filename)
-                    doc_year = extract_year_from_document_filename(filename)
-
-                    # Fall back to zip-level year if document year can't be extracted
-                    if doc_year is None:
-                        doc_year = year
-
-                    # Read file content
+                    # Read file content first to extract textID
                     with zf.open(txt_file) as f:
                         content = f.read().decode('utf-8', errors='replace')
 
+                    # Extract textID from @@ marker
+                    text_id = extract_text_id_from_marker(content)
+                    
+                    # Determine year and genre: prioritize metadata, then filename, then fallback
+                    if metadata_loader and text_id:
+                        doc_year, genre = metadata_loader.get_year_and_genre(text_id)
+                        if doc_year is None:
+                            # Fallback to filename-based extraction
+                            filename = Path(txt_file).name
+                            genre = extract_genre_from_filename(filename)
+                            doc_year = extract_year_from_document_filename(filename)
+                            if doc_year is None:
+                                doc_year = year
+                    else:
+                        # Fallback: extract from filename (COHA-style)
+                        filename = Path(txt_file).name
+                        genre = extract_genre_from_filename(filename)
+                        doc_year = extract_year_from_document_filename(filename)
+                        if doc_year is None:
+                            doc_year = year
+
                     # Skip document ID markers (e.g., "@@552651")
-                    # These appear at the start of COHA text files
+                    # These appear at the start of Davies text files
                     if content.startswith('@@'):
                         # Remove the marker line
                         lines = content.split('\n', 1)

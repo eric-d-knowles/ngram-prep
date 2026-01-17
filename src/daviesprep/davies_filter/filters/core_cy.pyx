@@ -50,8 +50,14 @@ cdef str _decode_token(bytes tok):
 
 @cython.cfunc
 @cython.inline
-cdef bytes _encode_token(str s):
-    return s.encode("utf-8", "surrogatepass")
+cdef bytes _encode_token(str s, bint ascii_only):
+    if ascii_only:
+        try:
+            return s.encode("ascii", "strict")
+        except Exception:
+            return SENTINEL_B
+    else:
+        return s.encode("utf-8", "surrogatepass")
 
 
 # ======================== sentence processing ========================
@@ -60,6 +66,7 @@ cpdef bytes process_sentence(
     bytes sentence,
     bint opt_lower = False,
     bint opt_alpha = False,
+    bint opt_ascii_alpha_only = False,
     bint opt_shorts = False,
     bint opt_stops = False,
     bint opt_lemmas = False,
@@ -80,6 +87,10 @@ cpdef bytes process_sentence(
 
     If whitelist is provided, tokens not in whitelist become <UNK> (checked after lowercasing).
     If always_include is provided, those tokens are preserved even if not in whitelist.
+    
+    When opt_alpha=True:
+      - If opt_ascii_alpha_only=True: reject all non-ASCII characters, keep only A-Z/a-z
+      - If opt_ascii_alpha_only=False: accept Unicode alphabetic characters from any language
     """
     cdef Py_ssize_t N = sentence.__len__()
     if N == 0:
@@ -147,31 +158,35 @@ cpdef bytes process_sentence(
         # Alpha filter (skip for always_include tokens)
         if do_alpha:
             # Skip alpha check if token is in always_include set
-            if do_always_include and tok_b in always_include:
-                pass  # Token is protected, skip alpha filter
-            elif not _is_ascii_alpha_bytes(tok_b):
-                # Contains non-ASCII bytes, decode and check with Unicode isalpha()
-                try:
-                    tok_s = _decode_token(tok_b)
-                    if not _is_unicode_alpha(tok_s):
+            if not (do_always_include and tok_b in always_include):
+                if not _is_ascii_alpha_bytes(tok_b):
+                    # Contains non-ASCII bytes
+                    if opt_ascii_alpha_only:
+                        # If ascii_alpha_only=True, reject any non-ASCII bytes
+                        # (even if they're valid Unicode alpha chars)
                         is_unk = 1
-                except:
-                    # Decoding failed, mark as invalid
-                    is_unk = 1
+                    else:
+                        # Otherwise, accept all Unicode alphabetic characters
+                        # (including accented letters, Greek, Cyrillic, Chinese, etc.)
+                        try:
+                            tok_s = _decode_token(tok_b)
+                            if not _is_unicode_alpha(tok_s):
+                                is_unk = 1
+                        except:
+                            # Decoding failed, mark as invalid
+                            is_unk = 1
 
         # Length filter (skip for always_include tokens)
         if not is_unk and do_shorts:
-            if do_always_include and tok_b in always_include:
-                pass  # Token is protected, skip length filter
-            elif tok_b.__len__() < min_len:
-                is_unk = 1
+            if not (do_always_include and tok_b in always_include):
+                if tok_b.__len__() < min_len:
+                    is_unk = 1
 
         # Stopword filter (skip for always_include tokens)
         if not is_unk and do_stops:
-            if do_always_include and tok_b in always_include:
-                pass  # Token is protected, skip stopword filter
-            elif tok_b in stop_set:
-                is_unk = 1
+            if not (do_always_include and tok_b in always_include):
+                if tok_b in stop_set:
+                    is_unk = 1
 
         # Lemmatization (after all filters pass, but skip for always_include tokens)
         if not is_unk and do_lemmas:
@@ -181,7 +196,7 @@ cpdef bytes process_sentence(
                 tok_s = _decode_token(tok_b)
                 # Default to NOUN for Davies data (no POS tags)
                 res = lemma_gen.lemmatize(tok_s, pos="NOUN")
-                tok_b = _encode_token(<str> res)
+                tok_b = _encode_token(<str> res, opt_ascii_alpha_only)
 
         # Write token
         if is_unk:

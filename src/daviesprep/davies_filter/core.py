@@ -431,6 +431,7 @@ def filter_davies_corpus(
     print(f"Destination DB:       {dst_db_path}")
     print(f"Lowercase:            {filter_config.lowercase}")
     print(f"Alpha only:           {filter_config.alpha_only}")
+    print(f"ASCII alpha only:     {filter_config.ascii_alpha_only}")
     print(f"Filter short:         {filter_config.filter_short} (min_len={filter_config.min_len})")
     print(f"Filter stops:         {filter_config.filter_stops}")
     print(f"Apply lemmas:         {filter_config.apply_lemmatization}")

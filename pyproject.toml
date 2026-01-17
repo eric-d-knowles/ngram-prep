@@ -15,4 +15,5 @@ language_level = "3"
 [tool.cython.sources]
 cython_sources = [
     "src/ngramprep/ngram_filter/filters/core_cy.pyx",
+    "src/daviesprep/davies_filter/filters/core_cy.pyx",
 ]

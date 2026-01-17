@@ -17,7 +17,8 @@ class FilterConfig:
     """
     lowercase: bool = True
     alpha_only: bool = True
-    filter_short: bool = False
+    ascii_alpha_only: bool = True
+    filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
     min_len: int = 3

@@ -14,6 +14,14 @@ extensions = [
         language="c++",
         extra_compile_args=["-O3", "-std=c++17"],
     ),
+    Extension(
+        "daviesprep.davies_filter.filters.core_cy",
+        sources=[
+            "src/daviesprep/davies_filter/filters/core_cy.pyx",
+        ],
+        language="c++",
+        extra_compile_args=["-O3", "-std=c++17"],
+    ),
 ]
 
 setup(

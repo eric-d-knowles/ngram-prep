@@ -6,7 +6,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 from gensim.models import KeyedVectors
 
-def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, year_step=1, plot=True, smooth=False, sigma=2):
+def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, year_step=1, plot=True, smooth=False, sigma=2, plot_derivative=True):
     """
     Compute the cosine similarity between two words (or word groups) across a range of yearly models.
 
@@ -146,13 +146,16 @@ def cosine_similarity_over_years(word1, word2, start_year, end_year, model_dir, 
             polyorder = min(3, window_length - 1)
             derivative = savgol_filter(smoothed_values, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(all_years)))
 
-            ax2 = ax.twinx()
-            ax2.plot(all_years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
-            ax2.set_ylabel("Rate of Change")
-            ax2.set_ylim(-0.005, 0.003)
+            if plot_derivative:
+                ax2 = ax.twinx()
+                ax2.plot(all_years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+                ax2.set_ylabel("Rate of Change")
+                ax2.set_ylim(-0.005, 0.003)
 
-            ax.legend(loc="upper left")
-            ax2.legend(loc="upper right")
+                ax.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+            else:
+                ax.legend()
         else:
             ax.legend()
 

@@ -16,6 +16,7 @@ from ngramprep.common_db.api import open_db
 from ngramprep.utilities.display import format_banner, format_bytes
 
 from .reader import discover_text_files, extract_year_from_filename, read_text_file_with_genre
+from .metadata import DaviesMetadataLoader
 from .tokenizer import tokenize_sentences
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ def process_single_file(
     combined_bigrams: Optional[set] = None,
     genre_focus: Optional[List[str]] = None,
     bin_size: int = 1,
+    corpus_path: Optional[Path] = None,
 ) -> Tuple[str, int, int, Dict, Dict[str, int]]:
     """
     Process a single text file: read, tokenize, accumulate sentence counts.
@@ -53,6 +55,7 @@ def process_single_file(
                     If None, include all genres.
         bin_size: Year bin size for aggregation (default: 1 for yearly granularity).
                  For example, bin_size=10 groups 1810-1819 as 1810.
+        corpus_path: Optional path to corpus (for metadata loading in worker process)
 
     Returns:
         Tuple of (filename, sentence_count, error_count, sentence_data, genre_stats)
@@ -73,9 +76,22 @@ def process_single_file(
     sentence_data: Dict = defaultdict(int)
     genre_stats: Dict[str, int] = defaultdict(int)
 
+    # Load metadata in worker process if corpus path provided
+    metadata_loader = None
+    if corpus_path:
+        try:
+            from .metadata import DaviesMetadataLoader
+            metadata_loader = DaviesMetadataLoader(corpus_path)
+            if not metadata_loader.load():
+                logger.warning(f"Could not load metadata for {corpus_path}")
+                metadata_loader = None
+        except Exception as e:
+            logger.warning(f"Error loading metadata in worker: {e}")
+            metadata_loader = None
+
     try:
         # Read documents from zip file with genre
-        for doc_year, text, genre in read_text_file_with_genre(zip_path, year):
+        for doc_year, text, genre in read_text_file_with_genre(zip_path, year, metadata_loader):
             # Skip if genre filtering is enabled and this genre is not in focus
             genre_key = genre if genre is not None else 'unknown'
             if genre_focus is not None and genre_key not in genre_focus:
@@ -256,14 +272,36 @@ def ingest_davies_corpus(
     logger.info("Discovering text files...")
     text_files = discover_text_files(text_dir)
 
-    # Extract years from filenames
+    # Load metadata from sources.zip (if available)
+    logger.info("Loading corpus metadata...")
+    metadata_loader = DaviesMetadataLoader(corpus_path)
+    has_metadata = metadata_loader.load()
+    if has_metadata:
+        logger.info(f"Successfully loaded metadata for {corpus_name}")
+    else:
+        logger.warning(f"Could not load metadata - will fall back to filename-based extraction")
+        metadata_loader = None
+
+    # Extract years from filenames or metadata
     file_year_pairs: List[Tuple[Path, int]] = []
     for text_file in text_files:
         try:
-            year = extract_year_from_filename(text_file.name)
-            file_year_pairs.append((text_file, year))
-        except ValueError as e:
-            logger.warning(f"Skipping file: {e}")
+            # Try filename-based extraction first
+            try:
+                year = extract_year_from_filename(text_file.name)
+                file_year_pairs.append((text_file, year))
+            except ValueError:
+                # If filename extraction fails and we have metadata, use a placeholder year
+                # The actual year will be extracted from metadata per-document
+                if has_metadata:
+                    # Use year 0 as a placeholder - metadata will override per-document
+                    file_year_pairs.append((text_file, 0))
+                else:
+                    # No metadata and no year in filename - must skip
+                    logger.warning(f"Skipping file: Could not extract year from filename: {text_file.name}")
+                    continue
+        except Exception as e:
+            logger.warning(f"Error processing {text_file.name}: {e}")
             continue
 
     # Print pipeline header
@@ -312,7 +350,7 @@ def ingest_davies_corpus(
             with ProcessPoolExecutor(max_workers=workers) as executor:
                 # Submit all files for processing with worker IDs
                 future_to_file = {
-                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus, bin_size): (text_file, year)
+                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus, bin_size, corpus_path): (text_file, year)
                     for worker_id, (text_file, year) in enumerate(file_year_pairs)
                 }
 

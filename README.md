@@ -59,12 +59,15 @@ The toolkit provides two parallel pipelines for different data sources:
 1. **`ngram_acquire`**: Fetch raw n-gram files (1-5 grams) from the Google Books repository and store in a RocksDB database for fast querying.
 2. **`ngram_filter`**: Apply linguistic transformations (case normalization, lemmatization, stopword removal, spell-checking, bigram hyphenation) to prepare data. Optionally generate vocabulary whitelists.
 3. **`ngram_pivot`**: Reorganize data from "wide" (per-ngram) to "long" (per-year) format for time-series analysis.
-4. **`ngram_analyze`**: Track semantic drift and similarity changes across time using trained word embeddings.
 
 ### Davies Corpora Pipeline
 
 1. **`davies_acquire`**: Ingest Davies corpus files (COHA, COCA, etc.) with genre and year information into RocksDB.
 2. **`davies_filter`**: Apply the same filtering and preprocessing transformations as ngram_filter for consistency.
+
+### Analysis Tools
+
+**`analyze`**: General-purpose analysis tools for tracking semantic drift and similarity changes across time using trained word embeddings. Works with both ngram and Davies corpus data.
 
 ### Model Training
 

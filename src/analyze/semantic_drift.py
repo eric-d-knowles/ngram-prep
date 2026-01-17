@@ -46,7 +46,7 @@ def compute_distance_from_reference(args):
 
 def track_local_semantic_change(
     start_year, end_year, model_dir, word=None, year_step=1, plot=True, smooth=False, sigma=2,
-    confidence=0.95, error_type="CI", num_workers=None, df=None, regress_on=None
+    confidence=0.95, error_type="CI", num_workers=None, df=None, regress_on=None, plot_derivative=True
 ):
     """
     Track year-over-year semantic change (local change between consecutive years).
@@ -154,13 +154,16 @@ def track_local_semantic_change(
             polyorder = min(3, window_length - 1)
             derivative = savgol_filter(smoothed, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(years)))
 
-            ax2 = ax.twinx()
-            ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
-            ax2.set_ylabel("Rate of Change")
-            ax2.set_ylim(-0.005, 0.003)
+            if plot_derivative:
+                ax2 = ax.twinx()
+                ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+                ax2.set_ylabel("Rate of Change")
+                ax2.set_ylim(-0.005, 0.003)
 
-            ax.legend(loc="upper left")
-            ax2.legend(loc="upper right")
+                ax.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+            else:
+                ax.legend()
 
         # Add vertical line at start_year for consistency with global plot
         ax.axvline(x=start_year, color='green', linestyle=':', linewidth=2, alpha=0.7)
@@ -193,7 +196,7 @@ def track_local_semantic_change(
 
 def track_global_semantic_change(
     start_year, end_year, model_dir, reference_year=None, word=None, year_step=1,
-    plot=True, smooth=False, sigma=2, confidence=0.95, error_type="CI", num_workers=None
+    plot=True, smooth=False, sigma=2, confidence=0.95, error_type="CI", num_workers=None, plot_derivative=True
 ):
     """
     Track global semantic change (cumulative change from a reference year).
@@ -297,13 +300,16 @@ def track_global_semantic_change(
             polyorder = min(3, window_length - 1)
             derivative = savgol_filter(smoothed, window_length=window_length, polyorder=polyorder, deriv=1, delta=np.mean(np.diff(years)))
 
-            ax2 = ax.twinx()
-            ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
-            ax2.set_ylabel("Rate of Change")
-            ax2.set_ylim(-0.005, 0.003)
+            if plot_derivative:
+                ax2 = ax.twinx()
+                ax2.plot(years, derivative, linestyle='-', color='green', linewidth=1, label="First Derivative")
+                ax2.set_ylabel("Rate of Change")
+                ax2.set_ylim(-0.005, 0.003)
 
-            ax.legend(loc="upper left")
-            ax2.legend(loc="upper right")
+                ax.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+            else:
+                ax.legend()
         else:
             ax.legend()
 
@@ -323,7 +329,7 @@ def track_global_semantic_change(
 
 def track_directional_drift(
     start_year, end_year, model_dir, word=None, year_step=1, plot=True, smooth=False, sigma=2,
-    num_workers=None, plot_trajectory=False, trajectory_3d=False
+    num_workers=None, plot_trajectory=False, trajectory_3d=False, plot_derivative=True
 ):
     """
     Track directional drift by analyzing change vectors between consecutive years.
