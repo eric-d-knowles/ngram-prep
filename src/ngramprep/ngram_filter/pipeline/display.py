@@ -165,8 +165,10 @@ def _format_filter_options(filter_config: FilterConfig) -> list[str]:
     # Stopword filtering
     filter_stops = getattr(filter_config, "filter_stops", True)
     stop_set = getattr(filter_config, "stop_set", None)
+    stop_words_language = getattr(filter_config, "stop_words_language", None)
     if filter_stops and stop_set:
-        lines.append(f"Stopword filtering:   enabled ({len(stop_set)} stopwords)")
+        lang_info = f" [{stop_words_language}]" if stop_words_language else ""
+        lines.append(f"Stopword filtering:   enabled ({len(stop_set)} stopwords{lang_info})")
     elif filter_stops:
         lines.append(f"Stopword filtering:   enabled (no stopwords loaded)")
     else:

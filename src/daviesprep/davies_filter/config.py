@@ -24,6 +24,7 @@ class FilterConfig:
     min_context_tokens: int = 2
     min_len: int = 3
     stop_set: Optional[Set[str]] = None
+    stop_words_language: Optional[str] = None  # Language code for stopwords (e.g., "russian", "english")
     lemma_gen: Any = None  # Lemmatizer instance
     whitelist: Optional[Set[bytes]] = None  # Whitelist of allowed tokens (bytes)
     always_include: Optional[Set[bytes]] = None  # Tokens to always preserve (e.g., b"working-class")

@@ -18,6 +18,7 @@ class FilterConfig:
     min_context_tokens: int = 2
     min_len: int = 3
     stop_set: Optional[Set[str]] = None
+    stop_words_language: Optional[str] = None  # Language code for stopwords (e.g., "russian", "english")
     lemma_gen: Any = None
     tag_map: Optional[Dict] = None
     vocab_path: Optional[Union[str, Path]] = None
@@ -48,11 +49,22 @@ class PipelineConfig:
         - "restart": Wipe output DB and cache, create fresh work units
         - "resume": Continue from last checkpoint (preserves all state)
         - "reprocess": Wipe output DB but reuse cached partitions
+    
+    Path construction:
+        Either provide src_db/dst_db/tmp_dir directly, OR provide path construction
+        parameters (ngram_size, repo_release_id, repo_corpus_id, db_path_stub) and
+        the orchestrator will build the paths for you.
     """
-    # I/O
-    src_db: Path
-    dst_db: Path
-    tmp_dir: Path
+    # I/O - Direct paths (optional if using path construction parameters)
+    src_db: Optional[Path] = None
+    dst_db: Optional[Path] = None
+    tmp_dir: Optional[Path] = None
+    
+    # Path construction parameters (optional if src_db/dst_db/tmp_dir provided)
+    ngram_size: Optional[int] = None
+    repo_release_id: Optional[str] = None
+    repo_corpus_id: Optional[str] = None
+    db_path_stub: Optional[str] = None
 
     # Parallelism
     num_workers: int = 8

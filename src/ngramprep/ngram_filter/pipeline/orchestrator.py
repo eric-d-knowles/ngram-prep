@@ -744,12 +744,18 @@ def build_processed_db(
     # Check if we have a complete pipeline_config with paths
     has_complete_pipeline_config = (
         pipeline_config is not None and
-        hasattr(pipeline_config, 'src_db') and
-        hasattr(pipeline_config, 'dst_db') and
-        hasattr(pipeline_config, 'tmp_dir') and
         pipeline_config.src_db is not None and
         pipeline_config.dst_db is not None and
         pipeline_config.tmp_dir is not None
+    )
+    
+    # Check if pipeline_config has path construction parameters
+    has_path_construction_params = (
+        pipeline_config is not None and
+        pipeline_config.ngram_size is not None and
+        pipeline_config.repo_release_id is not None and
+        pipeline_config.repo_corpus_id is not None and
+        pipeline_config.db_path_stub is not None
     )
 
     # If we have a complete pipeline_config with all required paths, use it directly
@@ -757,12 +763,49 @@ def build_processed_db(
         orchestrator = PipelineOrchestrator(pipeline_config, filter_config)
         orchestrator.run()
         return str(pipeline_config.dst_db)
+    
+    # If pipeline_config has path construction parameters, use those
+    if has_path_construction_params:
+        from ngramprep.ngram_acquire.db.build_path import build_db_path
+        
+        raw_db_path = build_db_path(
+            pipeline_config.db_path_stub,
+            pipeline_config.ngram_size,
+            pipeline_config.repo_release_id,
+            pipeline_config.repo_corpus_id
+        )
+        base_path = Path(raw_db_path).parent
+        
+        src_db = Path(raw_db_path)
+        dst_db = base_path / f"{pipeline_config.ngram_size}grams_processed.db"
+        tmp_dir = base_path / "processing_tmp"
+        
+        # Resolve output whitelist path if using "default"
+        output_whitelist_path = pipeline_config.output_whitelist_path
+        if output_whitelist_path == "default":
+            output_whitelist_path = dst_db / "whitelist.txt"
+
+        # Create a new config with constructed paths
+        from dataclasses import replace
+        pipeline_config_with_paths = replace(
+            pipeline_config,
+            src_db=src_db,
+            dst_db=dst_db,
+            tmp_dir=tmp_dir,
+            output_whitelist_path=output_whitelist_path
+        )
+        
+        orchestrator = PipelineOrchestrator(pipeline_config_with_paths, filter_config)
+        orchestrator.run()
+        return str(dst_db)
 
     # Otherwise, we need path stub parameters to construct/merge the config
     if ngram_size is None or repo_release_id is None or repo_corpus_id is None or db_path_stub is None:
         raise ValueError(
-            "Either provide a complete pipeline_config with paths (src_db, dst_db, tmp_dir), "
-            "or provide all path stub parameters (ngram_size, repo_release_id, repo_corpus_id, db_path_stub)"
+            "Either provide:\n"
+            "  1. A PipelineConfig with paths (src_db, dst_db, tmp_dir), OR\n"
+            "  2. A PipelineConfig with path construction params (ngram_size, repo_release_id, repo_corpus_id, db_path_stub), OR\n"
+            "  3. Direct kwargs for path construction (ngram_size, repo_release_id, repo_corpus_id, db_path_stub)"
         )
 
     from ngramprep.ngram_acquire.db.build_path import build_db_path

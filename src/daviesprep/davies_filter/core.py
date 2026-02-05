@@ -438,7 +438,14 @@ def filter_davies_corpus(
     print(f"Alpha only:           {filter_config.alpha_only}")
     print(f"ASCII alpha only:     {filter_config.ascii_alpha_only}")
     print(f"Filter short:         {filter_config.filter_short} (min_len={filter_config.min_len})")
-    print(f"Filter stops:         {filter_config.filter_stops}")
+    
+    # Stopword filtering with language
+    if filter_config.filter_stops and filter_config.stop_set:
+        lang_info = f" [{filter_config.stop_words_language}]" if filter_config.stop_words_language else ""
+        print(f"Filter stops:         {filter_config.filter_stops} ({len(filter_config.stop_set)} stopwords{lang_info})")
+    else:
+        print(f"Filter stops:         {filter_config.filter_stops}")
+    
     print(f"Apply lemmas:         {filter_config.apply_lemmatization}")
     print(f"Workers:              {workers}")
     print(f"Batch size:           {batch_size:,}")
