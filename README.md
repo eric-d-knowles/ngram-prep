@@ -109,15 +109,18 @@ conda activate lexichron
 
 **Step 2b: Install hunspell dictionaries for spell-checking**
 
-The environment includes `enchant` for spell-checking support, but you also need hunspell dictionaries:
+The environment includes `enchant` for spell-checking support, but you also need hunspell dictionaries for all supported languages. Run the setup script:
 
 ```bash
-# Minimal installation (English only)
-conda install -c conda-forge enchant hunspell-en
+# Download and configure hunspell dictionaries for all supported languages
+./scripts/setup_hunspell.sh
 
-# Or install all languages supported by the ngram pipeline (recommended)
-conda install -c conda-forge enchant hunspell-en hunspell-fr hunspell-de hunspell-he hunspell-it hunspell-ru hunspell-es hunspell-zh
+# Then deactivate and reactivate the environment
+conda deactivate
+conda activate lexichron
 ```
+
+This will download dictionaries for English, Russian, French, German, Spanish, Italian, and Hebrew, and configure `pyenchant` to work correctly.
 
 **Step 3: Install the package**
 

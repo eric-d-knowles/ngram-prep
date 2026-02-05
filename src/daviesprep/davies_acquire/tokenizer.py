@@ -156,7 +156,8 @@ def tokenize_sentence(
 def tokenize_sentences(
     text: str,
     min_tokens: int = 2,
-    combined_bigrams: Optional[Set[str]] = None
+    combined_bigrams: Optional[Set[str]] = None,
+    chunk_on: str = "sentence",
 ) -> Iterator[List[str]]:
     """
     Tokenize text into sentences with word tokens.
@@ -168,9 +169,11 @@ def tokenize_sentences(
         min_tokens: Minimum number of tokens per sentence
         combined_bigrams: Optional set of bigrams to combine with hyphens
                          (e.g., {"working class", "middle class"})
+        chunk_on: Chunking mode. "sentence" (default) splits on sentence-ending punctuation;
+              "scene" or "document" keeps the entire chunk intact (no punctuation-based splitting).
 
     Yields:
-        Lists of tokens for each sentence
+        Lists of tokens for each sentence or chunk (depending on chunk_on)
 
     Example:
         >>> text = "The cat sat. On the mat!"
@@ -180,6 +183,15 @@ def tokenize_sentences(
         >>> list(tokenize_sentences(text, combined_bigrams={"working class", "middle class"}))
         [['The', 'working-class', 'family'], ['The', 'middle-class', 'home']]
     """
+    mode = (chunk_on or "sentence").lower()
+
+    if mode in ("scene", "document"):
+        tokens = tokenize_sentence(text, combined_bigrams=combined_bigrams)
+        if len(tokens) >= min_tokens:
+            yield tokens
+        return
+
+    # Default: sentence-level splitting on . ! ?
     for tokens in simple_sentence_tokenizer(text, combined_bigrams=combined_bigrams):
         if len(tokens) >= min_tokens:
             yield tokens

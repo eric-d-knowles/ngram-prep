@@ -136,7 +136,7 @@ def process_batch(
         # Apply filter
         filtered_sentence = processor(sentence_bytes)
 
-        if filtered_sentence is None:
+        if filtered_sentence is None or filtered_sentence == b"":
             sentences_rejected += 1
         else:
             # Create new key with filtered sentence
@@ -258,6 +258,7 @@ def filter_davies_corpus(
     filter_short: object = None,
     filter_stops: object = None,
     apply_lemmatization: object = None,
+    min_context_tokens: object = None,
     min_len: object = None,
     whitelist: Optional[Set[bytes]] = None,
     always_include: Optional[Set[str]] = None,
@@ -273,6 +274,7 @@ def filter_davies_corpus(
     whitelist_workers: Optional[int] = None,
     whitelist_batch_size: int = 50_000,
     apply_whitelist: bool = False,
+    verbose: bool = False,
 ) -> None:
     """
     Filter Davies corpus database with parallel processing.
@@ -305,6 +307,7 @@ def filter_davies_corpus(
         filter_short: Filter short tokens (used if filter_config not provided)
         filter_stops: Filter stopwords (used if filter_config not provided)
         apply_lemmatization: Apply lemmatization (used if filter_config not provided)
+        min_context_tokens: Minimum non-UNK tokens required to retain a sentence (used if filter_config not provided)
         min_len: Minimum token length (used if filter_config not provided)
         whitelist: Set of allowed tokens (bytes); tokens not in whitelist become <UNK>
         always_include: Set of tokens (strings) to always preserve in whitelist mode,
@@ -412,6 +415,8 @@ def filter_davies_corpus(
             kwargs['filter_stops'] = filter_stops
         if apply_lemmatization is not None:
             kwargs['apply_lemmatization'] = apply_lemmatization
+        if min_context_tokens is not None:
+            kwargs['min_context_tokens'] = min_context_tokens
         if min_len is not None:
             kwargs['min_len'] = min_len
         if whitelist is not None:
@@ -477,6 +482,7 @@ def filter_davies_corpus(
         'filter_short': filter_config.filter_short,
         'filter_stops': filter_config.filter_stops,
         'apply_lemmatization': filter_config.apply_lemmatization,
+        'min_context_tokens': filter_config.min_context_tokens,
         'min_len': filter_config.min_len,
         'stop_set': filter_config.stop_set,
         # Don't include lemma_gen - let workers create their own
@@ -534,6 +540,7 @@ def filter_davies_corpus(
             always_include=always_include_bytes,
             workers=wl_workers,
             batch_size=whitelist_batch_size,
+            verbose=False,
         )
 
         sys.stdout.flush()
@@ -542,9 +549,11 @@ def filter_davies_corpus(
     if apply_whitelist and create_whitelist:
         print()
         print(format_banner("Applying Whitelist"))
-        print("Loading whitelist into memory...")
+        if verbose:
+            print("Loading whitelist into memory...")
         whitelist_set = load_whitelist(whitelist_path)
-        print(f"Loaded {len(whitelist_set):,} tokens from whitelist")
+        if verbose:
+            print(f"Loaded {len(whitelist_set):,} tokens from whitelist")
         print()
         print(f"Replacing non-whitelist tokens with <UNK>...")
         print()
@@ -561,6 +570,7 @@ def filter_davies_corpus(
             filter_short=False,  # Already done in phase 1
             filter_stops=False,  # Already done in phase 1
             apply_lemmatization=False,  # Already done in phase 1
+            min_context_tokens=filter_config.min_context_tokens,
             whitelist=whitelist_set,  # Only apply whitelist filter
         )
 
@@ -600,6 +610,7 @@ def filter_davies_corpus(
             'filter_short': False,
             'filter_stops': False,
             'apply_lemmatization': False,
+            'min_context_tokens': filter_config.min_context_tokens,
             'min_len': 3,
             'stop_set': set(),
             'whitelist': whitelist_set,
@@ -678,7 +689,7 @@ def filter_davies_corpus(
     end_time = datetime.now()
     elapsed = end_time - start_time
 
-    print("\nProcessing complete!")
+    print("Processing complete!")
     print()
     print(format_banner("Final Summary"))
     print(f"Sentences read:           {sentences_read:,}")

@@ -21,6 +21,7 @@ class FilterConfig:
     filter_short: bool = True
     filter_stops: bool = True
     apply_lemmatization: bool = True
+    min_context_tokens: int = 2
     min_len: int = 3
     stop_set: Optional[Set[str]] = None
     lemma_gen: Any = None  # Lemmatizer instance

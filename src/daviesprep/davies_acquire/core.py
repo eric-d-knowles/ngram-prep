@@ -6,7 +6,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Set
 from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -38,7 +38,8 @@ def process_single_file(
     genre_focus: Optional[List[str]] = None,
     bin_size: int = 1,
     corpus_path: Optional[Path] = None,
-) -> Tuple[str, int, int, Dict, Dict[str, int]]:
+    chunk_on: str = "sentence",
+) -> Tuple[str, int, int, Dict, Dict[str, int], Set[int]]:
     """
     Process a single text file: read, tokenize, accumulate sentence counts.
 
@@ -58,9 +59,10 @@ def process_single_file(
         corpus_path: Optional path to corpus (for metadata loading in worker process)
 
     Returns:
-        Tuple of (filename, sentence_count, error_count, sentence_data, genre_stats)
+        Tuple of (filename, sentence_count, error_count, sentence_data, genre_stats, missing_ids)
         where sentence_data is Dict[(genre, year, sentence_str)] -> count
         and genre_stats is Dict[genre] -> count
+        and missing_ids is Set[int] of marker IDs not found in metadata (when metadata is loaded)
     """
     from collections import defaultdict
 
@@ -75,6 +77,7 @@ def process_single_file(
     error_count = 0
     sentence_data: Dict = defaultdict(int)
     genre_stats: Dict[str, int] = defaultdict(int)
+    missing_ids: Set[int] = set()
 
     # Load metadata in worker process if corpus path provided
     metadata_loader = None
@@ -91,23 +94,42 @@ def process_single_file(
 
     try:
         # Read documents from zip file with genre
-        for doc_year, text, genre in read_text_file_with_genre(zip_path, year, metadata_loader):
+        for doc_year, text, genre in read_text_file_with_genre(zip_path, year, metadata_loader, missing_ids):
             # Skip if genre filtering is enabled and this genre is not in focus
             genre_key = genre if genre is not None else 'unknown'
-            if genre_focus is not None and genre_key not in genre_focus:
-                continue
+            
+            # Genre filtering with support for multi-tag genres (Movies corpus)
+            if genre_focus is not None:
+                if genre_key == 'unknown':
+                    continue  # Skip unknown genres when filtering
+                
+                # Split comma-separated genre tags and normalize
+                # "Crime, Drama, Film-Noir" -> ["crime", "drama", "film-noir"]
+                genre_tags = [tag.strip().lower() for tag in genre_key.split(',')]
+                focus_normalized = [g.lower() for g in genre_focus]
+                
+                # Check if ANY tag matches ANY focus genre
+                if not any(tag in focus_normalized for tag in genre_tags):
+                    continue  # No match, skip this document
 
             try:
                 # Apply year binning
                 binned_year = (doc_year // bin_size) * bin_size
 
                 # Tokenize into sentences (with optional bigram combination)
-                for tokens in tokenize_sentences(text, combined_bigrams=combined_bigrams):
+                for tokens in tokenize_sentences(text, combined_bigrams=combined_bigrams, chunk_on=chunk_on):
                     sentence_str = ' '.join(tokens)
 
                     # Include genre in key: (genre, year, sentence_str)
                     sentence_data[(genre_key, binned_year, sentence_str)] += 1
-                    genre_stats[genre_key] += 1
+                    
+                    # Count individual genre tags separately for multi-tag genres
+                    if genre_key != 'unknown' and ',' in genre_key:
+                        # Split and count each tag individually
+                        for tag in genre_key.split(','):
+                            genre_stats[tag.strip().lower()] += 1
+                    else:
+                        genre_stats[genre_key] += 1
 
                     sentence_count += 1
             except Exception as e:
@@ -118,7 +140,7 @@ def process_single_file(
         logger.error(f"Error processing {zip_path.name}: {e}")
         error_count += 1
 
-    return zip_path.name, sentence_count, error_count, sentence_data, genre_stats
+    return zip_path.name, sentence_count, error_count, sentence_data, genre_stats, missing_ids
 
 
 def _perform_compaction(db, db_path: Path) -> None:
@@ -134,13 +156,18 @@ def _perform_compaction(db, db_path: Path) -> None:
     print(format_banner("Post-Ingestion Compaction"))
 
     # Get initial size if possible
+    initial_size = None
     try:
-        initial_size = db.get_property("rocksdb.total-sst-files-size")
-        initial_size = int(initial_size) if initial_size else None
-        if initial_size:
-            print(f"Initial DB size:         {format_bytes(initial_size)}")
+        # Try bytes first, then string format
+        initial_size_str = db.get_property(b"rocksdb.total-sst-files-size")
+        if not initial_size_str:
+            initial_size_str = db.get_property("rocksdb.total-sst-files-size")
+        if initial_size_str:
+            initial_size = int(initial_size_str)
+            if initial_size > 0:
+                print(f"Initial DB size:         {format_bytes(initial_size)}")
     except Exception:
-        initial_size = None
+        pass
 
     sys.stdout.flush()
 
@@ -152,15 +179,20 @@ def _perform_compaction(db, db_path: Path) -> None:
         print(f"Compaction completed in {timedelta(seconds=int(elapsed))}")
 
         # Get final size if possible
+        final_size = None
         try:
-            final_size = db.get_property("rocksdb.total-sst-files-size")
-            final_size = int(final_size) if final_size else None
-            if initial_size and final_size:
-                saved = initial_size - final_size
-                pct = (saved / initial_size) * 100
-                print(f"Size before:             {format_bytes(initial_size)}")
-                print(f"Size after:              {format_bytes(final_size)}")
-                print(f"Space saved:             {format_bytes(saved)} ({pct:.1f}%)")
+            # Try bytes first, then string format
+            final_size_str = db.get_property(b"rocksdb.total-sst-files-size")
+            if not final_size_str:
+                final_size_str = db.get_property("rocksdb.total-sst-files-size")
+            if final_size_str:
+                final_size = int(final_size_str)
+                if final_size > 0 and initial_size and initial_size > 0:
+                    saved = initial_size - final_size
+                    pct = (saved / initial_size) * 100
+                    print(f"Size before:             {format_bytes(initial_size)}")
+                    print(f"Size after:              {format_bytes(final_size)}")
+                    print(f"Space saved:             {format_bytes(saved)} ({pct:.1f}%)")
         except Exception:
             pass
 
@@ -168,6 +200,8 @@ def _perform_compaction(db, db_path: Path) -> None:
         logger.error(f"Compaction failed: {e}")
         print(f"Compaction failed: {e}")
         print("Database is still usable, but may not be optimally compacted.")
+
+    print()
 
 
 def ingest_davies_corpus(
@@ -178,6 +212,7 @@ def ingest_davies_corpus(
     combined_bigrams: Optional[set] = None,
     genre_focus: Optional[List[str]] = None,
     bin_size: int = 1,
+    chunk_on: str = "sentence",
 ) -> None:
     """
     Main pipeline: read Davies corpus text files and ingest into RocksDB.
@@ -214,8 +249,15 @@ def ingest_davies_corpus(
         genre_focus: Optional list of genres to ingest (e.g., ["fic", "mag"]). If None, ingest all
                     genres with genre-prefixed keys. If specified, only ingest those genres and use
                     year-only keys for direct training compatibility.
+                    
+                    For multi-tag genres (Movies corpus): matches if ANY tag contains the focus genre.
+                    Example: genre_focus=["drama"] will include documents tagged "Crime, Drama, Film-Noir".
+                    Matching is case-insensitive.
         bin_size: Year bin size for aggregation (default: 1 for yearly granularity).
-                 For example, bin_size=10 groups years into decades (1810-1819 → 1810).
+                 For example, bin_size=10 groups years into decades (1810-1819 -> 1810).
+                chunk_on: Chunking mode for text within a document. "sentence" (default) splits on . ! ?;
+                      "scene" keeps each scene chunk intact; "document" keeps the full document intact
+                      (no sentence punctuation splitting for both scene/document modes).
     """
     # Set main process title if available
     if _setproctitle is not None:
@@ -318,8 +360,9 @@ def ingest_davies_corpus(
         print(f"Key format:           Year-only (training-ready)")
     else:
         print(f"Genre focus:          All genres")
-        print(f"Key format:           Genre-prefixed (archival)")
+        print(f"Key format:           Year-only (training-ready; genre not stored)")
     print(f"Year bin size:        {bin_size}")
+    print(f"Chunking:             {chunk_on}")
     print(f"Workers:              {workers}")
     print(f"Batch size:           {write_batch_size:,}")
     print()
@@ -338,6 +381,7 @@ def ingest_davies_corpus(
         total_errors = 0
         files_processed = 0
         genre_stats = {}
+        missing_ids_total: Set[int] = set()
 
         # Process files in parallel with progress bar
         with tqdm(
@@ -350,7 +394,7 @@ def ingest_davies_corpus(
             with ProcessPoolExecutor(max_workers=workers) as executor:
                 # Submit all files for processing with worker IDs
                 future_to_file = {
-                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus, bin_size, corpus_path): (text_file, year)
+                    executor.submit(process_single_file, text_file, year, worker_id, combined_bigrams, genre_focus, bin_size, corpus_path, chunk_on): (text_file, year)
                     for worker_id, (text_file, year) in enumerate(file_year_pairs)
                 }
 
@@ -358,7 +402,7 @@ def ingest_davies_corpus(
                 for future in as_completed(future_to_file):
                     text_file, year = future_to_file[future]
                     try:
-                        filename, sentence_count, error_count, sentence_data, file_genre_stats = future.result()
+                        filename, sentence_count, error_count, sentence_data, file_genre_stats, missing_ids = future.result()
 
                         # Write sentences to database (format depends on use_genre_keys)
                         for (genre, year, sentence_str), count in sentence_data.items():
@@ -376,6 +420,10 @@ def ingest_davies_corpus(
                         # Merge genre stats
                         for genre, count in file_genre_stats.items():
                             genre_stats[genre] = genre_stats.get(genre, 0) + count
+
+                        # Track missing metadata IDs (e.g., Movies markers absent from sources file)
+                        if missing_ids:
+                            missing_ids_total.update(missing_ids)
 
                     except Exception as e:
                         logger.error(f"Error processing {text_file.name}: {e}")
@@ -404,10 +452,16 @@ def ingest_davies_corpus(
     print(f"Total sentences written:  {total_sentences:,}")
     print(f"Database path:            {db_path}")
     print()
+    if missing_ids_total:
+        print("Documents skipped (metadata missing):")
+        for mid in sorted(missing_ids_total):
+            print(f"  {mid}")
+        print()
     if genre_stats:
         print("Genre breakdown:")
+        pad = max((len(genre) for genre in genre_stats), default=0)
         for genre, count in sorted(genre_stats.items()):
-            print(f"  {genre:10s} {count:,} sentences")
+            print(f"  {genre.ljust(pad)} {count:,} sentences")
         print()
     print(f"End Time: {end_time:%Y-%m-%d %H:%M:%S}")
     print(f"Total Runtime: {elapsed}")

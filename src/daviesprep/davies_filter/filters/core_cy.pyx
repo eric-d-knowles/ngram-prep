@@ -70,6 +70,7 @@ cpdef bytes process_sentence(
     bint opt_shorts = False,
     bint opt_stops = False,
     bint opt_lemmas = False,
+    int  min_context_tokens = 2,
     int  min_len = 3,
     object stop_set = None,
     object lemma_gen = None,
@@ -148,8 +149,12 @@ cpdef bytes process_sentence(
         if do_lower:
             tok_b = tok_b.lower()
 
+        # Check if token is already <UNK> from previous phase
+        # These should be counted as UNK even if in always_include
+        if tok_b == SENTINEL_B:
+            is_unk = 1
         # Whitelist filter (after lowercasing, before other filters)
-        if not is_unk and do_whitelist:
+        elif do_whitelist:
             if tok_b not in whitelist:
                 # Check if it's in always_include before marking as UNK
                 if not do_always_include or tok_b not in always_include:
@@ -210,9 +215,9 @@ cpdef bytes process_sentence(
         outbuf.extend(out_token)
         token_count += 1
 
-    # Reject if all tokens are UNK or fewer than 2 tokens remain
+    # Reject if all tokens are UNK or fewer than min_context_tokens remain
     cdef Py_ssize_t valid_tokens = token_count - unk_count
-    if valid_tokens < 2:
+    if valid_tokens < min_context_tokens:
         return b""
 
     return bytes(outbuf)

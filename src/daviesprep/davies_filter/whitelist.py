@@ -402,6 +402,7 @@ def _build_token_frequencies(
         always_include: Optional[set[bytes]] = None,
         workers: int = 1,
         batch_size: int = 50_000,
+    verbose: bool = False,
 ) -> Counter:
     """Build frequency counter for all tokens in the Davies database.
 
@@ -436,7 +437,8 @@ def _build_token_frequencies(
     current_batch: List[Tuple[bytes, bytes]] = []
 
     with _db_from(db_or_path) as db:
-        print("Scanning database...")
+        if verbose:
+            print("Scanning database...")
         for k, v in _iter_db_items(db):
             current_batch.append((k, v))
             if len(current_batch) >= batch_size:
@@ -447,9 +449,10 @@ def _build_token_frequencies(
             batches.append(current_batch)
 
     total_sentences = sum(len(batch) for batch in batches)
-    print(f"Found {total_sentences:,} sentences in {len(batches)} batches")
+    if verbose:
+        print(f"Found {total_sentences:,} sentences in {len(batches)} batches")
 
-    if year_range is not None:
+    if year_range is not None and verbose:
         print("Detecting years present in corpus...")
 
     # Process batches in parallel
@@ -577,6 +580,7 @@ def write_whitelist(
         always_include: Optional[set[bytes]] = None,
         workers: int = 1,
         batch_size: int = 50_000,
+    verbose: bool = False,
 ) -> Path:
     """
     Write a plain TXT file of tokens ranked by total frequency (desc).
@@ -616,9 +620,11 @@ def write_whitelist(
         always_include=always_include,
         workers=workers,
         batch_size=batch_size,
+        verbose=verbose,
     )
 
-    print(f"\nRanking {len(counter):,} unique tokens...")
+    if verbose:
+        print(f"\nRanking {len(counter):,} unique tokens...")
 
     # Add always_include tokens to counter if not already present
     # (this should rarely happen now that spell check bypasses them, but keep as safety net)
@@ -629,7 +635,7 @@ def write_whitelist(
                 # Add with count of 0 (will be sorted to bottom, but still included)
                 counter[token] = 0
                 added_count += 1
-        if added_count > 0:
+        if added_count > 0 and verbose:
             print(f"Added {added_count} always_include tokens that were not found in corpus")
 
     # Get most common tokens
@@ -644,14 +650,18 @@ def write_whitelist(
                 # Add missing always_include tokens at the end
                 for token in missing_tokens:
                     items.append((token, counter.get(token, 0)))
-                print(f"Added {len(missing_tokens)} always_include tokens that didn't make top {top}")
+                if verbose:
+                    print(f"Added {len(missing_tokens)} always_include tokens that didn't make top {top}")
 
-        print(f"Selected top {top:,} tokens (+ {len(missing_tokens) if always_include and missing_tokens else 0} always_include)")
+        if verbose:
+            print(f"Selected top {top:,} tokens (+ {len(missing_tokens) if always_include and missing_tokens else 0} always_include)")
     else:
         items = counter.most_common()
-        print(f"Writing all {len(items):,} tokens")
+        if verbose:
+            print(f"Writing all {len(items):,} tokens")
 
     # Write to file
+    print()
     print(f"Writing whitelist to {dest}...")
     with tmp.open("w", encoding="utf-8", newline="") as f:
         for token, total in items:

@@ -289,7 +289,6 @@ class DaviesMetadataLoader:
             return None, None
         
         if text_id not in self.metadata:
-            logger.warning(f"TextID {text_id} not found in metadata")
             return None, None
         
         metadata = self.metadata[text_id]
