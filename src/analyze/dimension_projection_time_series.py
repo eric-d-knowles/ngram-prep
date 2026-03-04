@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 from scipy.stats import linregress
-from scipy.stats import linregress
 
 from ngramprep.common.w2v_model import W2VModel
 
@@ -37,10 +36,13 @@ def compute_projection_over_years(
     plot: bool = True,
     smooth: bool = False,
     sigma: float = 2,
+    plot_marker_size: float = 3.0,
+    plot_line_width: float = 0.8,
+    show_legend: Optional[bool] = None,
+    legend_max_items: int = 12,
     plot_regression: bool = False,
     verbose: bool = True,
-    baseline_result: Optional[Dict[str, object]] = None,
-    baseline_words: Optional[Sequence[str]] = None,
+    baseline_source: Optional[Union[pd.Series, Sequence[str]]] = None,
     baseline_agg: str = "median",
     plot_corrected_if_baseline: bool = True,
     **method_kwargs,
@@ -61,20 +63,23 @@ def compute_projection_over_years(
         plot: Whether to produce a trajectory plot.
         smooth: Apply Gaussian smoothing to trajectories for plotting only.
         sigma: Standard deviation for Gaussian smoothing (same pattern as WEAT series).
+        plot_marker_size: Marker size for trajectory points in the plot.
+        plot_line_width: Line width for trajectory lines in the plot.
+        show_legend: Whether to render a legend. If None, legend is shown only
+            when estimated legend entries are <= legend_max_items.
+        legend_max_items: Max estimated legend entries before auto-hiding the
+            legend when show_legend is None.
         plot_regression: If True, overlay linear regression lines on the plot for each word's trajectory.
         verbose: Print progress information.
-        baseline_result: Optional baseline set object returned by compute_baseline_set.
-            If provided, baseline-corrected projections are computed and returned. When
-            plotting, corrected series are shown if plot_corrected_if_baseline=True.
-            Mutually exclusive with baseline_words.
-        baseline_words: Optional list of words to use as baseline. If provided, these
-            words will be projected onto the dimension for each year and aggregated
-            (mean or median) to produce a yearly baseline for correction. Mutually
-            exclusive with baseline_result.
-        baseline_agg: Aggregation method for baseline_words ('mean' or 'median').
-            Only used when baseline_words is provided. Default: 'median'.
-        plot_corrected_if_baseline: If True and baseline_result or baseline_words is
-            provided, plot baseline-corrected trajectories; otherwise plot raw projections.
+        baseline_source: Optional baseline input used for correction. Accepted forms:
+            - pd.Series indexed by year: interpreted as a pre-computed yearly baseline.
+            - Sequence[str]: treated as baseline words and projected independently for
+              each year using that year's fitted dimension, then aggregated via
+              baseline_agg.
+        baseline_agg: Aggregation method for word-list baseline_source ('mean' or
+            'median'). Ignored when baseline_source is a pd.Series. Default: 'median'.
+        plot_corrected_if_baseline: If True and baseline_source is provided, plot
+            baseline-corrected trajectories; otherwise plot raw projections.
         **method_kwargs: Extra kwargs forwarded to dimension computation methods.
 
     Returns:
@@ -223,51 +228,94 @@ def compute_projection_over_years(
     baseline_applied = False
     aligned_baseline = pd.Series(dtype=float)
     
-    # Check for mutually exclusive baseline parameters
-    if baseline_result is not None and baseline_words is not None:
-        raise ValueError("baseline_result and baseline_words are mutually exclusive; provide only one.")
-    
-    # Option 1: Use pre-computed baseline from compute_baseline_set
-    if baseline_result is not None:
-        baseline_series = baseline_result.get("baseline") if isinstance(baseline_result, dict) else None
-        if isinstance(baseline_series, pd.Series) and not projections_df.empty:
+    # Option 1: Use pre-computed yearly baseline series
+    if isinstance(baseline_source, pd.Series):
+        if not projections_df.empty:
             # Align baseline to available years
-            aligned_baseline = baseline_series.reindex(projections_df.index)
+            aligned_baseline = baseline_source.reindex(projections_df.index)
             aligned_baseline = aligned_baseline.fillna(0.0)  # leave raw values where baseline is unavailable
             projections_corrected_df = projections_df.sub(aligned_baseline, axis=0)
             baseline_applied = True
-    
-    # Option 2: Compute baseline from user-specified words
-    elif baseline_words is not None:
+
+    # Option 2: Compute baseline from baseline word list
+    elif baseline_source is not None:
         if baseline_agg not in ["mean", "median"]:
             raise ValueError("baseline_agg must be 'mean' or 'median'.")
-        
-        # Check which baseline words are available in projections
-        available_baseline_words = [w for w in baseline_words if w in projections_df.columns]
-        
+
+        if isinstance(baseline_source, (str, bytes)):
+            raise ValueError("baseline_source must be a pd.Series or a sequence of words, not a string.")
+
+        try:
+            baseline_words_unique = list(dict.fromkeys(baseline_source))
+        except TypeError as exc:
+            raise ValueError("baseline_source must be a pd.Series or an iterable of words.") from exc
+
+        if not baseline_words_unique:
+            raise ValueError("baseline_source word list is empty.")
+
+        word_found_any = {word: False for word in baseline_words_unique}
+        baseline_by_year: Dict[int, float] = {}
+
+        for year in projections_df.index:
+            model_path = year_to_path.get(year)
+            dimension = yearly_dimensions.get(year)
+
+            if model_path is None or dimension is None:
+                baseline_by_year[year] = np.nan
+                continue
+
+            try:
+                year_model = W2VModel(str(model_path))
+                year_values = []
+                for word in baseline_words_unique:
+                    if word in year_model.vocab:
+                        try:
+                            value = year_model.project_onto_dimension(word, dimension)
+                            year_values.append(value)
+                            word_found_any[word] = True
+                        except ValueError:
+                            continue
+
+                if year_values:
+                    if baseline_agg == "median":
+                        baseline_by_year[year] = float(np.median(year_values))
+                    else:  # mean
+                        baseline_by_year[year] = float(np.mean(year_values))
+                else:
+                    baseline_by_year[year] = np.nan
+            except Exception as exc:  # noqa: BLE001
+                baseline_by_year[year] = np.nan
+                if verbose:
+                    print(f"⚠️ Could not compute baseline for year {year}: {exc}")
+
+        available_baseline_words = [word for word, found in word_found_any.items() if found]
+
         if not available_baseline_words:
             if verbose:
-                print(f"⚠️ None of the {len(baseline_words)} baseline words are in the projection set.")
+                print(f"⚠️ None of the {len(baseline_words_unique)} baseline words were available across yearly models.")
         else:
-            if verbose and len(available_baseline_words) < len(baseline_words):
-                missing = set(baseline_words) - set(available_baseline_words)
-                print(f"⚠️ {len(missing)} baseline words not found: {sorted(missing)[:5]}{'...' if len(missing) > 5 else ''}")
-            
-            # Aggregate baseline words
-            if baseline_agg == "median":
-                aligned_baseline = projections_df[available_baseline_words].median(axis=1)
-            else:  # mean
-                aligned_baseline = projections_df[available_baseline_words].mean(axis=1)
-            
-            aligned_baseline = aligned_baseline.fillna(0.0)
-            projections_corrected_df = projections_df.sub(aligned_baseline, axis=0)
-            baseline_applied = True
-            
-            if verbose:
-                print(f"✓ Baseline computed from {len(available_baseline_words)} words using {baseline_agg}")
+            if verbose and len(available_baseline_words) < len(baseline_words_unique):
+                missing = set(baseline_words_unique) - set(available_baseline_words)
+                print(f"⚠️ {len(missing)} baseline words not found in any year: {sorted(missing)[:5]}{'...' if len(missing) > 5 else ''}")
+
+            aligned_baseline = pd.Series(baseline_by_year, dtype=float).reindex(projections_df.index)
+
+            if aligned_baseline.notna().any():
+                aligned_baseline = aligned_baseline.fillna(0.0)
+                projections_corrected_df = projections_df.sub(aligned_baseline, axis=0)
+                baseline_applied = True
+
+                if verbose:
+                    print(f"✓ Baseline computed from {len(available_baseline_words)} words using {baseline_agg}")
+            elif verbose:
+                print("⚠️ Baseline values are NaN for all years; baseline correction not applied.")
 
     if plot:
         plt.figure(figsize=(10, 5))
+        available_words = [word for word in test_words if word in projections_df.columns]
+        estimated_legend_items = len(available_words) * (2 if plot_regression else 1)
+        should_show_legend = show_legend if show_legend is not None else estimated_legend_items <= legend_max_items
+
         for word in test_words:
             if word not in projections_df.columns:
                 continue
@@ -288,7 +336,15 @@ def compute_projection_over_years(
                 series_to_plot = series
 
             label = word if not (baseline_applied and plot_corrected_if_baseline) else f"{word} (baseline-corrected)"
-            plt.plot(series_to_plot.index, series_to_plot.values, marker="o", linestyle="-", label=label)
+            plt.plot(
+                series_to_plot.index,
+                series_to_plot.values,
+                marker="o",
+                linestyle="-",
+                markersize=plot_marker_size,
+                linewidth=plot_line_width,
+                label=label if should_show_legend else None,
+            )
 
         plt.xlabel("Year", fontsize=12)
         ylabel = "Projection (cosine)"
@@ -322,10 +378,22 @@ def compute_projection_over_years(
                     years_range = np.array([years_valid.min(), years_valid.max()])
                     line_values = slope * years_range + intercept
                     sig_marker = "*" if p_value < 0.05 else ""
-                    plt.plot(years_range, line_values, linestyle='--', alpha=0.7, linewidth=1.5, 
-                            label=f"{word} regression (p={p_value:.4f}){sig_marker}")
-        
-        plt.legend()
+                    plt.plot(
+                        years_range,
+                        line_values,
+                        linestyle='--',
+                        alpha=0.7,
+                        linewidth=max(0.6, plot_line_width),
+                        label=f"{word} regression (p={p_value:.4f}){sig_marker}" if should_show_legend else None,
+                    )
+
+        if should_show_legend:
+            plt.legend()
+        elif verbose and estimated_legend_items > legend_max_items:
+            print(
+                f"ℹ️ Legend hidden automatically ({estimated_legend_items} entries > "
+                f"legend_max_items={legend_max_items}). Set show_legend=True to force display."
+            )
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.show()
