@@ -86,7 +86,7 @@ def fetch_ipums_microdata_cps(
         variables: List of variable names to extract (default: occupation + demographics).
                    If None, uses: ['YEAR', 'SEX', 'RACE', 'HISPAN', 'OCC2010', 'ASECWT']
                    OCC2010 provides harmonized detailed occupation codes across years.
-        download_dir: Directory to save downloaded files. Uses /tmp/ipums_downloads if not specified.
+        download_dir: Directory to save downloaded files. Uses ipums_api_downloads/ in cwd if not specified.
         initial_wait_time: Initial seconds to wait before polling API status (default: 2)
         max_wait_time: Max seconds between polls (default: 30)
         timeout: Max total seconds to wait for extract completion (default: 600/10 min)
@@ -120,7 +120,7 @@ def fetch_ipums_microdata_cps(
         raise ValueError("Cannot specify both 'years' and 'samples'. Use one or the other.")
 
     if download_dir is None:
-        download_dir = "/tmp/ipums_downloads"
+        download_dir = "ipums_api_downloads"
 
     download_path = Path(download_dir)
     download_path.mkdir(parents=True, exist_ok=True)
@@ -315,7 +315,7 @@ def fetch_and_aggregate_ipums_professions_csv(
         api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
         samples: CPS ASEC sample IDs (e.g., ['cps2024_03s']). Uses most recent ASEC if None.
         variables: Variable names to fetch. If None, uses standard ASEC set.
-        download_dir: Directory for downloaded extracts. Uses /tmp/ipums_downloads if None.
+        download_dir: Directory for downloaded extracts. Uses ipums_api_downloads/ in cwd if None.
         keep_extract_file: If True, keep the downloaded extract file; otherwise delete it.
         year: Optional filter to extract specific year (extracts all years if None)
         occupation_code_col: Occupation code column name (default: 'OCC2010', harmonized)

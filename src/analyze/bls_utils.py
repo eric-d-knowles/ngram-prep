@@ -757,7 +757,7 @@ def scrape_bls_professions_csv_batch(
         ... ]
         >>> runs_df = scrape_bls_professions_csv_batch(
         ...     file_list=urls,
-        ...     output_dir="/tmp/bls_scraped"
+        ...     output_dir="bls_scraped"
         ... )
     """
     output_dir_path = Path(output_dir)
