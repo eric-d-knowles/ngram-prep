@@ -278,6 +278,7 @@ def fetch_and_aggregate_ipums_professions_csv(
     output_csv: str = "professionsIPUMS.csv",
     occupation_map_file: Optional[str] = None,
     api_key: Optional[str] = None,
+    years: Optional[Iterable[int]] = None,
     samples: Optional[List[str]] = None,
     variables: Optional[List[str]] = None,
     download_dir: Optional[str] = None,
@@ -310,9 +311,14 @@ def fetch_and_aggregate_ipums_professions_csv(
     (yearly data with harmonized occupation codes and person weights).
 
     Args:
-        output_csv: Output CSV path (year will be injected if inject_year_in_filename=True)
+        output_csv: Output CSV path (year will be injected if inject_year_in_filename=True).
+                   When years is provided, this is used as output_basename for the batch.
         occupation_map_file: CSV file mapping occupation codes to labels (required)
         api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
+        years: ASEC years to download and aggregate — accepts a list, range, or any
+               iterable of ints (e.g. range(1968, 2026)). Each year is fetched as a
+               single extract and then batch-aggregated into per-year CSVs.
+               Cannot be used together with `samples`.
         samples: CPS ASEC sample IDs (e.g., ['cps2024_03s']). Uses most recent ASEC if None.
         variables: Variable names to fetch. If None, uses standard ASEC set.
         download_dir: Directory for downloaded extracts. Uses ipums_api_downloads/ in cwd if None.
@@ -339,19 +345,27 @@ def fetch_and_aggregate_ipums_professions_csv(
         verbose: Print status messages
 
     Returns:
-        DataFrame in BLS profession CSV schema. If return_year=True, returns (DataFrame, year).
+        When years is provided: DataFrame of batch results (year, rows, status, output_csv, error).
+        Otherwise: DataFrame in BLS profession CSV schema. If return_year=True, returns (DataFrame, year).
 
     Raises:
         ImportError: If ipumspy is not installed
         ValueError: If occupation_map_file is not provided or missing columns
 
     Example:
+        >>> # Single-sample fetch
         >>> out_df = fetch_and_aggregate_ipums_professions_csv(
         ...     output_csv='/data/professions_ipums.csv',
         ...     occupation_map_file='/data/occ1990_map.csv',
         ...     samples=['cps2024_05s2'],
         ... )
         >>> print(f"Aggregated {len(out_df)} occupations")
+        >>>
+        >>> # Multi-year batch fetch
+        >>> runs_df = fetch_and_aggregate_ipums_professions_csv(
+        ...     occupation_map_file='/data/occ2010_map.csv',
+        ...     years=range(2010, 2026),
+        ... )
     """
     if occupation_map_file is None:
         raise ValueError("occupation_map_file is required for web fetching")
@@ -363,6 +377,7 @@ def fetch_and_aggregate_ipums_professions_csv(
         print("=" * 70)
     fetch_result = fetch_ipums_microdata_cps(
         api_key=api_key,
+        years=years,
         samples=samples,
         variables=variables,
         download_dir=download_dir,
@@ -405,6 +420,44 @@ def fetch_and_aggregate_ipums_professions_csv(
         print("\n" + "=" * 70)
         print("STEP 2: Aggregate extract into BLS-compatible CSV")
         print("=" * 70)
+
+    # Multi-year batch path: use aggregate_ipums_professions_csv_batch
+    if years is not None:
+        output_dir = download_dir or "ipums_api_downloads"
+        try:
+            runs_df = aggregate_ipums_professions_csv_batch(
+                extract_file=extract_file,
+                output_dir=output_dir,
+                years=sorted(years),
+                output_basename=output_csv,
+                continue_on_error=True,
+                occupation_code_col=occupation_code_col,
+                occupation_label_col=occupation_label_col,
+                occupation_map_file=occupation_map_file,
+                year_col=year_col,
+                sex_col=sex_col,
+                race_col=race_col,
+                hispanic_col=hispanic_col,
+                weight_col=weight_col,
+                female_codes=female_codes,
+                black_codes=black_codes,
+                asian_codes=asian_codes,
+                non_hispanic_codes=non_hispanic_codes,
+                min_total_employed=min_total_employed,
+                inject_year_in_filename=inject_year_in_filename,
+            )
+            if verbose:
+                ok = (runs_df["status"] == "ok").sum()
+                fail = (runs_df["status"] == "failed").sum()
+                print(f"\n✓ Batch complete: {ok} succeeded, {fail} failed")
+        finally:
+            if not keep_extract_file and Path(extract_file).exists():
+                if verbose:
+                    print(f"Cleaning up: {extract_file}")
+                Path(extract_file).unlink()
+        return runs_df
+
+    # Single-year path
     try:
         out_df, out_year = aggregate_ipums_professions_csv(
             extract_file=extract_file,
