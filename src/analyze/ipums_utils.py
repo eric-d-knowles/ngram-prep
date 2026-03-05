@@ -1,0 +1,751 @@
+"""
+Utilities for fetching and aggregating IPUMS microdata into BLS-style profession CSVs.
+
+This module provides two main workflows:
+1. **Raw aggregation**: Convert already-downloaded IPUMS extracts (CSV/Parquet/Stata)
+   into BLS-compatible profession CSVs via `aggregate_ipums_professions_csv()`.
+2. **Web fetch + aggregation**: Retrieve data from the IPUMS API, download extracts,
+   and aggregate them in one step via `fetch_and_aggregate_ipums_professions_csv()`.
+
+The IPUMS API requires `ipumspy` (pip install ipumspy) and an IPUMS API key.
+Get your API key at https://account.ipums.org/api.
+"""
+
+from pathlib import Path
+import csv
+import os
+import time
+from typing import Optional, List, Dict, Any, Iterable, Union
+
+import pandas as pd
+
+from .bls_utils import TARGET_COLUMNS, _tokenize_occupation, _output_path_with_year
+
+
+def _get_ipums_api_client(api_key: Optional[str] = None):
+    """
+    Get an IPUMS API client, reading the API key from the environment or parameter.
+
+    Args:
+        api_key: Optional API key. If not provided, tries to read from IPUMS_API_KEY env var.
+
+    Returns:
+        IpumsApiClient instance
+
+    Raises:
+        ImportError: If ipumspy is not installed
+        ValueError: If no API key is found
+    """
+    try:
+        from ipumspy import IpumsApiClient
+    except ImportError:
+        raise ImportError(
+            "ipumspy is required for web fetching. "
+            "Install with: pip install ipumspy"
+        )
+
+    if api_key is None:
+        api_key = os.getenv("IPUMS_API_KEY")
+
+    if not api_key:
+        raise ValueError(
+            "Missing IPUMS_API_KEY. Set the environment variable or pass api_key parameter. "
+            "Get your key at https://account.ipums.org/api"
+        )
+
+    return IpumsApiClient(api_key=api_key, base_url="https://api.ipums.org", api_version=2)
+
+
+def fetch_ipums_microdata_cps(
+    api_key: Optional[str] = None,
+    years: Optional[Iterable[int]] = None,
+    samples: Optional[List[str]] = None,
+    variables: Optional[List[str]] = None,
+    download_dir: Optional[str] = None,
+    initial_wait_time: float = 2,
+    max_wait_time: float = 30,
+    timeout: float = 600,
+    description: str = "lexichron IPUMS CPS extract",
+    data_format: str = "csv",
+    verbose: bool = True,
+) -> Dict[str, Any]:
+    """
+    Fetch and download IPUMS CPS ASEC microdata via the IPUMS API.
+
+    Args:
+        api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
+        years: ASEC years to download — accepts a list, range, or any iterable of ints.
+               Examples: [2015, 2020, 2024] or range(2010, 2025).
+               Each year is resolved to its ASEC sample ID automatically.
+               If None and samples is None, uses the most recent ASEC sample.
+               Cannot be used together with `samples`.
+        samples: List of ASEC sample identifiers (e.g., ['cps2024_03s']).
+                 If None and years is None, uses the most recent ASEC sample.
+                 Only ASEC samples are supported (harmonized occupation codes + person weights).
+                 Cannot be used together with `years`.
+        variables: List of variable names to extract (default: occupation + demographics).
+                   If None, uses: ['YEAR', 'SEX', 'RACE', 'HISPAN', 'OCC2010', 'ASECWT']
+                   OCC2010 provides harmonized detailed occupation codes across years.
+        download_dir: Directory to save downloaded files. Uses /tmp/ipums_downloads if not specified.
+        initial_wait_time: Initial seconds to wait before polling API status (default: 2)
+        max_wait_time: Max seconds between polls (default: 30)
+        timeout: Max total seconds to wait for extract completion (default: 600/10 min)
+        description: Description for the extract (helps identify in IPUMS account)
+        data_format: Output format ('csv', 'parquet', 'stata', 'dta')
+        verbose: Print status messages
+
+    Returns:
+        Dictionary with keys:
+        - 'extract_id': IPUMS extract ID
+        - 'status': Final status ('completed' or error message)
+        - 'download_dir': Path to downloaded files
+        - 'files': List of downloaded file paths
+        - 'samples_used': Sample IDs that were submitted
+
+    Example:
+        >>> result = fetch_ipums_microdata_cps(years=[2020, 2024])
+        >>> print(f"Downloaded to {result['download_dir']}")
+    """
+    try:
+        from ipumspy import MicrodataExtract
+    except ImportError:
+        raise ImportError(
+            "ipumspy is required for web fetching. "
+            "Install with: pip install ipumspy"
+        )
+
+    client = _get_ipums_api_client(api_key)
+
+    if years is not None and samples is not None:
+        raise ValueError("Cannot specify both 'years' and 'samples'. Use one or the other.")
+
+    if download_dir is None:
+        download_dir = "/tmp/ipums_downloads"
+
+    download_path = Path(download_dir)
+    download_path.mkdir(parents=True, exist_ok=True)
+
+    # Always fetch the ASEC catalog so we can resolve years or pick the latest.
+    if verbose:
+        print("Discovering available CPS ASEC samples...")
+    sample_info = client.get_all_sample_info("cps")
+    asec_catalog = {
+        sid: desc for sid, desc in sample_info.items()
+        if "asec" in str(desc).lower()
+    }
+    if not asec_catalog:
+        raise ValueError(
+            "No ASEC samples found in IPUMS CPS catalog. "
+            "Only ASEC samples are supported (yearly data with "
+            "harmonized occupation codes and person weights)."
+        )
+
+    if years is not None:
+        # Resolve year integers to ASEC sample IDs.
+        # ASEC sample IDs follow the pattern cpsYYYY_03s (or similar).
+        # Build a year -> sample_id lookup from the catalog descriptions.
+        import re
+        year_to_sid: Dict[int, str] = {}
+        for sid, desc in asec_catalog.items():
+            # Extract 4-digit year from description like "IPUMS-CPS, ASEC 2024"
+            m = re.search(r'\b(\d{4})\b', str(desc))
+            if m:
+                year_to_sid[int(m.group(1))] = sid
+            else:
+                # Fallback: extract year from sample ID (cpsYYYY_03s)
+                m2 = re.search(r'cps(\d{4})', sid)
+                if m2:
+                    year_to_sid[int(m2.group(1))] = sid
+
+        missing = [y for y in years if y not in year_to_sid]
+        if missing:
+            available = sorted(year_to_sid.keys())
+            raise ValueError(
+                f"No ASEC samples found for year(s): {missing}. "
+                f"Available ASEC years: {available}"
+            )
+        samples = [year_to_sid[y] for y in sorted(years)]
+        if verbose:
+            print(f"  Resolved years {sorted(years)} -> samples {samples}")
+
+    elif samples is None:
+        # Default: most recent ASEC
+        samples = [sorted(asec_catalog.keys())[-1]]
+        if verbose:
+            print(f"  Selected most recent ASEC sample: {samples[0]}")
+    else:
+        # Validate that user-supplied samples look like ASEC (March supplement).
+        for s in samples:
+            if "_03" not in s:
+                import warnings
+                warnings.warn(
+                    f"Sample '{s}' does not look like an ASEC March supplement. "
+                    f"ASEC samples typically have '_03' in the ID (e.g. 'cps2025_03s'). "
+                    f"Proceeding anyway.",
+                    stacklevel=2,
+                )
+
+    # ASEC default variables: OCC2010 is the harmonized detailed occupation code;
+    # ASECWT is the ASEC person weight.
+    if variables is None:
+        variables = ["YEAR", "SEX", "RACE", "HISPAN", "OCC2010", "ASECWT"]
+        if verbose:
+            print(f"  Auto-selected variables: {variables}")
+
+    # Submit extract
+    extract = MicrodataExtract(
+        collection="cps",
+        samples=samples,
+        variables=variables,
+        description=description,
+        data_format=data_format,
+    )
+
+    if verbose:
+        print(f"Submitting extract (samples={samples}, variables={variables})...")
+    submitted = client.submit_extract(extract)
+    extract_id = submitted.extract_id
+    if verbose:
+        print(f"  Extract ID: {extract_id}")
+        print(f"  Status: {client.extract_status(extract_id, collection='cps')}")
+
+    # Wait for completion
+    if verbose:
+        print("Waiting for extract to complete...")
+    try:
+        client.wait_for_extract(
+            submitted,
+            collection="cps",
+            inital_wait_time=initial_wait_time,
+            max_wait_time=max_wait_time,
+            timeout=timeout,
+        )
+        final_status = client.extract_status(extract_id, collection="cps")
+        if verbose:
+            print(f"  Final status: {final_status}")
+    except Exception as exc:
+        return {
+            "extract_id": extract_id,
+            "status": f"failed: {str(exc)}",
+            "download_dir": str(download_path),
+            "files": [],
+            "samples_used": samples,
+        }
+
+    # Download files using extract_id integer + collection to avoid
+    # ipumspy BaseExtract ID-loss issue after wait_for_extract.
+    if verbose:
+        print(f"Downloading to {download_path}...")
+    try:
+        client.download_extract(
+            extract_id, download_dir=str(download_path), collection="cps"
+        )
+        # Decompress any .gz files in place
+        import gzip
+        import shutil
+        for gz_path in list(download_path.glob("*.gz")):
+            out_path = gz_path.with_suffix("")  # strip .gz
+            with gzip.open(gz_path, "rb") as f_in, open(out_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            gz_path.unlink()
+            if verbose:
+                print(f"  Decompressed {gz_path.name} -> {out_path.name}")
+
+        files = sorted([str(p) for p in download_path.glob("*") if p.is_file()])
+        if verbose:
+            print(f"  Downloaded {len(files)} file(s)")
+            for f in files:
+                print(f"    - {Path(f).name}  ({Path(f).stat().st_size / 1024:.0f} KB)")
+    except Exception as exc:
+        return {
+            "extract_id": extract_id,
+            "status": f"download failed: {str(exc)}",
+            "download_dir": str(download_path),
+            "files": [],
+            "samples_used": samples,
+        }
+
+    return {
+        "extract_id": extract_id,
+        "status": "completed",
+        "download_dir": str(download_path),
+        "files": files,
+        "samples_used": samples,
+    }
+
+
+def fetch_and_aggregate_ipums_professions_csv(
+    output_csv: str = "professionsIPUMS.csv",
+    occupation_map_file: Optional[str] = None,
+    api_key: Optional[str] = None,
+    samples: Optional[List[str]] = None,
+    variables: Optional[List[str]] = None,
+    download_dir: Optional[str] = None,
+    keep_extract_file: bool = False,
+    year: Optional[int] = None,
+    occupation_code_col: str = "OCC2010",
+    occupation_label_col: Optional[str] = None,
+    year_col: str = "YEAR",
+    sex_col: str = "SEX",
+    race_col: str = "RACE",
+    hispanic_col: str = "HISPAN",
+    weight_col: Optional[str] = None,
+    female_codes: tuple = (2,),
+    black_codes: tuple = (2,),
+    asian_codes: tuple = (4, 5, 6),
+    non_hispanic_codes: tuple = (0, 9),
+    min_total_employed: int = 50,
+    inject_year_in_filename: bool = True,
+    initial_wait_time: float = 2,
+    max_wait_time: float = 30,
+    timeout: float = 600,
+    return_year: bool = False,
+    verbose: bool = True,
+) -> tuple:
+    """
+    Fetch CPS ASEC data from IPUMS API and aggregate into a BLS-compatible profession CSV.
+
+    This is a convenience function that combines `fetch_ipums_microdata_cps()` and
+    `aggregate_ipums_professions_csv()` in one step. Only ASEC samples are supported
+    (yearly data with harmonized occupation codes and person weights).
+
+    Args:
+        output_csv: Output CSV path (year will be injected if inject_year_in_filename=True)
+        occupation_map_file: CSV file mapping occupation codes to labels (required)
+        api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
+        samples: CPS ASEC sample IDs (e.g., ['cps2024_03s']). Uses most recent ASEC if None.
+        variables: Variable names to fetch. If None, uses standard ASEC set.
+        download_dir: Directory for downloaded extracts. Uses /tmp/ipums_downloads if None.
+        keep_extract_file: If True, keep the downloaded extract file; otherwise delete it.
+        year: Optional filter to extract specific year (extracts all years if None)
+        occupation_code_col: Occupation code column name (default: 'OCC2010', harmonized)
+        occupation_label_col: Occupation label column (if in extract)
+        year_col: Year column name
+        sex_col: Sex column name
+        race_col: Race column name
+        hispanic_col: Hispanic origin column name
+        weight_col: Person weight column name. If None, auto-detects from fetched data
+                    (defaults to ASECWT for ASEC samples).
+        female_codes: Values representing female in sex_col
+        black_codes: Values representing Black/African American in race_col
+        asian_codes: Values representing Asian in race_col
+        non_hispanic_codes: Values representing non-Hispanic in hispanic_col
+        min_total_employed: Minimum weighted employment to keep row
+        inject_year_in_filename: Inject detected year into output filename
+        initial_wait_time: Initial wait time (seconds) before polling API
+        max_wait_time: Max wait time (seconds) between polls
+        timeout: Total timeout (seconds) for extract completion
+        return_year: If True, returns (DataFrame, year)
+        verbose: Print status messages
+
+    Returns:
+        DataFrame in BLS profession CSV schema. If return_year=True, returns (DataFrame, year).
+
+    Raises:
+        ImportError: If ipumspy is not installed
+        ValueError: If occupation_map_file is not provided or missing columns
+
+    Example:
+        >>> out_df = fetch_and_aggregate_ipums_professions_csv(
+        ...     output_csv='/data/professions_ipums.csv',
+        ...     occupation_map_file='/data/occ1990_map.csv',
+        ...     samples=['cps2024_05s2'],
+        ... )
+        >>> print(f"Aggregated {len(out_df)} occupations")
+    """
+    if occupation_map_file is None:
+        raise ValueError("occupation_map_file is required for web fetching")
+
+    # Fetch data from API
+    if verbose:
+        print("=" * 70)
+        print("STEP 1: Fetch data from IPUMS API")
+        print("=" * 70)
+    fetch_result = fetch_ipums_microdata_cps(
+        api_key=api_key,
+        samples=samples,
+        variables=variables,
+        download_dir=download_dir,
+        initial_wait_time=initial_wait_time,
+        max_wait_time=max_wait_time,
+        timeout=timeout,
+        verbose=verbose,
+    )
+
+    if fetch_result["status"] != "completed":
+        raise RuntimeError(
+            f"IPUMS fetch failed: {fetch_result['status']}. "
+            f"Extract ID: {fetch_result['extract_id']}"
+        )
+
+    extract_files = fetch_result["files"]
+    if not extract_files:
+        raise ValueError(f"No files downloaded from IPUMS (ID: {fetch_result['extract_id']})")
+
+    extract_file = extract_files[0]  # Use first file
+
+    # Auto-detect weight column if not specified
+    if weight_col is None:
+        # Peek at the extract to find the weight column
+        peek_df = _read_ipums_extract(extract_file)
+        for candidate in ("ASECWT", "WTFINL", "PERWT", "EARNWT"):
+            if candidate in peek_df.columns:
+                weight_col = candidate
+                break
+        if weight_col is None:
+            raise ValueError(
+                "Could not auto-detect weight column. Available columns: "
+                f"{list(peek_df.columns)}. Pass weight_col explicitly."
+            )
+        if verbose:
+            print(f"  Auto-detected weight column: {weight_col}")
+
+    # Aggregate extract
+    if verbose:
+        print("\n" + "=" * 70)
+        print("STEP 2: Aggregate extract into BLS-compatible CSV")
+        print("=" * 70)
+    try:
+        out_df, out_year = aggregate_ipums_professions_csv(
+            extract_file=extract_file,
+            output_csv=output_csv,
+            year=year,
+            occupation_code_col=occupation_code_col,
+            occupation_label_col=occupation_label_col,
+            occupation_map_file=occupation_map_file,
+            year_col=year_col,
+            sex_col=sex_col,
+            race_col=race_col,
+            hispanic_col=hispanic_col,
+            weight_col=weight_col,
+            female_codes=female_codes,
+            black_codes=black_codes,
+            asian_codes=asian_codes,
+            non_hispanic_codes=non_hispanic_codes,
+            min_total_employed=min_total_employed,
+            inject_year_in_filename=inject_year_in_filename,
+            return_year=True,
+        )
+        if verbose:
+            output_path = out_df.attrs.get("output_csv", output_csv)
+            print(f"\n✓ Success! Output: {output_path}")
+    finally:
+        # Clean up if requested
+        if not keep_extract_file and Path(extract_file).exists():
+            if verbose:
+                print(f"Cleaning up: {extract_file}")
+            Path(extract_file).unlink()
+
+    if return_year:
+        return out_df, out_year
+    return out_df
+
+
+def _read_ipums_extract(extract_file):
+    """Read an IPUMS extract from CSV, Parquet, or Stata format."""
+    path = Path(extract_file)
+    suffix = path.suffix.lower()
+
+    if suffix in {".csv", ".gz"}:
+        return pd.read_csv(path, low_memory=False)
+    if suffix == ".parquet":
+        return pd.read_parquet(path)
+    if suffix == ".dta":
+        return pd.read_stata(path)
+
+    raise ValueError(
+        f"Unsupported extract format for {extract_file}. "
+        "Use .csv/.csv.gz, .parquet, or .dta."
+    )
+
+
+def _load_occupation_map(map_file, code_col="code", label_col="label"):
+    """Load a two-column occupation map (code -> label)."""
+    map_df = pd.read_csv(map_file)
+    missing = [col for col in [code_col, label_col] if col not in map_df.columns]
+    if missing:
+        raise ValueError(f"occupation_map_file missing required columns: {missing}")
+
+    mapping = (
+        map_df[[code_col, label_col]]
+        .dropna()
+        .drop_duplicates(subset=[code_col])
+    )
+    mapping[code_col] = mapping[code_col].astype(str).str.strip()
+    mapping[label_col] = mapping[label_col].astype(str).str.strip()
+    return dict(zip(mapping[code_col], mapping[label_col]))
+
+
+def _format_percent(x):
+    """Format percentage values to match BLS CSV conventions."""
+    if pd.isna(x):
+        return ""
+    x = float(x)
+    if abs(x - round(x)) < 1e-12:
+        return str(int(round(x)))
+    return f"{x:.1f}".rstrip("0").rstrip(".")
+
+
+def _resolve_occupation_labels(df, occupation_code_col, occupation_label_col, occupation_map_file):
+    """Return a standardized occupation label series."""
+    if occupation_label_col and occupation_label_col in df.columns:
+        labels = df[occupation_label_col].astype("string").str.strip()
+        return labels.mask(labels == "", pd.NA)
+
+    if occupation_map_file:
+        mapping = _load_occupation_map(occupation_map_file)
+        codes = df[occupation_code_col].astype(str).str.strip()
+        labels = codes.map(mapping)
+        labels = labels.astype("string").str.strip()
+        return labels.mask(labels == "", pd.NA)
+
+    raise ValueError(
+        "Need occupation labels to build label1-label5 columns. "
+        "Provide `occupation_label_col` in extract or `occupation_map_file`."
+    )
+
+
+def aggregate_ipums_professions_csv(
+    extract_file,
+    output_csv="professionsIPUMS.csv",
+    year=None,
+    occupation_code_col="OCC1990",
+    occupation_label_col=None,
+    occupation_map_file=None,
+    year_col="YEAR",
+    sex_col="SEX",
+    race_col="RACE",
+    hispanic_col="HISPAN",
+    weight_col="PERWT",
+    female_codes=(2,),
+    black_codes=(2,),
+    asian_codes=(4, 5, 6),
+    non_hispanic_codes=(0, 9),
+    min_total_employed=50,
+    inject_year_in_filename=True,
+    return_year=False,
+):
+    """
+    Aggregate IPUMS person-level data into a BLS-compatible profession CSV.
+
+    Args:
+        extract_file: Path to IPUMS extract (.csv/.csv.gz/.parquet/.dta)
+        output_csv: Output CSV path
+        year: Optional year filter (single year)
+        occupation_code_col: Occupation code column (e.g., OCC1990)
+        occupation_label_col: Occupation label text column (if present)
+        occupation_map_file: Optional CSV mapping occupation codes to labels
+        year_col: Year column name
+        sex_col: Sex column name (IPUMS default: SEX, female code usually 2)
+        race_col: Race column name
+        hispanic_col: Hispanic origin column name
+        weight_col: Person weight column
+        female_codes: Values treated as female in sex_col
+        black_codes: Values treated as Black/African American in race_col
+        asian_codes: Values treated as Asian in race_col
+        non_hispanic_codes: Values treated as non-Hispanic in hispanic_col
+        min_total_employed: Minimum weighted total employment to keep row
+        inject_year_in_filename: Inject year in output filename when available
+        return_year: If True, returns (DataFrame, year)
+
+    Returns:
+        DataFrame in the same schema as BLS profession CSV output.
+    """
+    df = _read_ipums_extract(extract_file)
+
+    required = [occupation_code_col, sex_col, weight_col]
+    for col in required:
+        if col not in df.columns:
+            raise ValueError(f"extract_file missing required column: {col}")
+
+    if year is not None:
+        if year_col not in df.columns:
+            raise ValueError(f"year filter requested but `{year_col}` not found in extract")
+        df = df[df[year_col] == year].copy()
+
+    if df.empty:
+        raise ValueError("No rows available after filtering extract")
+
+    labels = _resolve_occupation_labels(
+        df=df,
+        occupation_code_col=occupation_code_col,
+        occupation_label_col=occupation_label_col,
+        occupation_map_file=occupation_map_file,
+    )
+
+    work = pd.DataFrame(
+        {
+            "Occupation": labels,
+            "weight": pd.to_numeric(df[weight_col], errors="coerce"),
+            "is_woman": df[sex_col].isin(female_codes),
+            "is_black": df[race_col].isin(black_codes) if race_col in df.columns else False,
+            "is_asian": df[race_col].isin(asian_codes) if race_col in df.columns else False,
+            "is_hispanic": (~df[hispanic_col].isin(non_hispanic_codes)) if hispanic_col in df.columns else False,
+        }
+    )
+
+    work = work.dropna(subset=["Occupation", "weight"]).copy()
+    work["Occupation"] = work["Occupation"].astype(str).str.strip()
+    work = work[(work["Occupation"] != "") & (work["weight"] > 0)]
+
+    if work.empty:
+        raise ValueError("No valid weighted occupation rows found in extract")
+
+    work["women_weight"] = work["weight"].where(work["is_woman"], 0.0)
+    work["black_weight"] = work["weight"].where(work["is_black"], 0.0)
+    work["asian_weight"] = work["weight"].where(work["is_asian"], 0.0)
+    work["hispanic_weight"] = work["weight"].where(work["is_hispanic"], 0.0)
+
+    grouped = work.groupby("Occupation", dropna=False, as_index=False).agg(
+        TotalEmployed=("weight", "sum"),
+        women_weight=("women_weight", "sum"),
+        black_weight=("black_weight", "sum"),
+        asian_weight=("asian_weight", "sum"),
+        hispanic_weight=("hispanic_weight", "sum"),
+    )
+
+    agg = pd.DataFrame(
+        {
+            "Occupation": grouped["Occupation"],
+            "TotalEmployed": grouped["TotalEmployed"],
+            "Women": 100.0 * grouped["women_weight"] / grouped["TotalEmployed"],
+            "AfricanAmerican": 100.0 * grouped["black_weight"] / grouped["TotalEmployed"],
+            "Asian": 100.0 * grouped["asian_weight"] / grouped["TotalEmployed"],
+            "HispanicLatino": 100.0 * grouped["hispanic_weight"] / grouped["TotalEmployed"],
+        }
+    )
+
+    cleaned = agg[agg["TotalEmployed"] >= float(min_total_employed)].copy()
+    if cleaned.empty:
+        raise ValueError("No occupation rows meet min_total_employed threshold")
+
+    cleaned["TotalEmployed"] = cleaned["TotalEmployed"].round().astype(int)
+    cleaned = cleaned.sort_values("Women", ascending=True).reset_index(drop=True)
+
+    label_columns = ["label1", "label2", "label3", "label4", "label5"]
+    label_df = pd.DataFrame(
+        cleaned["Occupation"].map(lambda x: _tokenize_occupation(x, max_tokens=5)).tolist(),
+        columns=label_columns,
+        index=cleaned.index,
+    )
+
+    out = pd.DataFrame(
+        {
+            "TotalEmployed": cleaned["TotalEmployed"],
+            "Women": cleaned["Women"],
+            "AfricanAmerican": cleaned["AfricanAmerican"],
+            "Asian": cleaned["Asian"],
+            "HispanicLatino": cleaned["HispanicLatino"],
+            "none": "",
+        }
+    )
+    out = pd.concat([out, label_df], axis=1)
+    out = out[TARGET_COLUMNS]
+
+    detected_year = None
+    if year is not None:
+        detected_year = int(year)
+    elif year_col in df.columns:
+        year_values = pd.to_numeric(df[year_col], errors="coerce").dropna().astype(int)
+        if len(year_values.unique()) == 1:
+            detected_year = int(year_values.iloc[0])
+
+    resolved_output_csv = _output_path_with_year(
+        output_csv,
+        detected_year,
+        inject_year_in_filename=inject_year_in_filename,
+    )
+
+    with open(resolved_output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(TARGET_COLUMNS)
+        for row in out.itertuples(index=False):
+            writer.writerow(
+                [
+                    int(row.TotalEmployed),
+                    _format_percent(row.Women),
+                    _format_percent(row.AfricanAmerican),
+                    _format_percent(row.Asian),
+                    _format_percent(row.HispanicLatino),
+                    "",
+                    row.label1,
+                    row.label2,
+                    row.label3,
+                    row.label4,
+                    row.label5,
+                ]
+            )
+
+    print(f"Saved {len(out)} rows to {resolved_output_csv}")
+    if detected_year is not None:
+        print(f"Detected IPUMS reference year: {detected_year}")
+
+    out.attrs["ipums_reference_year"] = detected_year
+    out.attrs["output_csv"] = resolved_output_csv
+
+    if return_year:
+        return out, detected_year
+    return out
+
+
+def aggregate_ipums_professions_csv_batch(
+    extract_file,
+    output_dir,
+    years=None,
+    output_basename="professionsIPUMS.csv",
+    continue_on_error=True,
+    **kwargs,
+):
+    """Export one BLS-compatible CSV per year from an IPUMS extract."""
+    output_dir_path = Path(output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+
+    df = _read_ipums_extract(extract_file)
+    year_col = kwargs.get("year_col", "YEAR")
+    if years is None:
+        if year_col not in df.columns:
+            raise ValueError("years=None requires a year column in extract")
+        year_values = pd.to_numeric(df[year_col], errors="coerce").dropna().astype(int)
+        years = sorted(year_values.unique().tolist())
+
+    runs = []
+    output_csv = str(output_dir_path / output_basename)
+
+    for year in years:
+        try:
+            out_df, out_year = aggregate_ipums_professions_csv(
+                extract_file=extract_file,
+                output_csv=output_csv,
+                year=year,
+                return_year=True,
+                **kwargs,
+            )
+            runs.append(
+                {
+                    "year": out_year,
+                    "rows": len(out_df),
+                    "status": "ok",
+                    "output_csv": out_df.attrs.get("output_csv", ""),
+                    "error": "",
+                }
+            )
+        except Exception as exc:
+            runs.append(
+                {
+                    "year": year,
+                    "rows": None,
+                    "status": "failed",
+                    "output_csv": "",
+                    "error": str(exc),
+                }
+            )
+            if not continue_on_error:
+                break
+
+    runs_df = pd.DataFrame(runs)
+    if runs_df.empty:
+        return runs_df
+
+    return runs_df[["year", "rows", "status", "output_csv", "error"]].sort_values(
+        by=["year", "status"], ascending=[False, True], na_position="last"
+    ).reset_index(drop=True)

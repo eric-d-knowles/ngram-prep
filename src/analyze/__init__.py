@@ -11,9 +11,19 @@ from .bls_utils import (
     scrape_bls_professions_csv_batch,
     calculate_women_percentage,
 )
+from .ipums_utils import (
+    aggregate_ipums_professions_csv,
+    aggregate_ipums_professions_csv_batch,
+    fetch_ipums_microdata_cps,
+    fetch_and_aggregate_ipums_professions_csv,
+)
 
 __all__ = [
     "scrape_bls_professions_csv",
     "scrape_bls_professions_csv_batch",
     "calculate_women_percentage",
+    "aggregate_ipums_professions_csv",
+    "aggregate_ipums_professions_csv_batch",
+    "fetch_ipums_microdata_cps",
+    "fetch_and_aggregate_ipums_professions_csv",
 ]
