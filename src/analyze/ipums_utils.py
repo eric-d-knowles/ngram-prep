@@ -251,9 +251,14 @@ def fetch_ipums_microdata_cps(
             if verbose:
                 print(f"  Decompressed {gz_path.name} -> {out_path.name}")
 
-        files = sorted([str(p) for p in download_path.glob("*") if p.is_file()])
+        # Filter to only data files (exclude .xml metadata files)
+        supported_suffixes = {".csv", ".parquet", ".dta", ".stata"}
+        files = sorted([
+            str(p) for p in download_path.glob("*")
+            if p.is_file() and p.suffix.lower() in supported_suffixes
+        ])
         if verbose:
-            print(f"  Downloaded {len(files)} file(s)")
+            print(f"  Downloaded {len(files)} data file(s)")
             for f in files:
                 print(f"    - {Path(f).name}  ({Path(f).stat().st_size / 1024:.0f} KB)")
     except Exception as exc:
@@ -301,6 +306,7 @@ def fetch_and_aggregate_ipums_professions_csv(
     max_wait_time: float = 30,
     timeout: float = 600,
     return_year: bool = False,
+    overwrite: bool = True,
     verbose: bool = True,
 ) -> tuple:
     """
@@ -342,6 +348,8 @@ def fetch_and_aggregate_ipums_professions_csv(
         max_wait_time: Max wait time (seconds) between polls
         timeout: Total timeout (seconds) for extract completion
         return_year: If True, returns (DataFrame, year)
+        overwrite: If False, skip download and use existing files in download_dir (default: True).
+                   In multi-year mode, returns results for years with existing aggregated CSVs.
         verbose: Print status messages
 
     Returns:
@@ -369,6 +377,104 @@ def fetch_and_aggregate_ipums_professions_csv(
     """
     if occupation_map_file is None:
         raise ValueError("occupation_map_file is required for web fetching")
+
+    if download_dir is None:
+        download_dir = "ipums_api_downloads"
+
+    download_path = Path(download_dir)
+
+    # If overwrite=False, check for existing files and skip download
+    if not overwrite:
+        if years is not None:
+            # Multi-year batch mode: check for existing aggregated CSVs
+            download_path.mkdir(parents=True, exist_ok=True)
+            
+            # Determine expected output file pattern
+            base_name = Path(output_csv).stem
+            if inject_year_in_filename:
+                # Pattern: basename_YYYY.csv
+                existing_runs = []
+                for yr in sorted(years):
+                    expected_csv = download_path / f"{base_name}_{yr}.csv"
+                    if expected_csv.exists():
+                        # Read the file to get row count
+                        try:
+                            df = pd.read_csv(expected_csv)
+                            existing_runs.append({
+                                "year": yr,
+                                "rows": len(df),
+                                "status": "ok",
+                                "output_csv": str(expected_csv),
+                                "error": "",
+                            })
+                        except Exception as e:
+                            existing_runs.append({
+                                "year": yr,
+                                "rows": None,
+                                "status": "failed",
+                                "output_csv": str(expected_csv),
+                                "error": f"Could not read existing file: {e}",
+                            })
+                
+                if existing_runs:
+                    if verbose:
+                        print(f"overwrite=False: Using {len(existing_runs)} existing file(s) from {download_dir}")
+                        for run in existing_runs[:3]:
+                            print(f"  - {Path(run['output_csv']).name} ({run['rows']} rows)")
+                        if len(existing_runs) > 3:
+                            print(f"  ... and {len(existing_runs) - 3} more")
+                    return pd.DataFrame(existing_runs)[["year", "rows", "status", "output_csv", "error"]].reset_index(drop=True)
+                
+                if verbose:
+                    print(f"overwrite=False: No existing files found in {download_dir}, proceeding with download...")
+            else:
+                # Single file mode with years - less common, but handle it
+                expected_csv = download_path / Path(output_csv).name
+                if expected_csv.exists():
+                    if verbose:
+                        print(f"overwrite=False: Using existing file {expected_csv}")
+                    try:
+                        df = pd.read_csv(expected_csv)
+                        # Can't determine per-year breakdown, return single entry
+                        return pd.DataFrame([{
+                            "year": None,
+                            "rows": len(df),
+                            "status": "ok",
+                            "output_csv": str(expected_csv),
+                            "error": "",
+                        }])
+                    except Exception as e:
+                        raise ValueError(f"Failed to read existing file {expected_csv}: {e}")
+                
+                if verbose:
+                    print(f"overwrite=False: No existing file found at {expected_csv}, proceeding with download...")
+        else:
+            # Single-year mode: check for existing output CSV
+            download_path.mkdir(parents=True, exist_ok=True)
+            expected_csv = Path(output_csv) if Path(output_csv).is_absolute() else download_path / Path(output_csv).name
+            
+            if expected_csv.exists():
+                if verbose:
+                    print(f"overwrite=False: Using existing file {expected_csv}")
+                try:
+                    df = pd.read_csv(expected_csv)
+                    # Try to infer year from filename or data
+                    inferred_year = None
+                    if inject_year_in_filename:
+                        import re
+                        match = re.search(r'_(\d{4})\.csv$', str(expected_csv))
+                        if match:
+                            inferred_year = int(match.group(1))
+                    
+                    df.attrs["output_csv"] = str(expected_csv)
+                    if return_year:
+                        return df, inferred_year
+                    return df
+                except Exception as e:
+                    raise ValueError(f"Failed to read existing file {expected_csv}: {e}")
+            
+            if verbose:
+                print(f"overwrite=False: No existing file found at {expected_csv}, proceeding with download...")
 
     # Fetch data from API
     if verbose:
@@ -424,6 +530,42 @@ def fetch_and_aggregate_ipums_professions_csv(
     # Multi-year batch path: use aggregate_ipums_professions_csv_batch
     if years is not None:
         output_dir = download_dir or "ipums_api_downloads"
+        
+        # Clean up old files from output_dir to avoid mixing old/new runs
+        # (but preserve the current extract files that were just downloaded)
+        if Path(output_dir).exists():
+            current_extract_names = {Path(f).name for f in extract_files}
+            
+            # Delete old raw extract files (.xml and cps_*.csv), but not current ones
+            for f in Path(output_dir).glob("*.xml"):
+                if f.is_file() and f.name not in current_extract_names:
+                    f.unlink()
+                    if verbose:
+                        print(f"  Cleared old extract metadata: {f.name}")
+            
+            for f in Path(output_dir).glob("cps_*.csv"):
+                if f.is_file() and f.name not in current_extract_names:
+                    f.unlink()
+                    if verbose:
+                        print(f"  Cleared old raw extract: {f.name}")
+            
+            # Clear aggregated profession CSVs to avoid mixing old/new runs
+            # Determine filename pattern: if inject_year_in_filename, look for pattern like "basename_YYYY.csv"
+            # Otherwise, just look for the basename itself
+            import re
+            if inject_year_in_filename:
+                # Pattern: remove extension, add _YYYY before it
+                base_name = Path(output_csv).stem
+                pattern = f"{base_name}_[0-9]{{4}}.csv"
+            else:
+                pattern = Path(output_csv).name
+            
+            for f in Path(output_dir).glob(pattern if "*" in pattern else f"{pattern}*"):
+                if f.is_file() and f.suffix == ".csv":
+                    f.unlink()
+                    if verbose:
+                        print(f"  Cleared old aggregated: {f.name}")
+        
         try:
             runs_df = aggregate_ipums_professions_csv_batch(
                 extract_file=extract_file,
