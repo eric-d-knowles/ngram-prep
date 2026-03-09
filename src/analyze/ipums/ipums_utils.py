@@ -1,6 +1,27 @@
-"""
-Utilities for fetching and aggregating IPUMS microdata into BLS-style profession CSVs.
+TARGET_COLUMNS = [
+    "TotalEmployed",
+    "Women",
+    "AfricanAmerican",
+    "Asian",
+    "HispanicLatino",
+    "none",
+    "label1",
+    "label2",
+    "label3",
+    "label4",
+    "label5",
+]
 
+def _output_path_with_year(output_csv, year, inject_year_in_filename=True):
+    """Return output path with year injected before extension if requested."""
+    path = Path(output_csv)
+    if inject_year_in_filename and year is not None:
+        stem = path.stem
+        ext = path.suffix
+        return str(path.parent / f"{stem}_{year}{ext}")
+    return str(path)
+
+"""
 This module provides two main workflows:
 1. **Raw aggregation**: Convert already-downloaded IPUMS extracts (CSV/Parquet/Stata)
    into BLS-compatible profession CSVs via `aggregate_ipums_professions_csv()`.
@@ -19,7 +40,110 @@ from typing import Optional, List, Dict, Any, Iterable, Union
 
 import pandas as pd
 
-from .bls_utils import TARGET_COLUMNS, _tokenize_occupation, _output_path_with_year
+import re
+
+LABEL_STOPWORDS = {
+    "and", "or", "of", "the", "a", "an", "for", "to", "in", "on", "at", "by", "with",
+    "except", "including", "all", "other", "miscellaneous", "related", "non", "total",
+    "first", "second", "third", "line", "years", "over", "percent", "employed",
+}
+
+GENERIC_ROLE_WORDS = {
+    "accountant", "advisor", "aide", "analyst", "appraiser", "architect", "assembler", "assistant", "attendant",
+    "auditor", "bailiff", "baker", "barber", "bartender", "brickmason", "blockmason", "carpenter", "cashier",
+    "chef", "chemist", "clergy", "clerk", "collector", "concierge", "conductor", "cook", "counselor", "courier",
+    "developer", "dishwasher", "doctor", "drafter", "driver", "editor", "educator", "electrician", "engineer",
+    "estimator", "examiner", "finisher", "firefighter", "fitter", "guard", "hairdresser", "handler", "helper",
+    "hygienist", "inspector", "installer", "instructor", "investigator", "jailer", "janitor", "laborer", "lawyer",
+    "librarian", "machinist", "manager", "mason", "mechanic", "messenger", "modeler", "mover", "nurse",
+    "nutritionist", "officer", "operator", "paramedic", "paralegal", "pathologist", "pharmacist", "phlebotomist",
+    "pilot", "pipelayer", "pipefitter", "planner", "plumber", "porter", "practitioner", "president", "programmer",
+    "psychologist", "receptionist", "repairer", "roofer", "salesperson", "scientist", "secretary", "specialist",
+    "steamfitter", "stonemason", "supervisor", "surgeon", "taper", "teacher", "technician", "teller", "therapist",
+    "veterinarian", "waiter", "waitress", "worker", "writer",
+}
+
+def _is_generic_role_token(token):
+    """Check if a token is a generic occupational role word."""
+    if token in GENERIC_ROLE_WORDS:
+        return True
+    for role in GENERIC_ROLE_WORDS:
+        if len(role) >= 4 and token.endswith(role) and len(token) > len(role):
+            return True
+    return False
+
+def _normalize_label_token(token):
+    """Normalize an occupation label token (handle plurals, etc.)."""
+    token = token.lower().strip()
+    if token.endswith("men") and len(token) > 5:
+        token = token[:-3] + "man"
+
+    if token.endswith("s") and len(token) > 3:
+        singular = token[:-1]
+        if singular in GENERIC_ROLE_WORDS or _is_generic_role_token(singular):
+            token = singular
+    return token
+
+def _tokenize_occupation(occupation, max_tokens=5):
+    """
+    Tokenize and extract meaningful role words from an occupation label.
+    
+    Args:
+        occupation: Raw occupation string from BLS/IPUMS table
+        max_tokens: Maximum number of tokens to return
+    Returns:
+        List of extracted tokens (padded to max_tokens length)
+    """
+    text = str(occupation).lower()
+    text = re.sub(r"[\(\)\[\].;:]+", " ", text)
+    text = text.replace("&", " and ")
+
+    segments = [s.strip() for s in re.split(r",|/|\band\b|\bor\b", text) if s.strip()]
+
+    def cleaned_tokens(segment):
+        raw = re.findall(r"[a-z0-9']+", segment)
+        out = []
+        for token in raw:
+            normalized = _normalize_label_token(token)
+            if (
+                normalized
+                and normalized not in LABEL_STOPWORDS
+                and not normalized.isdigit()
+                and len(normalized) > 1
+            ):
+                out.append(normalized)
+        return out
+
+    segment_heads = []
+    for segment in segments:
+        tokens = cleaned_tokens(segment)
+        if not tokens:
+            continue
+        role_tokens = [t for t in tokens if _is_generic_role_token(t)]
+        if "supervisor" in role_tokens:
+            segment_heads.append("supervisor")
+        elif role_tokens:
+            segment_heads.append(role_tokens[-1])
+
+    all_tokens = cleaned_tokens(text)
+    role_tokens_global = [t for t in all_tokens if _is_generic_role_token(t)]
+
+    ordered = segment_heads + role_tokens_global
+    if not ordered:
+        ordered = all_tokens
+
+    deduped = []
+    seen = set()
+    for token in ordered:
+        if token not in seen:
+            deduped.append(token)
+            seen.add(token)
+
+    return (deduped[:max_tokens] + [""] * max_tokens)[:max_tokens]
+
+# ...existing code...
+# Remove import of bls_utils
+
 
 
 def _get_ipums_api_client(api_key: Optional[str] = None):
@@ -74,7 +198,7 @@ def fetch_ipums_microdata_cps(
 
     Args:
         api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
-        years: ASEC years to download — accepts a list, range, or any iterable of ints.
+        years: ASEC years to download - accepts a list, range, or any iterable of ints.
                Examples: [2015, 2020, 2024] or range(2010, 2025).
                Each year is resolved to its ASEC sample ID automatically.
                If None and samples is None, uses the most recent ASEC sample.
@@ -321,7 +445,7 @@ def fetch_and_aggregate_ipums_professions_csv(
                    When years is provided, this is used as output_basename for the batch.
         occupation_map_file: CSV file mapping occupation codes to labels (required)
         api_key: IPUMS API key (reads from IPUMS_API_KEY env var if not provided)
-        years: ASEC years to download and aggregate — accepts a list, range, or any
+        years: ASEC years to download and aggregate - accepts a list, range, or any
                iterable of ints (e.g. range(1968, 2026)). Each year is fetched as a
                single extract and then batch-aggregated into per-year CSVs.
                Cannot be used together with `samples`.
@@ -944,3 +1068,33 @@ def aggregate_ipums_professions_csv_batch(
     return runs_df[["year", "rows", "status", "output_csv", "error"]].sort_values(
         by=["year", "status"], ascending=[False, True], na_position="last"
     ).reset_index(drop=True)
+
+import pandas as pd
+
+def calculate_women_percentage(csv_path, label):
+    """
+    Compute the percentage of female workers for a given label in an IPUMS CSV.
+    Sums total employed for all matching rows, computes weighted mean women%.
+
+    Args:
+        csv_path: Path to IPUMS profession CSV (BLS-compatible format)
+        label: Occupation label (e.g., 'engineer')
+
+    Returns:
+        women_pct: Weighted mean percentage of female workers for the label
+    """
+    df = pd.read_csv(csv_path)
+    # Find rows where any label column matches the target label
+    label_cols = [f'label{i}' for i in range(1, 6)]
+    mask = df[label_cols].apply(lambda row: label in row.values, axis=1)
+    matched = df[mask]
+    if matched.empty:
+        raise ZeroDivisionError(f"No rows found for label '{label}' in {csv_path}")
+
+    total_employed = matched['TotalEmployed'].sum()
+    if total_employed == 0:
+        raise ZeroDivisionError(f"Total employed is zero for label '{label}' in {csv_path}")
+
+    # Weighted mean women%
+    women_weighted = (matched['Women'] * matched['TotalEmployed']).sum() / total_employed
+    return women_weighted / 100.0  # Convert percent to proportion
