@@ -32,6 +32,12 @@ extensions = [
         language="c++",
         extra_compile_args=["-O3", "-std=c++17"],
     ),
+    Extension(
+        "ngramprep.utilities.count_items",
+        sources=["src/ngramprep/utilities/count_items.pyx"],
+        language="c++",  # or "c" if your code is C, not C++
+        extra_compile_args=["-O3", "-std=c++17"],  # adjust if not C++
+    ),
 ]
 
 setup(
