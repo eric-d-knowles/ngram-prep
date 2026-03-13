@@ -87,11 +87,13 @@ The toolkit provides two parallel pipelines for different data sources:
 
 ### Standard installation
 
-Activate your project's conda environment, then clone the repository and install:
+Clone the repository, navigate into it, activate your project's conda environment, and
+install:
 
 ```bash
 git clone https://github.com/eric-d-knowles/lexichron.git
 cd lexichron
+conda activate your-environment
 pip install .
 ```
 
