@@ -8,7 +8,7 @@ dependencies:
   - pip
   - cython>=3.0
   - enchant
-  - gxx_linux-64  # Linux only; omit or replace on macOS/Windows
-
+  - cxx-compiler
+  
   - pip:
       - -e .[notebook,linux]
