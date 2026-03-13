@@ -37,6 +37,11 @@ def print_training_header(
     model_dir_str = truncate_path_to_fit(model_dir, "Model directory:      ", LINE_WIDTH)
     log_dir_str = truncate_path_to_fit(log_dir, "Log directory:        ", LINE_WIDTH)
 
+    # Add temp corpus dir if provided
+    temp_dir_str = None
+    if hasattr(print_training_header, "temp_dir") and print_training_header.temp_dir:
+        temp_dir_str = truncate_path_to_fit(print_training_header.temp_dir, "Temp corpus dir:      ", LINE_WIDTH)
+
     lines = [
         "WORD2VEC MODEL TRAINING",
         "━" * LINE_WIDTH,
@@ -48,10 +53,14 @@ def print_training_header(
         f"Model directory:      {model_dir_str}",
         f"Log directory:        {log_dir_str}",
         f"Parallel models:      {max_parallel_models}",
+    ]
+    if temp_dir_str:
+        lines.append(f"Temp corpus dir:      {temp_dir_str}")
+    lines.extend([
         "",
         grid_params,
         "",
-    ]
+    ])
     print("\n".join(lines), flush=True)
 
 

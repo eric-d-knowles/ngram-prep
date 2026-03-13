@@ -1057,6 +1057,7 @@ def fetch_prestige_crosswalk(
     max_wait_time: float = 30,
     timeout: float = 600,
     verbose: bool = True,
+    overwrite: bool = False,
 ) -> pd.DataFrame:
     """
     Fetch a static OCC2010→prestige crosswalk from IPUMS USA (Census/ACS).
@@ -1103,6 +1104,12 @@ def fetch_prestige_crosswalk(
         >>> # Subsequent runs: just read from CSV
         >>> crosswalk_df = pd.read_csv('/scratch/edk202/lexichron/occ2010_prestige.csv')
     """
+    # If output_csv exists and overwrite is False, load and return
+    if output_csv and not overwrite and os.path.exists(output_csv):
+        if verbose:
+            print(f"Loading cached prestige crosswalk from {output_csv}")
+        return pd.read_csv(output_csv)
+
     if prestige_variable not in PRESTIGE_VARIABLES:
         raise ValueError(
             f"Unknown prestige_variable '{prestige_variable}'. "
@@ -1239,7 +1246,14 @@ def aggregate_prestige_by_label(
     occupation_label_col: Optional[str] = None,
     min_total_employed: int = 50,
     verbose: bool = True,
+    output_csv: Optional[str] = None,
+    overwrite: bool = False,
 ) -> pd.DataFrame:
+    # If output_csv exists and overwrite is False, load and return
+    if output_csv and not overwrite and os.path.exists(output_csv):
+        if verbose:
+            print(f"Loading cached aggregated prestige data from {output_csv}")
+        return pd.read_csv(output_csv)
     """
     Compute a single static weighted-mean prestige score per generic occupation label,
     collapsed across all years in the CPS extract.
@@ -1383,7 +1397,12 @@ def aggregate_prestige_by_label(
         for _, row in result.tail(10).iterrows():
             print(f"    {row['label']:<20} {row['prestige_mean']:6.1f}  (n={row['total_employed']:>12,.0f})")
 
-    return result[["label", "prestige_mean", "prestige_sd", "total_employed"]]
+    out_df = result[["label", "prestige_mean", "prestige_sd", "total_employed"]]
+    if output_csv:
+        out_df.to_csv(output_csv, index=False)
+        if verbose:
+            print(f"  Saved aggregated prestige data to {output_csv}")
+    return out_df
 
 
 def add_prestige_to_panel(
@@ -1411,10 +1430,11 @@ def add_prestige_to_panel(
         >>> panel_df = add_prestige_to_panel(panel_df, prestige_df)
         >>> # prestige_z is now available as a moderator alongside baseline_proj_z
     """
-    lookup = prestige_df.set_index("label")[prestige_col].to_dict()
 
-    out = panel_df.copy()
-    out["prestige"] = out[profession_col].map(lookup)
+    # Merge prestige scores using a left join to preserve all panel data
+    prestige_merge = prestige_df[["label", prestige_col]].rename(columns={"label": profession_col})
+    out = panel_df.merge(prestige_merge, on=profession_col, how="left")
+    out.rename(columns={prestige_col: "prestige"}, inplace=True)
 
     n_missing = out["prestige"].isna().sum()
     if n_missing > 0:

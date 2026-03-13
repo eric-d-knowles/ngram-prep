@@ -1,4 +1,7 @@
+
 """Main training orchestration for Word2Vec models."""
+
+from .display import truncate_path_to_fit, LINE_WIDTH
 
 import os
 import re
@@ -13,7 +16,7 @@ from gensim.models import KeyedVectors
 from tqdm import tqdm
 
 from .config import ensure_iterable, set_info
-from .display import print_training_header, print_completion_banner, LINE_WIDTH
+from .display import print_training_header, print_completion_banner
 from .model import create_corpus_file
 from .worker import train_model
 
@@ -298,7 +301,6 @@ def train_models(
             # Clear existing temp directory
             shutil.rmtree(temp_dir, ignore_errors=False)
         os.makedirs(temp_dir, exist_ok=True)
-        print(f"Temporary corpus directory: {temp_dir}\n")
 
     # Format grid parameters with step information
     total_years = len(range(years[0], years[1] + 1, year_step))
@@ -333,6 +335,11 @@ def train_models(
         f"Workers per model:    {workers_per_model}",
     ])
 
+    # Attach temp_dir to print_training_header for display
+    if temp_dir:
+        print_training_header.temp_dir = temp_dir
+    else:
+        print_training_header.temp_dir = None
     print_training_header(
         start_time,
         db_path,
@@ -419,7 +426,6 @@ def train_models(
     corpus_file_map = {}  # Maps (year, weight_by) -> corpus_file_path
     if use_corpus_file and tasks_by_year_weight:
         print("Creating corpus files in parallel...", flush=True)
-        # Limit parallel corpus file creation to avoid overwhelming system
         max_corpus_workers = min(len(tasks_by_year_weight), 48)
         with ProcessPoolExecutor(max_workers=max_corpus_workers) as executor:
             corpus_futures = {
@@ -433,15 +439,22 @@ def train_models(
                 ): (year, weight_by_val)
                 for (year, weight_by_val) in tasks_by_year_weight.keys()
             }
+            created_years = []
+            failed_years = []
             for future in as_completed(corpus_futures):
                 year, weight_by_val = corpus_futures[future]
                 try:
                     corpus_file_path = future.result()
                     corpus_file_map[(year, weight_by_val)] = corpus_file_path
-                    print(f"  Created corpus file for year {year}, weight_by={weight_by_val}: {corpus_file_path}")
+                    created_years.append(year)
                 except Exception as e:
-                    print(f"  Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
+                    failed_years.append(year)
+                    print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
                     raise
+            if created_years:
+                print(f"Corpus files created for years: {sorted(set(created_years))}")
+            if failed_years:
+                print(f"Corpus file creation failed for years: {sorted(set(failed_years))}")
         print("")  # Blank line after corpus file creation
 
     # Update all tasks to include their corpus_file_path
@@ -462,7 +475,7 @@ def train_models(
     # Train all models
     models_trained = 0
     all_tasks_to_run = [task for year_tasks in tasks_by_year_weight.values() for task in year_tasks]
-    with tqdm(total=len(all_tasks_to_run), desc="Training Models", unit=" models") as pbar:
+    with tqdm(total=len(all_tasks_to_run), desc="Training Models", unit=" models", ncols=LINE_WIDTH) as pbar:
         try:
             # Train all models across all years in parallel
             with ProcessPoolExecutor(max_workers=max_parallel_models) as executor:
