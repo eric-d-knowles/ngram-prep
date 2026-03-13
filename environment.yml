@@ -11,4 +11,4 @@ dependencies:
   - cxx-compiler
   
   - pip:
-      - -e .[notebook,linux]
+      - -e .[notebook]
