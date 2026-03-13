@@ -118,16 +118,25 @@ pip install -e .
 Editable mode links the installation directly to your cloned repository, so any changes
 you make to the source are immediately reflected without reinstalling.
 
-### Additional setup: Hunspell dictionaries
+### Additional setup: Enchant library and Hunspell dictionaries
 
-Spell-checking requires Hunspell dictionaries for all supported languages, which cannot
-be installed automatically. Run the setup script once after installation:
+Spell-checking relies on the **Enchant C library** and **Hunspell dictionaries**.
+These components cannot be installed automatically via `pip`, so one additional
+setup step is required after installing `lexichron`.
+
+Activate the environment where `lexichron` is installed, then run the setup script:
 
 ```bash
-bash scripts/setup_hunspell.sh
+bash scripts/setup_enchant_hunspell.sh
 ```
 
-The script will tell you when to deactivate and reactivate your environment.
+The script will:
+- Ensure the **Enchant C library** is installed in the active Conda environment
+- Download Hunspell dictionaries for all supported languages
+- Install them inside the environment
+- Configure Conda activation hooks so pyenchant can locate the dictionaries and the Enchant shared library
+
+You only need to run this script **once per environment**.
 
 ### Don't have an environment yet?
 
