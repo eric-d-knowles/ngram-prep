@@ -18,15 +18,15 @@ dependencies = [
     "stop-words>=1.0",
     "simplemma>=0.9",
     "pyenchant>=3.2",
-    "rocks-shim @ https://github.com/eric-d-knowles/rocks-shim/releases/download/0.3.0/rocks_shim-0.3.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ; platform_system == 'Linux'",
-]
 
-[project.optional-dependencies]
-notebook = [
+    # notebook runtime
     "ipykernel>=6.0",
     "jupyter_client>=7.0",
     "nbformat>=5.0",
     "notebook>=6.4",
+
+    # required database backend
+    "rocks-shim @ https://github.com/eric-d-knowles/rocks-shim/releases/download/0.3.0/rocks_shim-0.3.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ; platform_system == 'Linux'",
 ]
 
 [build-system]
