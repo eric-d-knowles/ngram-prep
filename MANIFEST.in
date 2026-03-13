@@ -1,0 +1,3 @@
+# Exclude demonstration notebooks from package distribution
+recursive-exclude notebooks *
+prune notebooks
