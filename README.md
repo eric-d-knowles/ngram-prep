@@ -138,16 +138,18 @@ pip install -e .
 Editable mode links the installation directly to your cloned repository, so any changes
 you make to the source are immediately reflected without reinstalling.
 
-**Step 5: Register the Jupyter kernel**
+**Step 5: Register the Jupyter kernel (if needed)**
 
-To use the notebooks in the `notebooks/` directory, register the conda environment as
-a Jupyter kernel:
+If you don't already have a Jupyter kernel registered for your project environment, you
+can register one now:
 
 ```bash
 python -m ipykernel install --user --name=lexichron --display-name="Python (lexichron)"
 ```
 
-You can then select "Python (lexichron)" as the kernel when launching Jupyter.
+`--name` sets the internal kernel identifier and `--display-name` sets what appears in
+Jupyter's kernel menu. Replace both with something meaningful to your project — for
+example, `--name=gender_semantics --display-name="Python (gender semantics)"`.
 
 ### Notes
 
