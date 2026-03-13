@@ -92,6 +92,9 @@ The toolkit provides two parallel pipelines for different data sources:
 
 ### Setup
 
+`lexichron` is distributed as a pip package and is intended to be installed into a
+conda environment. The steps below walk through that process.
+
 **Step 1: Clone the repository**
 
 ```bash
