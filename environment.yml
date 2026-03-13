@@ -9,6 +9,6 @@ dependencies:
   - cython>=3.0
   - enchant
   - cxx-compiler
-  
+
   - pip:
-      - -e .[notebook]
+      - -e .
