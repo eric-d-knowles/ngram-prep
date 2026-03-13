@@ -29,7 +29,7 @@ Alternatively, you can click "Cite this repository" in the GitHub sidebar for ad
 - **Data acquisition:** Download n-gram datasets (1- through 5-grams) or access Davies corpora. (Davies datasets must be licensed and downloaded by the user.) Immediately ingest data into a queryable RocksDB database.
 - **Language support:** N-gram pipelines support English, Chinese (simplified), French, German, Hebrew, Italian, Russian, and Spanish.
 - **Configurable processing:** Apply any or all of the following transformations: case normalization, stopword removal, short word removal, non-alphabetic token removal, and lemmatization. Discarded tokens are replaced in the corpus with `<UNK>`.
-- **Whitelist creation:** Output the top-_N_ most frequent unigrams, applying optional spell-checking, then use this whitelist to efficiently filter text examples. Spell-checking discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded). A year range can be defined to ensure that the whitelist contains only tokens found in all specified years.
+- **Whitelist creation:** Output the top-N most frequent unigrams, applying optional spell-checking, then use this whitelist to efficiently filter text examples. Spell-checking discards proper nouns when used in conjunction with case normalization (e.g., "Jackson" and "Einstein" would be discarded). A year range can be defined to ensure that the whitelist contains only tokens found in all specified years.
 - **Bigram hyphenation:** Automatically convert semantically interesting bigrams into hyphenated unigrams (e.g., "working class" → "working-class", "nuclear family" → "nuclear-family"), preserving multiword concepts as single tokens for downstream analysis.
 - **Token immunity:** Define tokens that should always be preserved during filtering, immune to exclusion rules. Useful for domain-specific terms, names or proper nouns, historical keywords, or particular multiword expressions that you want to ensure remain in your corpus regardless of other filtering criteria.
 - **Temporal analysis support:** Reorganize n-gram data into a format suitable for time-series analyses:
@@ -126,11 +126,17 @@ conda activate lexichron
 **Step 4: Install the package**
 
 ```bash
+pip install .
+```
+
+If you plan to modify the source code, install in editable mode instead:
+
+```bash
 pip install -e .
 ```
 
-The `-e` flag installs in editable mode, so changes to the source code are immediately
-reflected without reinstalling.
+Editable mode links the installation directly to your cloned repository, so any changes
+you make to the source are immediately reflected without reinstalling.
 
 **Step 5: Register the Jupyter kernel**
 
