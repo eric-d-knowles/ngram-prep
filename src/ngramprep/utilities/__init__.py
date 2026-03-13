@@ -11,4 +11,6 @@ __all__ = [
     "format_banner",
     # Progress display
     "ProgressDisplay",
+    # Count items
+    "count_db_items",
 ]
