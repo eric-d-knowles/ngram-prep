@@ -159,7 +159,7 @@ class W2VModel:
         for word in self.filtered_vectors:
             self.filtered_vectors[word] = np.dot(self.filtered_vectors[word], R)
 
-    return self
+        return self
 
     def is_normalized(self, tolerance=1e-6):
         """
