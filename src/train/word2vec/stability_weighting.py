@@ -336,7 +336,7 @@ def load_models_for_stability_weighting(
         print(f"  Loading {len(model_paths)} models...")
         iterator = tqdm(
             model_paths,
-            desc="Loading models",
+            desc="  Loading models",
             ncols=LINE_WIDTH,
             unit=" models"
         )
