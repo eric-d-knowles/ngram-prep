@@ -1,11 +1,12 @@
 """
-Anchor word selection for Procrustes alignment.
+Stability weighting for Procrustes alignment.
 
-Identifies stable words across time periods to use as anchors for alignment,
-rather than using the entire shared vocabulary.
+Computes per-word stability scores across time periods to use as weights
+in weighted Procrustes alignment, so that semantically stable words
+contribute more to estimating the rotation matrix.
 """
 import numpy as np
-from typing import List, Dict, Set, Tuple, Optional, Union
+from typing import List, Dict, Set, Tuple
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -13,24 +14,41 @@ from ngramprep.common.w2v_model import W2VModel
 from .display import LINE_WIDTH
 
 
-def compute_local_stability(models: List[Tuple[int, W2VModel]],
-                            shared_vocab: Set[str]) -> Dict[str, float]:
+def _normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
+    """
+    Normalize a word -> score dict to [0, 1] via min-max scaling.
+
+    If all values are identical, returns 1.0 for every word to avoid
+    division by zero and preserve uniform weighting.
+    """
+    values = np.array(list(scores.values()))
+    min_val = values.min()
+    max_val = values.max()
+    if max_val == min_val:
+        return {k: 1.0 for k in scores}
+    return {k: (v - min_val) / (max_val - min_val) for k, v in scores.items()}
+
+
+def compute_local_stability(
+        models: List[Tuple[int, W2VModel]],
+        shared_vocab: Set[str]
+) -> Dict[str, float]:
     """
     Compute local stability (average year-over-year cosine similarity) for each word.
 
-    Words with high local stability maintain consistent meanings across consecutive time periods.
+    Words with high local stability maintain consistent meanings across consecutive
+    time periods.
 
     Args:
-        models: List of (year, W2VModel) tuples, sorted by year
-        shared_vocab: Set of words present in all models
+        models: List of (year, W2VModel) tuples, sorted by year.
+        shared_vocab: Set of words present in all models.
 
     Returns:
         Dict mapping word -> average cosine similarity across consecutive years
-        (higher = more stable)
+        (higher = more stable).
     """
     word_similarities = defaultdict(list)
 
-    # Compare consecutive model pairs
     for i in range(len(models) - 1):
         year1, model1 = models[i]
         year2, model2 = models[i + 1]
@@ -38,77 +56,66 @@ def compute_local_stability(models: List[Tuple[int, W2VModel]],
         for word in shared_vocab:
             vec1 = model1.model[word]
             vec2 = model2.model[word]
-
             # Cosine similarity (assumes normalized vectors)
-            similarity = np.dot(vec1, vec2)
-            word_similarities[word].append(similarity)
+            word_similarities[word].append(np.dot(vec1, vec2))
 
-    # Average across all consecutive pairs
     return {word: np.mean(sims) for word, sims in word_similarities.items()}
 
 
-def compute_global_stability(models: List[Tuple[int, W2VModel]],
-                             shared_vocab: Set[str]) -> Dict[str, float]:
+def compute_global_stability(
+        models: List[Tuple[int, W2VModel]],
+        shared_vocab: Set[str]
+) -> Dict[str, float]:
     """
     Compute global stability (inverse of variance from mean embedding) for each word.
 
     Words with low variance across time periods are globally stable.
 
     Args:
-        models: List of (year, W2VModel) tuples
-        shared_vocab: Set of words present in all models
+        models: List of (year, W2VModel) tuples.
+        shared_vocab: Set of words present in all models.
 
     Returns:
-        Dict mapping word -> stability score (higher = more stable)
-        Computed as 1 / (1 + variance_of_distances_from_mean)
+        Dict mapping word -> stability score (higher = more stable),
+        computed as 1 / (1 + variance_of_distances_from_mean).
     """
     word_embeddings = defaultdict(list)
 
-    # Collect embeddings for each word across all years
     for year, model in models:
         for word in shared_vocab:
             word_embeddings[word].append(model.model[word])
 
     word_stability = {}
-
     for word, embeddings in word_embeddings.items():
         embeddings = np.array(embeddings)
-
-        # Compute mean embedding
         mean_embedding = np.mean(embeddings, axis=0)
-
-        # Compute distances from mean
         distances = np.linalg.norm(embeddings - mean_embedding, axis=1)
-
-        # Variance of distances (lower = more stable)
         variance = np.var(distances)
-
-        # Convert to stability score (higher = more stable)
         # Add 1 to denominator to avoid division by zero
-        stability = 1.0 / (1.0 + variance)
-        word_stability[word] = stability
+        word_stability[word] = 1.0 / (1.0 + variance)
 
     return word_stability
 
 
-def compute_frequency_stability(models: List[Tuple[int, W2VModel]],
-                                shared_vocab: Set[str]) -> Dict[str, float]:
+def compute_frequency_stability(
+        models: List[Tuple[int, W2VModel]],
+        shared_vocab: Set[str]
+) -> Dict[str, float]:
     """
     Compute frequency stability (inverse of coefficient of variation) for each word.
 
-    NOTE: This requires models to have word count information. If not available,
-    returns uniform scores.
+    NOTE: Requires models to have word count information. Returns uniform scores
+    if counts are unavailable.
 
     Args:
-        models: List of (year, W2VModel) tuples
-        shared_vocab: Set of words present in all models
+        models: List of (year, W2VModel) tuples.
+        shared_vocab: Set of words present in all models.
 
     Returns:
-        Dict mapping word -> stability score (higher = more stable)
+        Dict mapping word -> stability score (higher = more stable).
     """
     word_counts = defaultdict(list)
 
-    # Try to extract word counts from models
     has_counts = False
     for year, model in models:
         if hasattr(model.model, 'get_vecattr'):
@@ -121,19 +128,15 @@ def compute_frequency_stability(models: List[Tuple[int, W2VModel]],
                     pass
 
     if not has_counts:
-        # Return uniform scores if count information not available
         return {word: 1.0 for word in shared_vocab}
 
     word_stability = {}
-
     for word, counts in word_counts.items():
         if not counts or len(counts) < 2:
             word_stability[word] = 0.0
             continue
 
         counts = np.array(counts)
-
-        # Coefficient of variation (CV) = std / mean
         mean_count = np.mean(counts)
         std_count = np.std(counts)
 
@@ -141,30 +144,31 @@ def compute_frequency_stability(models: List[Tuple[int, W2VModel]],
             word_stability[word] = 0.0
         else:
             cv = std_count / mean_count
-            # Convert to stability (lower CV = higher stability)
-            stability = 1.0 / (1.0 + cv)
-            word_stability[word] = stability
+            # Lower CV = higher stability
+            word_stability[word] = 1.0 / (1.0 + cv)
 
     return word_stability
 
 
-def compute_mean_frequency(models: List[Tuple[int, W2VModel]],
-                           shared_vocab: Set[str]) -> Dict[str, float]:
+def compute_mean_frequency(
+        models: List[Tuple[int, W2VModel]],
+        shared_vocab: Set[str]
+) -> Dict[str, float]:
     """
     Compute mean frequency (log-scaled) for each word across all models.
 
-    More frequent words have more reliable embeddings and should receive higher weights.
+    More frequent words have more reliable embeddings and should receive
+    higher weights.
 
     Args:
-        models: List of (year, W2VModel) tuples
-        shared_vocab: Set of words present in all models
+        models: List of (year, W2VModel) tuples.
+        shared_vocab: Set of words present in all models.
 
     Returns:
-        Dict mapping word -> log-scaled frequency score (higher = more frequent)
+        Dict mapping word -> log-scaled frequency score (higher = more frequent).
     """
     word_counts = defaultdict(list)
 
-    # Try to extract word counts from models
     has_counts = False
     for year, model in models:
         if hasattr(model.model, 'get_vecattr'):
@@ -177,57 +181,53 @@ def compute_mean_frequency(models: List[Tuple[int, W2VModel]],
                     pass
 
     if not has_counts:
-        # Return uniform scores if count information not available
         return {word: 1.0 for word in shared_vocab}
 
     word_frequency = {}
-
     for word, counts in word_counts.items():
         if not counts:
             word_frequency[word] = 0.0
             continue
-
-        # Use log-scaled mean frequency
-        # Log transform helps prevent very frequent words from dominating
         mean_count = np.mean(counts)
-        if mean_count > 0:
-            word_frequency[word] = np.log1p(mean_count)  # log(1 + count) for numerical stability
-        else:
-            word_frequency[word] = 0.0
+        # log(1 + count) for numerical stability; suppresses dominance of
+        # very frequent words
+        word_frequency[word] = np.log1p(mean_count) if mean_count > 0 else 0.0
 
     return word_frequency
 
 
-def compute_stability_weights(models: List[Tuple[int, W2VModel]],
-                              shared_vocab: Set[str],
-                              method: str = 'local_stability',
-                              include_frequency: bool = True,
-                              frequency_weight: float = 0.3,
-                              verbose: bool = True) -> Dict[str, float]:
+def compute_stability_weights(
+        models: List[Tuple[int, W2VModel]],
+        shared_vocab: Set[str],
+        method: str = 'local_stability',
+        include_frequency: bool = True,
+        frequency_weight: float = 0.3,
+        verbose: bool = True
+) -> Dict[str, float]:
     """
     Compute stability weights for all words in shared vocabulary.
 
-    Returns a dictionary mapping each word to its stability score, which can be used
-    as weights in weighted Procrustes alignment. More stable words receive higher weights
-    and contribute more to determining the alignment transformation.
+    Returns a dictionary mapping each word to its stability score for use
+    as weights in weighted Procrustes alignment. More stable words receive
+    higher weights and contribute more to the rotation estimate.
 
     Args:
-        models: List of (year, W2VModel) tuples, sorted by year
-        shared_vocab: Set of words present in all models
+        models: List of (year, W2VModel) tuples, sorted by year.
+        shared_vocab: Set of words present in all models.
         method: Stability metric to use:
             - 'local_stability': Year-over-year cosine similarity
             - 'global_stability': Variance from mean embedding
             - 'frequency_stability': Coefficient of variation in frequency
-            - 'combined': Weighted combination of all stability metrics
-        include_frequency: If True, incorporate mean frequency into weights (recommended).
+            - 'combined': Equal-weighted combination of all three metrics
+        include_frequency: If True, incorporate mean frequency into weights.
                           More frequent words have more reliable embeddings.
-        frequency_weight: Weight for frequency component when include_frequency=True.
-                         Final weight = (1-α)*stability + α*frequency, where α=frequency_weight.
-                         Default 0.3 gives 70% weight to stability, 30% to frequency.
-        verbose: If True, print progress information
+        frequency_weight: Weight for frequency component (0.0-1.0).
+                         Final weight = (1-α)*stability + α*frequency.
+                         Default 0.3 gives 70% stability, 30% frequency.
+        verbose: If True, print progress information.
 
     Returns:
-        Dict mapping all shared vocab words to their stability scores (weights)
+        Dict mapping all shared vocab words to their stability scores.
     """
     if verbose:
         method_desc = method
@@ -236,64 +236,46 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
         print(f"  Method:  {method_desc}")
         print(f"  Vocab:   {len(shared_vocab):,} words   Models: {len(models)}")
 
-    # Compute stability metric
+    # --- Compute stability scores ---
     if method == 'local_stability':
         stability_scores = compute_local_stability(models, shared_vocab)
+
     elif method == 'global_stability':
         stability_scores = compute_global_stability(models, shared_vocab)
+
     elif method == 'frequency_stability':
         stability_scores = compute_frequency_stability(models, shared_vocab)
+
     elif method == 'combined':
-        # Combine all metrics with equal weights
         if verbose:
             print("  Computing combined stability metric...")
-        local = compute_local_stability(models, shared_vocab)
-        global_s = compute_global_stability(models, shared_vocab)
-        freq_stab = compute_frequency_stability(models, shared_vocab)
+        local = _normalize_scores(compute_local_stability(models, shared_vocab))
+        global_s = _normalize_scores(compute_global_stability(models, shared_vocab))
+        freq_stab = _normalize_scores(compute_frequency_stability(models, shared_vocab))
 
-        # Normalize each metric to [0, 1]
-        def normalize_scores(scores):
-            values = np.array(list(scores.values()))
-            min_val = values.min()
-            max_val = values.max()
-            if max_val == min_val:
-                return {k: 1.0 for k in scores}
-            return {k: (v - min_val) / (max_val - min_val) for k, v in scores.items()}
-
-        local_norm = normalize_scores(local)
-        global_norm = normalize_scores(global_s)
-        freq_stab_norm = normalize_scores(freq_stab)
-
-        # Average the normalized scores
+        # Average the three normalized metrics; result is already in [0, 1]
+        # so the outer _normalize_scores call below is a no-op but kept for
+        # uniformity across all method branches.
         stability_scores = {
-            word: (local_norm[word] + global_norm[word] + freq_stab_norm[word]) / 3.0
+            word: (local[word] + global_s[word] + freq_stab[word]) / 3.0
             for word in shared_vocab
         }
+
     else:
         raise ValueError(
             f"Unknown method: {method}. "
             f"Choose from: local_stability, global_stability, frequency_stability, combined"
         )
 
-    # Normalize stability scores to [0, 1]
-    def normalize_scores(scores):
-        values = np.array(list(scores.values()))
-        min_val = values.min()
-        max_val = values.max()
-        if max_val == min_val:
-            return {k: 1.0 for k in scores}
-        return {k: (v - min_val) / (max_val - min_val) for k, v in scores.items()}
+    stability_scores = _normalize_scores(stability_scores)
 
-    stability_scores = normalize_scores(stability_scores)
-
-    # Incorporate frequency if requested
+    # --- Incorporate frequency if requested ---
     if include_frequency:
         if verbose:
             print("  Computing mean frequency scores...")
-        frequency_scores = compute_mean_frequency(models, shared_vocab)
-        frequency_scores = normalize_scores(frequency_scores)
+        frequency_scores = _normalize_scores(compute_mean_frequency(models, shared_vocab))
 
-        # Combine: final_weight = (1-α)*stability + α*frequency
+        # Final weight = (1-α)*stability + α*frequency
         final_scores = {
             word: (1 - frequency_weight) * stability_scores[word] +
                   frequency_weight * frequency_scores[word]
@@ -319,16 +301,18 @@ def load_models_for_stability_weighting(
         exclude_special_tokens: bool = True
 ) -> Tuple[List[Tuple[int, W2VModel]], Set[str]]:
     """
-    Load all models and compute their shared vocabulary for stability weight computation.
+    Load all models and compute their shared vocabulary for stability weight
+    computation.
 
     Args:
-        model_paths: List of (year, path) tuples
-        verbose: If True, show progress bar
-        exclude_special_tokens: If True, exclude special tokens like <UNK> from shared vocab.
-                               Special tokens are semantically unstable and should not be anchors.
+        model_paths: List of (year, path) tuples.
+        verbose: If True, show progress bar.
+        exclude_special_tokens: If True, exclude special tokens like <UNK> from
+                               shared vocab. Special tokens are semantically
+                               unstable and should not influence alignment.
 
     Returns:
-        Tuple of (loaded_models, shared_vocab)
+        Tuple of (loaded_models, shared_vocab).
     """
     models = []
 
@@ -349,14 +333,12 @@ def load_models_for_stability_weighting(
         model = model.normalize()
         models.append((year, model))
 
-    # Compute shared vocabulary
     if verbose:
         print("  Computing shared vocabulary...")
 
     vocabs = [set(model.vocab) for year, model in models]
     shared_vocab = set.intersection(*vocabs)
 
-    # Filter out special tokens if requested
     if exclude_special_tokens:
         special_tokens = {
             '<UNK>', '<unk>', '<PAD>', '<pad>',
