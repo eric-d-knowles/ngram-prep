@@ -100,6 +100,11 @@ def compute_global_stability(
         # Add 1 to denominator to avoid division by zero
         word_stability[word] = 1.0 / (1.0 + variance)
 
+    # Ensure complete coverage of shared_vocab
+    for word in shared_vocab:
+        if word not in word_stability:
+            word_stability[word] = 0.0
+
     return word_stability
 
 
@@ -153,6 +158,12 @@ def compute_frequency_stability(
             # Lower CV = higher stability
             word_stability[word] = 1.0 / (1.0 + cv)
 
+    # Ensure complete coverage of shared_vocab — words absent from word_counts
+    # (no get_vecattr support or never seen) default to 0.0.
+    for word in shared_vocab:
+        if word not in word_stability:
+            word_stability[word] = 0.0
+
     return word_stability
 
 
@@ -198,6 +209,12 @@ def compute_mean_frequency(
         # log(1 + count) for numerical stability; suppresses dominance of
         # very frequent words
         word_frequency[word] = np.log1p(mean_count) if mean_count > 0 else 0.0
+
+    # Ensure complete coverage of shared_vocab — words absent from word_counts
+    # (no get_vecattr support or never seen) default to 0.0.
+    for word in shared_vocab:
+        if word not in word_frequency:
+            word_frequency[word] = 0.0
 
     return word_frequency
 
