@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from multiprocessing import Pool
@@ -73,6 +74,37 @@ def process_model(args):
     model.save(output_path)
 
 
+def _run_alignment_pass(tasks, workers, suffix, desc):
+    """
+    Run one alignment pass and return the output model paths.
+
+    Args:
+        tasks: List of process_model arg tuples.
+        workers: Number of parallel workers.
+        suffix: The dir_suffix used in this pass (may differ from the
+                final suffix when running a temporary pass-1).
+        desc: tqdm description string for this pass.
+
+    Returns:
+        List of (year, output_path) tuples for all models processed.
+    """
+    with Pool(processes=workers) as pool:
+        for _ in tqdm(
+                pool.imap_unordered(process_model, tasks),
+                total=len(tasks),
+                desc=desc,
+                ncols=LINE_WIDTH,
+                unit=" models"
+        ):
+            pass
+
+    # Derive output directory from suffix directly, not from make_output_path,
+    # since tasks may carry a different dir_suffix than the one written to disk.
+    _, model_path, *_ = tasks[0]
+    output_dir = Path(model_path).parent.parent / f"models_{suffix}" / "norm_and_align"
+    return [(y, str(output_dir / Path(p).name)) for y, p, *_ in tasks]
+
+
 def normalize_and_align_vectors(
         proj_dir=None,
         dir_suffix=None,
@@ -107,7 +139,9 @@ def normalize_and_align_vectors(
                  available, otherwise os.cpu_count().
         corpus_path: Path to corpus directory (e.g., '/scratch/edk202/NLP_corpora/COHA')
         genre_focus: List of genres for Davies corpora (e.g., ['fic'])
-        weighted_alignment: If True, use stability-weighted Procrustes.
+        weighted_alignment: If True, use stability-weighted Procrustes. Performs two
+                            passes — unweighted first to remove rotation confound, then
+                            weighted using stability scores computed on aligned models.
         stability_method: Method for computing stability weights ('local_stability',
                          'global_stability', 'frequency_stability', 'combined').
                          Only used if weighted_alignment=True.
@@ -253,17 +287,38 @@ def normalize_and_align_vectors(
         workers=workers
     )
 
-    # Compute stability weights if requested. Workers receive weights as a
-    # plain dict (pickling-safe) rather than a model object.
     stability_weights = None
-    if weighted_alignment:
-        from .stability_weighting import load_models_for_stability_weighting, compute_stability_weights
 
+    if weighted_alignment:
+        # --- Pass 1: unweighted alignment ---
+        # Align all models to the anchor with uniform weights first, so that
+        # stability weights computed in pass 2 are not confounded by arbitrary
+        # rotation between raw embedding spaces.
+        pass1_suffix = f"{dir_suffix}_pass1_tmp"
+        pass1_tasks = [
+            (y, p, anchor_year, anchor_model_path, pass1_suffix, None)
+            for y, p in model_paths
+        ]
+
+        print("Pass 1: Unweighted Alignment")
+        print("═" * LINE_WIDTH)
+        pass1_model_paths = _run_alignment_pass(
+            pass1_tasks, workers, suffix=pass1_suffix, desc="  Aligning models"
+        )
         print("")
+
+        # --- Compute stability weights on pass-1 aligned models ---
+        # Stability computed here is free of rotation confound since all
+        # models now occupy the same vector space.
+        from .stability_weighting import (
+            load_models_for_stability_weighting,
+            compute_stability_weights
+        )
+
         print("Stability Weight Computation")
         print("═" * LINE_WIDTH)
         models_for_weighting, shared_vocab = load_models_for_stability_weighting(
-            model_paths, verbose=True
+            pass1_model_paths, verbose=True
         )
         stability_weights = compute_stability_weights(
             models=models_for_weighting,
@@ -275,15 +330,25 @@ def normalize_and_align_vectors(
         )
         print("")
 
-    # All models — including the anchor — go through process_model so that
-    # normalization, vocab filtering, and save logic are unified.
+        # Clean up temporary pass-1 models — they were only needed for
+        # stability estimation and should not persist.
+        pass1_dir = Path(model_dir).parent / f"models_{pass1_suffix}"
+        if pass1_dir.exists():
+            shutil.rmtree(pass1_dir)
+
+        print("Pass 2: Weighted Alignment")
+        print("═" * LINE_WIDTH)
+
+    else:
+        print("Processing Models")
+        print("═" * LINE_WIDTH)
+
+    # Final alignment pass — unweighted if weighted_alignment=False,
+    # weighted with pass-1-derived scores if weighted_alignment=True.
     tasks = [
         (y, p, anchor_year, anchor_model_path, dir_suffix, stability_weights)
         for y, p in model_paths
     ]
-
-    print("Processing Models")
-    print("═" * LINE_WIDTH)
     with Pool(processes=workers) as pool:
         for _ in tqdm(
                 pool.imap_unordered(process_model, tasks),
