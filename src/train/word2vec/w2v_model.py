@@ -150,11 +150,13 @@ class W2VModel:
 
         R, _ = orthogonal_procrustes(Y, X)
 
-        # Apply rotation to all filtered vectors, not just shared vocab.
-        # Words outside shared_vocab still need to be rotated into the
-        # same space — they just didn't contribute to estimating R.
-        for word in self.filtered_vectors:
-            self.filtered_vectors[word] = np.dot(self.filtered_vectors[word], R)
+        # Vectorized rotation — stack all filtered vectors into a matrix,
+        # apply R in a single NumPy operation, then unpack back to dict.
+        # Far faster than iterating word-by-word in Python.
+        words = list(self.filtered_vectors.keys())
+        matrix = np.vstack([self.filtered_vectors[w] for w in words])
+        rotated = matrix @ R
+        self.filtered_vectors = {w: rotated[i] for i, w in enumerate(words)}
 
         return self
 
@@ -182,4 +184,259 @@ class W2VModel:
         Returns:
             bool: True if the models appear to be aligned, False otherwise.
         """
-        shared_vocab = self.filter
+        shared_vocab = self.filtered_vocab.intersection(reference_model.filtered_vocab)
+
+        if not shared_vocab:
+            raise ValueError("No shared vocabulary between the models to check alignment.")
+
+        X = np.vstack([reference_model.filtered_vectors[word] for word in shared_vocab])
+        Y = np.vstack([self.filtered_vectors[word] for word in shared_vocab])
+
+        R, _ = orthogonal_procrustes(Y, X)
+
+        identity_matrix = np.eye(R.shape[0])
+        return np.all(np.abs(R - identity_matrix) < tolerance)
+
+    def evaluate_alignment(self, reference_model, tolerance=1e-3):
+        """
+        Evaluate the alignment quality between this model and a reference model.
+
+        Args:
+            reference_model (W2VModel): The reference W2VModel instance.
+            tolerance (float): Allowed deviation from identity matrix for Procrustes check.
+
+        Returns:
+            dict: A dictionary containing various alignment diagnostics.
+        """
+        if not isinstance(reference_model, W2VModel):
+            raise TypeError("reference_model must be an instance of W2VModel.")
+
+        is_norm_self = self.is_normalized()
+        is_norm_ref = reference_model.is_normalized()
+
+        shared_vocab = self.filtered_vocab.intersection(reference_model.filtered_vocab)
+        vocab_match = self.filtered_vocab == reference_model.filtered_vocab
+
+        X = np.vstack([reference_model.filtered_vectors[word] for word in shared_vocab])
+        Y = np.vstack([self.filtered_vectors[word] for word in shared_vocab])
+
+        R, _ = orthogonal_procrustes(Y, X)
+        identity_matrix = np.eye(R.shape[0])
+        alignment_deviation = np.linalg.norm(R - identity_matrix)
+
+        if alignment_deviation < 1e-4:
+            deviation_message = "✅ Alignment deviation is minimal. Alignment likely successful."
+        elif alignment_deviation < 1e-2:
+            deviation_message = "⚠️ Alignment deviation is small but nonzero. Check vocabulary consistency."
+        else:
+            deviation_message = "❌ Warning: Alignment deviation is significant. Possible alignment failure."
+
+        aligned = alignment_deviation < tolerance
+
+        print("\n---------------- Normalization and Alignment Evaluation ------------------")
+        print(f"Model1 normalized: {is_norm_self}")
+        print(f"Model2 normalized: {is_norm_ref}")
+        print(f"Shared vocabulary size: {len(shared_vocab)}")
+        print(f"Filtered vocabularies match: {vocab_match}")
+        print(f"Shape of X (anchor model vectors): {X.shape}")
+        print(f"Shape of Y (target model vectors): {Y.shape}")
+        print(f"Alignment deviation from identity: {alignment_deviation:.6f}")
+        print(deviation_message)
+        print(f"Models are aligned (threshold {tolerance}): {aligned}")
+        print("--------------------------------------------------------------------------\n")
+
+        return {
+            "is_normalized_self": is_norm_self,
+            "is_normalized_ref": is_norm_ref,
+            "shared_vocab_size": len(shared_vocab),
+            "vocab_match": vocab_match,
+            "matrix_shape_X": X.shape,
+            "matrix_shape_Y": Y.shape,
+            "alignment_deviation": alignment_deviation,
+            "alignment_message": deviation_message,
+            "is_aligned": aligned
+        }
+
+    def compare_words_cosim(self, word1, word2):
+        """
+        Compute the cosine similarity between two words in a given model.
+
+        Args:
+            word1 (str): The first word.
+            word2 (str): The second word.
+
+        Returns:
+            float: Cosine similarity score between the two words.
+
+        Raises:
+            KeyError: If either word is not in the vocabulary.
+        """
+        if word1 not in self.vocab or word2 not in self.vocab:
+            raise KeyError(f"One or both words ('{word1}', '{word2}') are not in the vocabulary.")
+
+        return self.model.similarity(word1, word2)
+
+    def compare_models_cosim(self, reference_model, word=None):
+        """
+        Compute the mean cosine similarity with a reference model across shared words.
+
+        Args:
+            reference_model (W2VModel): The anchor model (reference).
+            word (str, optional): If provided, compute similarity for just this word.
+
+        Returns:
+            tuple: (mean_similarity, std_similarity, num_words) or
+                   (None, None, None) if no shared words.
+        """
+        if word:
+            if not (word in self.vocab and word in reference_model.vocab):
+                print(f"⚠️ Warning: Word '{word}' not found in both models.")
+                return None, None, None
+
+            similarities = np.dot(self.model[word], reference_model.model[word])
+            common_words = 1
+
+        else:
+            common_words = self.vocab.intersection(reference_model.vocab)
+            if not common_words:
+                print("⚠️ Warning: No shared words between models.")
+                return None, None, None
+
+            similarities = [
+                np.dot(self.model[word], reference_model.model[word])
+                for word in common_words
+            ]
+            common_words = len(common_words)
+
+        return (np.mean(similarities), np.std(similarities), common_words)
+
+    def mean_cosine_similarity_to_all(self, word, excluded_words=None):
+        """
+        Compute the mean cosine similarity of a given word with every other word
+        in the vocabulary.
+
+        Args:
+            word (str): The word for which to compute the mean similarity.
+            excluded_words (set, optional): Words to exclude from the computation.
+
+        Returns:
+            float: Mean cosine similarity score of the word with all other words.
+
+        Raises:
+            KeyError: If the word is not in the vocabulary.
+        """
+        if word not in self.vocab:
+            raise KeyError(f"Word '{word}' is not in the vocabulary.")
+
+        if excluded_words is None:
+            excluded_words = set()
+
+        total_similarity = 0
+        count = 0
+
+        for other_word in self.vocab:
+            if other_word == word or other_word in excluded_words:
+                continue
+            total_similarity += self.compare_words_cosim(word, other_word)
+            count += 1
+
+        return total_similarity / count if count > 0 else 0
+
+    def compute_weat(self, targ1, targ2, attr1, attr2, num_permutations=10000, return_std=False):
+        """
+        Compute WEAT effect size, p-value, and optionally return standard deviation
+        from permutations. Fully follows Caliskan et al.'s method.
+
+        Args:
+            targ1 (list): First target word set.
+            targ2 (list): Second target word set.
+            attr1 (list): First attribute word set.
+            attr2 (list): Second attribute word set.
+            num_permutations (int): Number of permutations for p-value calculation.
+            return_std (bool): Whether to return standard deviation of permuted
+                               effect sizes.
+
+        Returns:
+            tuple: (weat_effect_size, p_value) or
+                   (weat_effect_size, p_value, std_dev) if return_std=True.
+        """
+        missing_words = [
+            word for word in (targ1 + targ2 + attr1 + attr2)
+            if word not in self.vocab
+        ]
+        if missing_words:
+            print(
+                f"⚠️ Warning: The following words are missing from the model "
+                f"and will be ignored: {missing_words}"
+            )
+
+        def cosine_similarity_list(words1, words2):
+            return [
+                self.model.similarity(w1, w2)
+                for w1 in words1 for w2 in words2
+                if w1 in self.vocab and w2 in self.vocab
+            ]
+
+        S_targ1_attr1 = cosine_similarity_list(targ1, attr1)
+        S_targ1_attr2 = cosine_similarity_list(targ1, attr2)
+        S_targ2_attr1 = cosine_similarity_list(targ2, attr1)
+        S_targ2_attr2 = cosine_similarity_list(targ2, attr2)
+
+        mean_diff_targ1 = np.mean(S_targ1_attr1) - np.mean(S_targ1_attr2)
+        mean_diff_targ2 = np.mean(S_targ2_attr1) - np.mean(S_targ2_attr2)
+
+        all_similarities = S_targ1_attr1 + S_targ1_attr2 + S_targ2_attr1 + S_targ2_attr2
+        pooled_std = np.std(all_similarities, ddof=1)
+
+        if pooled_std == 0:
+            print("⚠️ Warning: No variation in similarities. Returning NaN for WEAT effect size.")
+            return (np.nan, None, None) if return_std else (np.nan, None)
+
+        weat_effect_size = (mean_diff_targ1 - mean_diff_targ2) / pooled_std
+
+        if num_permutations == 0:
+            return (weat_effect_size, None, pooled_std) if return_std else (weat_effect_size, None)
+
+        combined_targets = targ1 + targ2
+        n = len(targ1)
+        permuted_effect_sizes = []
+
+        for _ in range(num_permutations):
+            perm_targ1 = random.sample(combined_targets, n)
+            perm_targ2 = [w for w in combined_targets if w not in perm_targ1]
+
+            S_perm_targ1_attr1 = cosine_similarity_list(perm_targ1, attr1)
+            S_perm_targ1_attr2 = cosine_similarity_list(perm_targ1, attr2)
+            S_perm_targ2_attr1 = cosine_similarity_list(perm_targ2, attr1)
+            S_perm_targ2_attr2 = cosine_similarity_list(perm_targ2, attr2)
+
+            perm_mean_diff_targ1 = np.mean(S_perm_targ1_attr1) - np.mean(S_perm_targ1_attr2)
+            perm_mean_diff_targ2 = np.mean(S_perm_targ2_attr1) - np.mean(S_perm_targ2_attr2)
+
+            perm_effect_size = (perm_mean_diff_targ1 - perm_mean_diff_targ2) / pooled_std
+            permuted_effect_sizes.append(perm_effect_size)
+
+        p_value = np.mean(np.array(permuted_effect_sizes) >= weat_effect_size)
+        std_dev = np.std(permuted_effect_sizes, ddof=1) if return_std else None
+
+        return (weat_effect_size, p_value, std_dev) if return_std else (weat_effect_size, p_value)
+
+    def save(self, output_path):
+        """
+        Save the filtered and aligned model to the specified path.
+
+        Args:
+            output_path (str): Path to save the aligned .kv model.
+
+        Raises:
+            ValueError: If no filtered vectors are available to save.
+        """
+        if not hasattr(self, "filtered_vectors") or not self.filtered_vectors:
+            raise ValueError("No filtered vectors available to save.")
+
+        aligned_model = KeyedVectors(vector_size=self.vector_size)
+        aligned_model.add_vectors(
+            list(self.filtered_vectors.keys()),
+            list(self.filtered_vectors.values())
+        )
+        aligned_model.save(output_path)
