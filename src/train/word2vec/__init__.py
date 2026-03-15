@@ -7,7 +7,7 @@ from .config import ensure_iterable, construct_model_path, set_info
 from .display import print_training_header, print_completion_banner, LINE_WIDTH
 from .w2v_model import W2VModel
 from .evaluate import evaluate_models, evaluate_word2vec_models
-from .align import normalize_and_align_models
+from .normalize_and_align_models import normalize_and_align_vectors
 from .visualize import plot_evaluation_results
 from .regression_analysis import run_regression_analysis, plot_regression_results, get_model_summary
 
@@ -18,7 +18,7 @@ __all__ = [
     "transfer_models",
     "evaluate_models",
     "evaluate_word2vec_models",
-    "normalize_and_align_models",
+    "normalize_and_align_vectors",
     "plot_evaluation_results",
     # Regression analysis
     "run_regression_analysis",
