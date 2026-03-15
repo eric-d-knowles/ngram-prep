@@ -120,14 +120,15 @@ you make to the source are immediately reflected without reinstalling.
 
 ### Additional setup: Enchant library and Hunspell dictionaries
 
-Spell-checking relies on the **Enchant C library** and **Hunspell dictionaries**.
-These components cannot be installed automatically via `pip`, so one additional
+Spell-checking relies on the **Enchant C library** and **Hunspell dictionaries**, and
+model alignment requires the NLTK package's **Swadesh list of stable words**. These
+components cannot be installed automatically via `pip`, so one additional
 setup step is required after installing `lexichron`.
 
 Activate the environment where `lexichron` is installed, then run the setup script:
 
 ```bash
-bash scripts/setup_enchant_hunspell.sh
+bash scripts/setup_nlp_resources.sh
 ```
 
 The script will:
