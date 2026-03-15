@@ -10,6 +10,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 from ngramprep.common.w2v_model import W2VModel
+from .display import LINE_WIDTH
 
 
 def compute_local_stability(models: List[Tuple[int, W2VModel]],
@@ -229,10 +230,11 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
         Dict mapping all shared vocab words to their stability scores (weights)
     """
     if verbose:
-        method_desc = f"{method}"
+        method_desc = method
         if include_frequency:
             method_desc += f" + frequency (weight={frequency_weight:.2f})"
-        print(f"Computing stability weights using {method_desc} for {len(shared_vocab)} words across {len(models)} models...")
+        print(f"  Method:  {method_desc}")
+        print(f"  Vocab:   {len(shared_vocab):,} words   Models: {len(models)}")
 
     # Compute stability metric
     if method == 'local_stability':
@@ -244,7 +246,7 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
     elif method == 'combined':
         # Combine all metrics with equal weights
         if verbose:
-            print("Computing combined stability metric...")
+            print("  Computing combined stability metric...")
         local = compute_local_stability(models, shared_vocab)
         global_s = compute_global_stability(models, shared_vocab)
         freq_stab = compute_frequency_stability(models, shared_vocab)
@@ -268,7 +270,10 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
             for word in shared_vocab
         }
     else:
-        raise ValueError(f"Unknown method: {method}. Choose from: local_stability, global_stability, frequency_stability, combined")
+        raise ValueError(
+            f"Unknown method: {method}. "
+            f"Choose from: local_stability, global_stability, frequency_stability, combined"
+        )
 
     # Normalize stability scores to [0, 1]
     def normalize_scores(scores):
@@ -284,13 +289,14 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
     # Incorporate frequency if requested
     if include_frequency:
         if verbose:
-            print("Computing mean frequency scores...")
+            print("  Computing mean frequency scores...")
         frequency_scores = compute_mean_frequency(models, shared_vocab)
         frequency_scores = normalize_scores(frequency_scores)
 
         # Combine: final_weight = (1-α)*stability + α*frequency
         final_scores = {
-            word: (1 - frequency_weight) * stability_scores[word] + frequency_weight * frequency_scores[word]
+            word: (1 - frequency_weight) * stability_scores[word] +
+                  frequency_weight * frequency_scores[word]
             for word in shared_vocab
         }
     else:
@@ -298,17 +304,20 @@ def compute_stability_weights(models: List[Tuple[int, W2VModel]],
 
     if verbose:
         sorted_words = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
-        print(f"Final weight range: {sorted_words[-1][1]:.4f} (lowest) to {sorted_words[0][1]:.4f} (highest)")
-        print(f"\nTop 10 highest-weighted words:")
+        print(f"  Weight range: {sorted_words[-1][1]:.4f} (lowest) to "
+              f"{sorted_words[0][1]:.4f} (highest)")
+        print(f"\n  Top 10 highest-weighted words:")
         for word, score in sorted_words[:10]:
-            print(f"  {word:20s} {score:.4f}")
+            print(f"    {word:20s} {score:.4f}")
 
     return final_scores
 
 
-def load_models_for_stability_weighting(model_paths: List[Tuple[int, str]],
-                                        verbose: bool = True,
-                                        exclude_special_tokens: bool = True) -> Tuple[List[Tuple[int, W2VModel]], Set[str]]:
+def load_models_for_stability_weighting(
+        model_paths: List[Tuple[int, str]],
+        verbose: bool = True,
+        exclude_special_tokens: bool = True
+) -> Tuple[List[Tuple[int, W2VModel]], Set[str]]:
     """
     Load all models and compute their shared vocabulary for stability weight computation.
 
@@ -324,37 +333,44 @@ def load_models_for_stability_weighting(model_paths: List[Tuple[int, str]],
     models = []
 
     if verbose:
-        print(f"Loading {len(model_paths)} models...")
-        iterator = tqdm(model_paths, desc="Loading models")
+        print(f"  Loading {len(model_paths)} models...")
+        iterator = tqdm(
+            model_paths,
+            desc="Loading models",
+            ncols=LINE_WIDTH,
+            unit=" models"
+        )
     else:
         iterator = model_paths
 
     for year, path in iterator:
         model = W2VModel(path)
-        # Normalize vectors for stability computation
-        model.model.vectors = model.model.vectors.copy()
+        # W2VModel.normalize() handles the read-only copy internally
         model = model.normalize()
         models.append((year, model))
 
     # Compute shared vocabulary
     if verbose:
-        print("Computing shared vocabulary...")
+        print("  Computing shared vocabulary...")
 
     vocabs = [set(model.vocab) for year, model in models]
     shared_vocab = set.intersection(*vocabs)
 
     # Filter out special tokens if requested
     if exclude_special_tokens:
-        special_tokens = {'<UNK>', '<unk>', '<PAD>', '<pad>', '<S>', '</S>',
-                         '<BOS>', '<EOS>', '<MASK>', '<mask>'}
+        special_tokens = {
+            '<UNK>', '<unk>', '<PAD>', '<pad>',
+            '<S>', '</S>', '<BOS>', '<EOS>',
+            '<MASK>', '<mask>'
+        }
         original_size = len(shared_vocab)
         shared_vocab = {word for word in shared_vocab if word not in special_tokens}
 
         if verbose and original_size > len(shared_vocab):
             excluded = original_size - len(shared_vocab)
-            print(f"Excluded {excluded} special token(s) from shared vocabulary")
+            print(f"  Excluded {excluded} special token(s) from shared vocabulary")
 
     if verbose:
-        print(f"Shared vocabulary size: {len(shared_vocab)} words")
+        print(f"  Shared vocabulary: {len(shared_vocab):,} words")
 
     return models, shared_vocab
