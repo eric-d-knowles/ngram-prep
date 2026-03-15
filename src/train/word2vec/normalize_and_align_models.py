@@ -10,6 +10,11 @@ from ngramprep.common.w2v_model import W2VModel
 from .display import LINE_WIDTH
 
 
+# Module-level global for the anchor model, populated once per worker process
+# by _init_worker. Avoids reloading and renormalizing the anchor for every task.
+_anchor_model = None
+
+
 def get_model_paths(model_dir):
     """
     Retrieve paths of all Word2Vec model files in the specified directory.
@@ -44,13 +49,43 @@ def _get_swadesh_words():
     }
 
 
+def _get_shared_vocab(model_paths):
+    """
+    Compute the shared vocabulary across all models by loading only
+    index_to_key, not the full vector matrices. Significantly faster
+    than loading complete W2VModel instances when vectors aren't needed.
+    """
+    from gensim.models import KeyedVectors
+    vocabs = []
+    for year, path in model_paths:
+        kv = KeyedVectors.load(path, mmap='r')
+        vocabs.append(set(kv.index_to_key))
+    return set.intersection(*vocabs)
+
+
+def _init_worker(anchor_model_path):
+    """
+    Pool initializer: load, normalize, and filter the anchor model once
+    per worker process rather than once per task. Stores the result in the
+    module-level _anchor_model global so process_model can access it without
+    any additional I/O or computation per task.
+    """
+    global _anchor_model
+    anchor = W2VModel(anchor_model_path)
+    anchor = anchor.normalize()
+    anchor.filter_vocab(anchor.extract_vocab())
+    _anchor_model = anchor
+
+
 def process_model(args):
     """
     Normalize, vocab-filter, and (for non-anchor years) align a model to
-    the anchor. Output path is passed explicitly in the task tuple so that
-    pass-1 and final-pass models are written to the correct directories.
+    the anchor. The anchor is loaded once per worker process via _init_worker
+    rather than once per task. Output path is passed explicitly in the task
+    tuple so that pass-1 and final-pass models are written to the correct
+    directories.
     """
-    year, model_path, anchor_year, anchor_model_path, output_path, weights = args
+    year, model_path, anchor_year, output_path, weights = args
 
     model = W2VModel(model_path)
     model = model.normalize()
@@ -60,38 +95,35 @@ def process_model(args):
         # baseline. All other models will be filtered to this same set.
         model.filter_vocab(model.extract_vocab())
     else:
-        # Load the anchor from disk (cheap — .kv files are memory-mapped)
-        # rather than pickling the full anchor object into every worker.
-        anchor = W2VModel(anchor_model_path)
-        anchor = anchor.normalize()
-        anchor.filter_vocab(anchor.extract_vocab())
-
-        model.filter_vocab(anchor.filtered_vocab)
-        model.align_to(anchor, weights=weights)
+        model.filter_vocab(_anchor_model.filtered_vocab)
+        model.align_to(_anchor_model, weights=weights)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     model.save(output_path)
 
 
-def _run_alignment_pass(tasks, workers, desc):
+def _run_alignment_pass(tasks, workers, anchor_model_path, desc):
     """
     Run one alignment pass and return the output model paths.
 
-    Output paths are embedded in each task tuple, so this function simply
-    executes the pool and reconstructs the (year, output_path) list from
-    the tasks rather than re-deriving paths after the fact.
+    The anchor model is loaded once per worker process via the pool
+    initializer rather than once per task.
 
     Args:
-        tasks: List of process_model arg tuples with output_path as the
-               fifth element: (year, model_path, anchor_year,
-               anchor_model_path, output_path, weights).
+        tasks: List of process_model arg tuples:
+               (year, model_path, anchor_year, output_path, weights).
         workers: Number of parallel workers.
+        anchor_model_path: Path to the anchor model, passed to _init_worker.
         desc: tqdm description string for this pass.
 
     Returns:
         List of (year, output_path) tuples for all models processed.
     """
-    with Pool(processes=workers) as pool:
+    with Pool(
+            processes=workers,
+            initializer=_init_worker,
+            initargs=(anchor_model_path,)
+    ) as pool:
         for _ in tqdm(
                 pool.imap_unordered(process_model, tasks),
                 total=len(tasks),
@@ -101,7 +133,7 @@ def _run_alignment_pass(tasks, workers, desc):
         ):
             pass
 
-    return [(year, output_path) for year, _, _, _, output_path, _ in tasks]
+    return [(year, output_path) for year, _, _, output_path, _ in tasks]
 
 
 def normalize_and_align_vectors(
@@ -311,15 +343,13 @@ def normalize_and_align_vectors(
 
     # --- Swadesh alignment ---
     if alignment_method == 'swadesh':
-        from .stability_weighting import load_models_for_stability_weighting
-
         print("Swadesh Anchor Computation")
         print("═" * LINE_WIDTH)
 
-        # Compute shared vocab in vivo from the actual trained models
-        _, shared_vocab = load_models_for_stability_weighting(
-            model_paths, verbose=True, exclude_special_tokens=True
-        )
+        # Compute shared vocab in vivo from the actual trained models,
+        # loading only vocabularies rather than full vector matrices.
+        print("  Computing shared vocabulary...")
+        shared_vocab = _get_shared_vocab(model_paths)
 
         swadesh_words = _get_swadesh_words()
         swadesh_anchor_vocab = swadesh_words.intersection(shared_vocab)
@@ -336,6 +366,9 @@ def normalize_and_align_vectors(
             for word in shared_vocab
         }
 
+        print("Processing Models")
+        print("═" * LINE_WIDTH)
+
     # --- Stability-weighted alignment ---
     elif alignment_method == 'stability_weighted':
         from .stability_weighting import (
@@ -349,15 +382,14 @@ def normalize_and_align_vectors(
         pass1_output_dir = Path(model_dir).parent / f"models_{pass1_suffix}" / "norm_and_align"
 
         pass1_tasks = [
-            (y, p, anchor_year, anchor_model_path,
-             str(pass1_output_dir / Path(p).name), None)
+            (y, p, anchor_year, str(pass1_output_dir / Path(p).name), None)
             for y, p in model_paths
         ]
 
         print("Pass 1: Unweighted Alignment")
         print("═" * LINE_WIDTH)
         pass1_model_paths = _run_alignment_pass(
-            pass1_tasks, workers, desc="  Aligning models"
+            pass1_tasks, workers, anchor_model_path, desc="  Aligning models"
         )
         print("")
 
@@ -394,11 +426,14 @@ def normalize_and_align_vectors(
     # Final alignment pass — weights=None for unweighted, Swadesh dict for
     # swadesh, stability dict for stability_weighted.
     tasks = [
-        (y, p, anchor_year, anchor_model_path,
-         str(final_output_dir / Path(p).name), weights)
+        (y, p, anchor_year, str(final_output_dir / Path(p).name), weights)
         for y, p in model_paths
     ]
-    with Pool(processes=workers) as pool:
+    with Pool(
+            processes=workers,
+            initializer=_init_worker,
+            initargs=(anchor_model_path,)
+    ) as pool:
         for _ in tqdm(
                 pool.imap_unordered(process_model, tasks),
                 total=len(tasks),
