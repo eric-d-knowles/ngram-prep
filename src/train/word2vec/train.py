@@ -743,15 +743,14 @@ def transfer_models(
         ... )
         >>> print(f"Transferred {result['transferred']} models")
     """
+    from .config import construct_model_path
+    from .display import truncate_path_to_fit
+
     # Construct source and destination paths
     corpus_path = os.path.join(
         db_path_stub, repo_release_id, repo_corpus_id, f"{ngram_size}gram_files"
     )
-
-    # Get model directories using existing path construction logic
-    from .config import construct_model_path
     model_base = construct_model_path(corpus_path)
-
     source_dir = os.path.join(model_base, f"models_{source_suffix}")
     dest_dir = os.path.join(model_base, f"models_{dest_suffix}")
 
@@ -771,23 +770,22 @@ def transfer_models(
                 f"Destination directory already exists: {dest_dir}\n"
                 f"Use overwrite=True to remove existing directory."
             )
-        if verbose:
-            print(f"\nRemoving existing destination directory: {dest_dir}")
         shutil.rmtree(dest_dir)
 
-    # Create destination directory
     os.makedirs(dest_dir, exist_ok=True)
 
     if verbose:
+        source_str = truncate_path_to_fit(source_dir, "Source:              ", LINE_WIDTH)
+        dest_str = truncate_path_to_fit(dest_dir, "Destination:         ", LINE_WIDTH)
+        filter_str = str(filter_params) if filter_params else "None (transferring all models)"
+
         print("\nMODEL TRANSFER")
-        print("=" * LINE_WIDTH)
-        print(f"Source:      {source_dir}")
-        print(f"Destination: {dest_dir}")
-        if filter_params:
-            print(f"Filters:     {filter_params}")
-        else:
-            print("Filters:     None (transferring all models)")
-        print(f"Validate:    {validate}")
+        print("━" * LINE_WIDTH)
+        print(f"Source:              {source_str}")
+        print(f"Destination:         {dest_str}")
+        print(f"Filters:             {filter_str}")
+        print(f"Validate:            {validate}")
+        print(f"Overwrite:           {overwrite}")
         print("")
 
     # Normalize filter_params values to sets for easy matching
@@ -804,18 +802,18 @@ def transfer_models(
     skipped = 0
     total_found = 0
 
-    # Use tqdm if available for progress bar
-    iterator = tqdm(source_files, desc="Transferring models", unit=" files") if verbose else source_files
+    iterator = (
+        tqdm(source_files, desc="Transferring models", ncols=LINE_WIDTH, unit=" files")
+        if verbose else source_files
+    )
 
     for filename in iterator:
-        # Parse model parameters
         params = _parse_model_filename(filename)
         if params is None:
-            continue  # Skip files that don't match expected pattern
+            continue
 
         year, weight_by, vector_size, window, min_count, sg, epochs = params
 
-        # Apply filters if specified
         if normalized_filters:
             param_dict = {
                 'year': year,
@@ -826,29 +824,18 @@ def transfer_models(
                 'sg': sg,
                 'epochs': epochs
             }
-
-            # Check if model matches all filters
-            match = True
-            for key, allowed_values in normalized_filters.items():
-                if param_dict.get(key) not in allowed_values:
-                    match = False
-                    break
-
-            if not match:
-                continue  # Skip models that don't match filters
+            if not all(param_dict.get(k) in v for k, v in normalized_filters.items()):
+                continue
 
         total_found += 1
         source_path = os.path.join(source_dir, filename)
 
-        # Validate if requested
-        if validate:
-            if not _is_model_valid(source_path):
-                skipped += 1
-                if verbose:
-                    print(f"  Skipping invalid model: {filename}")
-                continue
+        if validate and not _is_model_valid(source_path):
+            skipped += 1
+            if verbose:
+                tqdm.write(f"  Skipping invalid model: {filename}")
+            continue
 
-        # Transfer model
         dest_path = os.path.join(dest_dir, filename)
         try:
             shutil.copy2(source_path, dest_path)
@@ -856,16 +843,17 @@ def transfer_models(
         except Exception as e:
             skipped += 1
             if verbose:
-                print(f"  Error copying {filename}: {e}")
+                tqdm.write(f"  Error copying {filename}: {e}")
 
-    # Print summary
     if verbose:
-        print("\nTRANSFER COMPLETE")
-        print("=" * LINE_WIDTH)
-        print(f"Models found:      {total_found}")
-        print(f"Transferred:       {transferred}")
-        print(f"Skipped:           {skipped}")
-        print(f"Destination:       {dest_dir}")
+        dest_str = truncate_path_to_fit(dest_dir, "Destination:         ", LINE_WIDTH)
+        print("\nTransfer Complete")
+        print("═" * LINE_WIDTH)
+        print(f"Models found:        {total_found}")
+        print(f"Transferred:         {transferred}")
+        print(f"Skipped:             {skipped}")
+        print(f"Destination:         {dest_str}")
+        print("━" * LINE_WIDTH)
         print("")
 
     return {
