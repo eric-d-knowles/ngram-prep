@@ -29,29 +29,14 @@ def get_model_paths(model_dir):
     return sorted(model_paths)
 
 
-def make_output_path(model_path: str, dir_suffix: str) -> str:
-    """
-    Derive the output path for a normalized/aligned model by inserting
-    'norm_and_align' as a subdirectory of the models directory.
-
-    Uses Path surgery rather than string replacement to avoid incorrect
-    substitution when dir_suffix appears elsewhere in the path.
-    """
-    p = Path(model_path)
-    return str(p.parent / "norm_and_align" / p.name)
-
-
 def process_model(args):
     """
     Normalize, vocab-filter, and (for non-anchor years) align a model to
-    the anchor. The anchor year is also passed through this function so
-    that all models — including the anchor — are saved via the same code
-    path and receive identical normalization and vocab-filtering treatment.
+    the anchor. Output path is passed explicitly in the task tuple so that
+    pass-1 and final-pass models are written to the correct directories.
     """
-    year, model_path, anchor_year, anchor_model_path, dir_suffix, stability_weights = args
+    year, model_path, anchor_year, anchor_model_path, output_path, stability_weights = args
 
-    # Load and normalize. W2VModel.normalize() is responsible for the
-    # read-only copy internally; callers should not need to do it here.
     model = W2VModel(model_path)
     model = model.normalize()
 
@@ -69,20 +54,23 @@ def process_model(args):
         model.filter_vocab(anchor.filtered_vocab)
         model.align_to(anchor, weights=stability_weights)
 
-    output_path = make_output_path(model_path, dir_suffix)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     model.save(output_path)
 
 
-def _run_alignment_pass(tasks, workers, suffix, desc):
+def _run_alignment_pass(tasks, workers, desc):
     """
     Run one alignment pass and return the output model paths.
 
+    Output paths are embedded in each task tuple, so this function simply
+    executes the pool and reconstructs the (year, output_path) list from
+    the tasks rather than re-deriving paths after the fact.
+
     Args:
-        tasks: List of process_model arg tuples.
+        tasks: List of process_model arg tuples with output_path as the
+               fifth element: (year, model_path, anchor_year,
+               anchor_model_path, output_path, stability_weights).
         workers: Number of parallel workers.
-        suffix: The dir_suffix used in this pass (may differ from the
-                final suffix when running a temporary pass-1).
         desc: tqdm description string for this pass.
 
     Returns:
@@ -98,11 +86,7 @@ def _run_alignment_pass(tasks, workers, suffix, desc):
         ):
             pass
 
-    # Derive output directory from suffix directly, not from make_output_path,
-    # since tasks may carry a different dir_suffix than the one written to disk.
-    _, model_path, *_ = tasks[0]
-    output_dir = Path(model_path).parent.parent / f"models_{suffix}" / "norm_and_align"
-    return [(y, str(output_dir / Path(p).name)) for y, p, *_ in tasks]
+    return [(year, output_path) for year, _, _, _, output_path, _ in tasks]
 
 
 def normalize_and_align_vectors(
@@ -295,15 +279,18 @@ def normalize_and_align_vectors(
         # stability weights computed in pass 2 are not confounded by arbitrary
         # rotation between raw embedding spaces.
         pass1_suffix = f"{dir_suffix}_pass1_tmp"
+        pass1_output_dir = Path(model_dir).parent / f"models_{pass1_suffix}" / "norm_and_align"
+
         pass1_tasks = [
-            (y, p, anchor_year, anchor_model_path, pass1_suffix, None)
+            (y, p, anchor_year, anchor_model_path,
+             str(pass1_output_dir / Path(p).name), None)
             for y, p in model_paths
         ]
 
         print("Pass 1: Unweighted Alignment")
         print("═" * LINE_WIDTH)
         pass1_model_paths = _run_alignment_pass(
-            pass1_tasks, workers, suffix=pass1_suffix, desc="  Aligning models"
+            pass1_tasks, workers, desc="  Aligning models"
         )
         print("")
 
@@ -345,8 +332,10 @@ def normalize_and_align_vectors(
 
     # Final alignment pass — unweighted if weighted_alignment=False,
     # weighted with pass-1-derived scores if weighted_alignment=True.
+    final_output_dir = Path(model_dir) / "norm_and_align"
     tasks = [
-        (y, p, anchor_year, anchor_model_path, dir_suffix, stability_weights)
+        (y, p, anchor_year, anchor_model_path,
+         str(final_output_dir / Path(p).name), stability_weights)
         for y, p in model_paths
     ]
     with Pool(processes=workers) as pool:
