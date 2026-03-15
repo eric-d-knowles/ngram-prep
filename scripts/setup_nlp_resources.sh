@@ -1,9 +1,10 @@
 #!/bin/bash
-# setup_enchant_hunspell.sh
+# setup_nlp_resources.sh
 #
 # Ensures the Enchant C library is available in the active conda environment,
-# downloads Hunspell dictionaries into that environment, and configures
-# activation hooks so pyenchant can find them.
+# downloads Hunspell dictionaries into that environment, configures
+# activation hooks so pyenchant can find them, and downloads the NLTK
+# Swadesh corpus required for Swadesh-anchored Procrustes alignment.
 
 set -euo pipefail
 
@@ -135,8 +136,30 @@ chmod +x "$DEACTIVATE_DIR/enchant_hunspell.sh"
 echo "✓ Activation scripts installed"
 echo ""
 
+# ---------------------------------------------------------------------------
+# NLTK Swadesh corpus
+# ---------------------------------------------------------------------------
+echo "Checking for NLTK Swadesh corpus..."
+
+if python -c "from nltk.corpus import swadesh; swadesh.words('en')" 2>/dev/null; then
+    echo "  ✓ Swadesh corpus already installed"
+else
+    echo "  Downloading Swadesh corpus..."
+    if python -c "import nltk; nltk.download('swadesh', quiet=False)"; then
+        echo "  ✓ Swadesh corpus installed"
+    else
+        echo "  ✗ Failed to download Swadesh corpus"
+    fi
+fi
+
+echo ""
+
+# ---------------------------------------------------------------------------
+# Done
+# ---------------------------------------------------------------------------
 echo "Done."
 echo "Reactivate the environment and test:"
 echo ""
 echo "conda deactivate && conda activate $ENV_NAME"
 echo "python -c \"import enchant; print(enchant.list_languages())\""
+echo "python -c \"from nltk.corpus import swadesh; print(swadesh.words('en')[:5])\""
