@@ -18,6 +18,7 @@ dependencies = [
     "stop-words>=1.0",
     "simplemma>=0.9",
     "pyenchant>=3.2",
+    "nltk>=3.7",
     "beautifulsoup4>=4.9",
     "ipykernel>=6.0",
     "jupyter_client>=7.0",
