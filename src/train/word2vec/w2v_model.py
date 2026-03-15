@@ -116,12 +116,15 @@ class W2VModel:
         self.filtered_vocab = shared_vocab
         return self
 
-    def align_to(self, reference_model):
+    def align_to(self, reference_model, weights=None):
         """
         Align this model to a reference model using orthogonal Procrustes.
 
         Args:
             reference_model (W2VModel): The reference W2VModel instance to align to.
+            weights (dict, optional): Mapping of word -> weight. If provided, performs
+                weighted Procrustes where higher-weighted words contribute more to the
+                rotation estimate. Words absent from the dict receive weight 1.0.
 
         Returns:
             W2VModel: The instance itself, for method chaining.
@@ -134,18 +137,29 @@ class W2VModel:
         if not shared_vocab:
             raise ValueError("No shared vocabulary between the models.")
 
-        # Create aligned matrices
-        X = np.vstack([reference_model.filtered_vectors[word] for word in shared_vocab])
-        Y = np.vstack([self.filtered_vectors[word] for word in shared_vocab])
+        # Sort for reproducibility
+        shared_vocab_list = sorted(shared_vocab)
 
-        # Perform orthogonal Procrustes alignment
+        X = np.vstack([reference_model.filtered_vectors[w] for w in shared_vocab_list])
+        Y = np.vstack([self.filtered_vectors[w] for w in shared_vocab_list])
+
+        if weights is not None:
+            # Weighted Procrustes: scale rows by sqrt(weight) before SVD.
+            # Words absent from the weights dict fall back to weight 1.0.
+            w = np.array([weights.get(word, 1.0) for word in shared_vocab_list])
+            w = np.sqrt(w / w.sum())
+            X = X * w[:, np.newaxis]
+            Y = Y * w[:, np.newaxis]
+
         R, _ = orthogonal_procrustes(Y, X)
 
-        # Apply the transformation to the filtered vectors
+        # Apply rotation to all filtered vectors, not just shared vocab.
+        # Words outside shared_vocab still need to be rotated into the
+        # same space — they just didn't contribute to estimating R.
         for word in self.filtered_vectors:
             self.filtered_vectors[word] = np.dot(self.filtered_vectors[word], R)
 
-        return self
+    return self
 
     def is_normalized(self, tolerance=1e-6):
         """
