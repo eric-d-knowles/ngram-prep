@@ -32,15 +32,15 @@ def print_training_header(
         max_parallel_models (int): Number of parallel models.
         grid_params (str): Formatted grid search parameters.
     """
-    # Format paths using truncate_path_to_fit
     db_path_str = truncate_path_to_fit(db_path, "Database:             ", LINE_WIDTH)
     model_dir_str = truncate_path_to_fit(model_dir, "Model directory:      ", LINE_WIDTH)
     log_dir_str = truncate_path_to_fit(log_dir, "Log directory:        ", LINE_WIDTH)
 
-    # Add temp corpus dir if provided
     temp_dir_str = None
     if hasattr(print_training_header, "temp_dir") and print_training_header.temp_dir:
-        temp_dir_str = truncate_path_to_fit(print_training_header.temp_dir, "Temp corpus dir:      ", LINE_WIDTH)
+        temp_dir_str = truncate_path_to_fit(
+            print_training_header.temp_dir, "Temp corpus dir:      ", LINE_WIDTH
+        )
 
     lines = [
         "WORD2VEC MODEL TRAINING",
@@ -85,13 +85,14 @@ def print_completion_banner(model_dir, total_tasks):
     ]
     print("\n".join(lines), flush=True)
 
+
 def print_alignment_header(
         start_time,
         model_dir,
         output_dir,
         anchor_year,
         num_models,
-        weighted_alignment,
+        alignment_method,
         stability_method=None,
         include_frequency=None,
         frequency_weight=None,
@@ -106,13 +107,15 @@ def print_alignment_header(
         output_dir (str): Output directory path.
         anchor_year (int): Anchor year for alignment.
         num_models (int): Total number of models to process.
-        weighted_alignment (bool): Whether using weighted alignment.
+        alignment_method (str): Alignment method ('swadesh', 'stability_weighted',
+                                'unweighted').
         stability_method (str, optional): Stability computation method.
-        include_frequency (bool, optional): Whether including frequency in weights.
+            Only relevant for alignment_method='stability_weighted'.
+        include_frequency (bool, optional): Whether frequency is included in
+            stability weights.
         frequency_weight (float, optional): Weight for frequency component.
         workers (int, optional): Number of parallel workers.
     """
-    # Format paths using truncate_path_to_fit
     model_dir_str = truncate_path_to_fit(model_dir, "Model directory:      ", LINE_WIDTH)
     output_dir_str = truncate_path_to_fit(output_dir, "Output directory:     ", LINE_WIDTH)
 
@@ -137,17 +140,25 @@ def print_alignment_header(
     lines.append("Alignment Method")
     lines.append("─" * LINE_WIDTH)
 
-    if weighted_alignment:
-        lines.append(f"Type:                 Weighted Procrustes")
+    if alignment_method == 'swadesh':
+        lines.append("Type:                 Swadesh-anchored Procrustes")
+        lines.append("Anchor set:           NLTK Swadesh ∩ shared vocabulary (computed in vivo)")
+
+    elif alignment_method == 'stability_weighted':
+        lines.append("Type:                 Stability-weighted Procrustes (two-pass)")
         if stability_method:
             lines.append(f"Stability metric:     {stability_method}")
         if include_frequency is not None:
-            freq_status = "Yes" if include_frequency else "No"
-            lines.append(f"Include frequency:    {freq_status}")
+            lines.append(f"Include frequency:    {'Yes' if include_frequency else 'No'}")
         if include_frequency and frequency_weight is not None:
-            lines.append(f"Frequency weight:     {frequency_weight:.2f} ({int(frequency_weight*100)}% frequency, {int((1-frequency_weight)*100)}% stability)")
+            lines.append(
+                f"Frequency weight:     {frequency_weight:.2f} "
+                f"({int(frequency_weight * 100)}% frequency, "
+                f"{int((1 - frequency_weight) * 100)}% stability)"
+            )
+
     else:
-        lines.append(f"Type:                 Unweighted Procrustes (all shared vocabulary)")
+        lines.append("Type:                 Unweighted Procrustes (full shared vocabulary)")
 
     lines.append("")
     print("\n".join(lines), flush=True)
@@ -155,7 +166,7 @@ def print_alignment_header(
 
 def print_alignment_completion(output_dir, num_models, runtime):
     """
-    Print alignment completion banner with statistics.
+    Print alignment completion banner.
 
     Args:
         output_dir (str): Output directory path.
