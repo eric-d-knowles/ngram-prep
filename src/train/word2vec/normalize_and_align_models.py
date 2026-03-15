@@ -1,6 +1,4 @@
-import argparse
 import os
-import sys
 import re
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +6,7 @@ from multiprocessing import Pool
 
 from tqdm import tqdm
 from ngramprep.common.w2v_model import W2VModel
+from .display import LINE_WIDTH
 
 
 def get_model_paths(model_dir):
@@ -29,23 +28,47 @@ def get_model_paths(model_dir):
     return sorted(model_paths)
 
 
+def make_output_path(model_path: str, dir_suffix: str) -> str:
+    """
+    Derive the output path for a normalized/aligned model by inserting
+    'norm_and_align' as a subdirectory of the models directory.
+
+    Uses Path surgery rather than string replacement to avoid incorrect
+    substitution when dir_suffix appears elsewhere in the path.
+    """
+    p = Path(model_path)
+    return str(p.parent / "norm_and_align" / p.name)
+
+
 def process_model(args):
     """
-    Normalize and align a given model to the anchor model.
+    Normalize, vocab-filter, and (for non-anchor years) align a model to
+    the anchor. The anchor year is also passed through this function so
+    that all models — including the anchor — are saved via the same code
+    path and receive identical normalization and vocab-filtering treatment.
     """
-    year, model_path, anchor_model, dir_suffix, stability_weights = args
-    model = W2VModel(model_path)
+    year, model_path, anchor_year, anchor_model_path, dir_suffix, stability_weights = args
 
-    # Ensure vectors are writeable before normalization
-    model.model.vectors = model.model.vectors.copy()
+    # Load and normalize. W2VModel.normalize() is responsible for the
+    # read-only copy internally; callers should not need to do it here.
+    model = W2VModel(model_path)
     model = model.normalize()
 
-    if year != anchor_model[0]:
-        model.filter_vocab(anchor_model[1].filtered_vocab)
-        model.align_to(anchor_model[1], weights=stability_weights)
+    if year == anchor_year:
+        # Anchor: filter to its own vocab to establish the shared vocabulary
+        # baseline. All other models will be filtered to this same set.
+        model.filter_vocab(model.extract_vocab())
+    else:
+        # Load the anchor from disk (cheap — .kv files are memory-mapped)
+        # rather than pickling the full anchor object into every worker.
+        anchor = W2VModel(anchor_model_path)
+        anchor = anchor.normalize()
+        anchor.filter_vocab(anchor.extract_vocab())
 
-    output_path = model_path.replace(f"models_{dir_suffix}",
-                                     f"models_{dir_suffix}/norm_and_align")
+        model.filter_vocab(anchor.filtered_vocab)
+        model.align_to(anchor, weights=stability_weights)
+
+    output_path = make_output_path(model_path, dir_suffix)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     model.save(output_path)
 
@@ -62,7 +85,6 @@ def normalize_and_align_vectors(
         stability_method='local_stability',
         include_frequency=True,
         frequency_weight=0.3,
-        # New ngram-specific parameters
         repo_release_id=None,
         repo_corpus_id=None,
         db_path_stub=None
@@ -81,19 +103,18 @@ def normalize_and_align_vectors(
         dir_suffix: Directory suffix (e.g., 'final', 'test')
         anchor_year: Year to use as anchor for alignment
         ngram_size: N-gram size (e.g., 5 for 5grams). Required for ngram mode.
-        workers: Number of parallel workers (defaults to CPU count)
-        corpus_path: Path to corpus directory (e.g., '/scratch/edk202/NLP_corpora/COHA') - used for auto-detection
-        genre_focus: List of genres for Davies corpora (e.g., ['fic']) - used for Davies auto-detection
-        weighted_alignment: If True, use stability-weighted Procrustes (more stable words have more influence).
-                           If False (default), use unweighted Procrustes (all words contribute equally).
-        stability_method: Method for computing stability weights ('local_stability', 'global_stability',
-                         'frequency_stability', 'combined'). Only used if weighted_alignment=True
-        include_frequency: If True, incorporate word frequency into weights (recommended).
-                          More frequent words have more reliable embeddings. Only used if weighted_alignment=True
-        frequency_weight: Weight for frequency component (0.0-1.0). Default 0.3 gives 70% weight to stability,
-                         30% to frequency. Only used if weighted_alignment=True and include_frequency=True
-
-        # Ngram-specific parameters (alternative to corpus_path for Google Books, etc.)
+        workers: Number of parallel workers. Defaults to SLURM_CPUS_PER_TASK if
+                 available, otherwise os.cpu_count().
+        corpus_path: Path to corpus directory (e.g., '/scratch/edk202/NLP_corpora/COHA')
+        genre_focus: List of genres for Davies corpora (e.g., ['fic'])
+        weighted_alignment: If True, use stability-weighted Procrustes.
+        stability_method: Method for computing stability weights ('local_stability',
+                         'global_stability', 'frequency_stability', 'combined').
+                         Only used if weighted_alignment=True.
+        include_frequency: If True, incorporate word frequency into weights.
+                          Only used if weighted_alignment=True.
+        frequency_weight: Weight for frequency component (0.0-1.0). Default 0.3.
+                         Only used if weighted_alignment=True and include_frequency=True.
         repo_release_id: Release date in YYYYMMDD format (e.g., "20200217")
         repo_corpus_id: Corpus identifier (e.g., "eng", "eng-fiction")
         db_path_stub: Base directory for data (e.g., "/scratch/edk202/NLP_corpora/Google_Books/")
@@ -119,7 +140,7 @@ def normalize_and_align_vectors(
         ...     workers=50
         ... )
         >>>
-        >>> # Stability-weighted alignment with frequency (recommended)
+        >>> # Stability-weighted alignment with frequency (recommended):
         >>> normalize_and_align_vectors(
         ...     ngram_size=5,
         ...     repo_release_id='20200217',
@@ -142,51 +163,44 @@ def normalize_and_align_vectors(
         ...     workers=50
         ... )
     """
-    # Set default workers
+    # Default workers: respect SLURM allocation on HPC; fall back to CPU count
     if workers is None:
-        workers = os.cpu_count()
+        slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+        workers = int(slurm_cpus) if slurm_cpus is not None else os.cpu_count()
 
-    # Auto-derive proj_dir based on provided parameters
-    if proj_dir is None:
-        # Check if using ngram stub parameters
+    # --- Resolve proj_dir ---
+    resolved_proj_dir = proj_dir  # preserve original argument, work on a local copy
+
+    if resolved_proj_dir is None:
         if db_path_stub is not None:
             if ngram_size is None or repo_release_id is None or repo_corpus_id is None:
                 raise ValueError(
                     "When using db_path_stub, all ngram parameters are required: "
                     "ngram_size, repo_release_id, repo_corpus_id, db_path_stub"
                 )
-            # Construct path from stub parameters
             from ngramprep.ngram_acquire.db.build_path import build_db_path
 
-            # Normalize the stub path (handle trailing slashes)
-            db_path_stub = db_path_stub.rstrip('/')
-
-            # build_db_path returns full path to db file, .parent gets the Ngram_files directory
-            db_full_path = build_db_path(db_path_stub, ngram_size, repo_release_id, repo_corpus_id)
-            base_path = str(Path(db_full_path).parent)
-
-            # For ngrams, just swap NLP_corpora for NLP_models directly
-            # (construct_model_path adds corpus subdirectories which causes duplication)
-            proj_dir = base_path.replace('NLP_corpora', 'NLP_models')
-
-            # ngram_size is handled via the path construction, set to None to avoid double-nesting
-            ngram_size = None
+            db_full_path = build_db_path(
+                db_path_stub.rstrip('/'), ngram_size, repo_release_id, repo_corpus_id
+            )
+            resolved_proj_dir = str(Path(db_full_path).parent).replace(
+                'NLP_corpora', 'NLP_models'
+            )
 
         elif corpus_path is not None:
-            # Davies corpus mode
             from .config import construct_model_path
-            corpus_path = corpus_path.rstrip('/')
-            proj_dir = construct_model_path(corpus_path)
 
-            # Add genre-specific subdirectory for Davies corpora
+            corpus_path = corpus_path.rstrip('/')
+            resolved_proj_dir = construct_model_path(corpus_path)
+
             corpus_name = os.path.basename(corpus_path)
-            if genre_focus is not None:
-                genre_suffix = "+".join(sorted(genre_focus))
-                genre_subdir = f"{corpus_name}_{genre_suffix}"
-            else:
-                # Use corpus_corpus pattern for consistency (e.g., COHA/COHA)
-                genre_subdir = corpus_name
-            proj_dir = os.path.join(proj_dir, genre_subdir)
+            genre_subdir = (
+                f"{corpus_name}_{''.join(sorted(genre_focus))}"
+                if genre_focus is not None
+                else corpus_name
+            )
+            resolved_proj_dir = os.path.join(resolved_proj_dir, genre_subdir)
+
         else:
             raise ValueError(
                 "Either proj_dir, corpus_path, or db_path_stub must be provided.\n"
@@ -203,11 +217,12 @@ def normalize_and_align_vectors(
 
     start_time = datetime.now()
 
-    # Construct model directory based on whether ngram_size is provided
-    if ngram_size is not None:
-        model_dir = os.path.join(proj_dir, f'{ngram_size}gram_files/models_{dir_suffix}')
+    # Construct model directory. ngram_size is only used for path construction
+    # in explicit/Davies modes; in stub mode the path is fully resolved above.
+    if ngram_size is not None and db_path_stub is None:
+        model_dir = os.path.join(resolved_proj_dir, f'{ngram_size}gram_files/models_{dir_suffix}')
     else:
-        model_dir = os.path.join(proj_dir, f'models_{dir_suffix}')
+        model_dir = os.path.join(resolved_proj_dir, f'models_{dir_suffix}')
 
     if not os.path.exists(model_dir):
         raise FileNotFoundError(f"Model directory not found: {model_dir}")
@@ -216,8 +231,12 @@ def normalize_and_align_vectors(
     if not model_paths:
         raise FileNotFoundError(f"No .kv models found in {model_dir}")
 
-    # Determine output directory
-    output_dir = model_dir.replace(f"models_{dir_suffix}", f"models_{dir_suffix}/norm_and_align")
+    output_dir = str(Path(model_dir) / "norm_and_align")
+
+    # Locate anchor path
+    anchor_model_path = next((p for y, p in model_paths if y == anchor_year), None)
+    if anchor_model_path is None:
+        raise ValueError(f"Anchor model for year {anchor_year} not found.")
 
     # Print header
     from .display import print_alignment_header
@@ -234,28 +253,18 @@ def normalize_and_align_vectors(
         workers=workers
     )
 
-    # Load the anchor model
-    anchor_model_path = next((p for y, p in model_paths if y == anchor_year), None)
-    if not anchor_model_path:
-        raise ValueError(f"Anchor model for year {anchor_year} not found.")
-
-    anchor_model = W2VModel(anchor_model_path)
-    anchor_model.model.vectors = anchor_model.model.vectors.copy()
-    anchor_model = anchor_model.normalize()
-
-    # Ensure anchor model has filtered_vocab before multiprocessing
-    anchor_model.filter_vocab(anchor_model.extract_vocab())
-
-    # Compute stability weights if using weighted alignment
+    # Compute stability weights if requested. Workers receive weights as a
+    # plain dict (pickling-safe) rather than a model object.
     stability_weights = None
     if weighted_alignment:
         from .stability_weighting import load_models_for_stability_weighting, compute_stability_weights
 
         print("")
         print("Stability Weight Computation")
-        print("═" * 100)
-        models_for_weighting, shared_vocab = load_models_for_stability_weighting(model_paths, verbose=True)
-
+        print("═" * LINE_WIDTH)
+        models_for_weighting, shared_vocab = load_models_for_stability_weighting(
+            model_paths, verbose=True
+        )
         stability_weights = compute_stability_weights(
             models=models_for_weighting,
             shared_vocab=shared_vocab,
@@ -266,27 +275,25 @@ def normalize_and_align_vectors(
         )
         print("")
 
-    # Save the anchor model in the output directory
-    output_anchor_path = anchor_model_path.replace(f"models_{dir_suffix}", f"models_{dir_suffix}/norm_and_align")
-    Path(output_anchor_path).parent.mkdir(parents=True, exist_ok=True)
-    anchor_model.save(output_anchor_path)
-
-    # Prepare non-anchor models for multiprocessing
-    tasks = [(y, p, (anchor_year, anchor_model), dir_suffix, stability_weights) for y, p in model_paths if
-             y != anchor_year]
+    # All models — including the anchor — go through process_model so that
+    # normalization, vocab filtering, and save logic are unified.
+    tasks = [
+        (y, p, anchor_year, anchor_model_path, dir_suffix, stability_weights)
+        for y, p in model_paths
+    ]
 
     print("Processing Models")
-    print("═" * 100)
+    print("═" * LINE_WIDTH)
     with Pool(processes=workers) as pool:
         for _ in tqdm(
                 pool.imap_unordered(process_model, tasks),
                 total=len(tasks),
                 desc="Aligning models",
+                ncols=LINE_WIDTH,
                 unit=" models"
         ):
             pass
 
-    # Print completion banner
     end_time = datetime.now()
     runtime = end_time - start_time
 
