@@ -1,21 +1,13 @@
 import os
 import re
 import shutil
+import multiprocessing as mp
 from datetime import datetime
 from pathlib import Path
-from multiprocessing import Pool
 
 from tqdm import tqdm
 from ngramprep.common.w2v_model import W2VModel
 from .display import LINE_WIDTH
-
-# Force spawn-based multiprocessing to avoid fork-inherited lock deadlocks
-# with NumPy, gensim, and other libraries that use internal locks.
-import multiprocessing
-try:
-    multiprocessing.set_start_method('spawn')
-except RuntimeError:
-    pass  # Start method can only be set once per process
 
 
 # Module-level globals populated once per worker process by _init_worker.
@@ -117,7 +109,9 @@ def _run_alignment_pass(tasks, workers, anchor_model_path, weights, desc):
     Run one alignment pass and return the output model paths.
 
     The anchor model and weights are passed to each worker process once
-    via the pool initializer rather than once per task.
+    via the pool initializer rather than once per task. Uses a spawn
+    context to avoid fork-inherited lock deadlocks with NumPy and gensim
+    without affecting the global multiprocessing start method.
 
     Args:
         tasks: List of process_model arg tuples:
@@ -130,7 +124,8 @@ def _run_alignment_pass(tasks, workers, anchor_model_path, weights, desc):
     Returns:
         List of (year, output_path) tuples for all models processed.
     """
-    with Pool(
+    ctx = mp.get_context('spawn')
+    with ctx.Pool(
             processes=workers,
             initializer=_init_worker,
             initargs=(anchor_model_path, weights)
@@ -437,12 +432,15 @@ def normalize_and_align_vectors(
 
     # Final alignment pass — weights=None for unweighted, Swadesh dict for
     # swadesh, stability dict for stability_weighted. Both anchor model and
-    # weights are passed to workers once via the pool initializer.
+    # weights are passed to workers once via the pool initializer. Uses a
+    # spawn context to avoid fork-inherited lock deadlocks without affecting
+    # the global multiprocessing start method.
     tasks = [
         (y, p, anchor_year, str(final_output_dir / Path(p).name))
         for y, p in model_paths
     ]
-    with Pool(
+    ctx = mp.get_context('spawn')
+    with ctx.Pool(
             processes=workers,
             initializer=_init_worker,
             initargs=(anchor_model_path, weights)
