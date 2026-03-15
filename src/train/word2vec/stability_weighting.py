@@ -16,17 +16,23 @@ from .display import LINE_WIDTH
 
 def _normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
     """
-    Normalize a word -> score dict to [0, 1] via min-max scaling.
+    Normalize a word -> score dict to [0, 1] via rank-based (quantile) scaling.
 
-    If all values are identical, returns 1.0 for every word to avoid
-    division by zero and preserve uniform weighting.
+    Each word's score is replaced by its fractional rank across all words,
+    mapping the lowest score to 0.0 and the highest to 1.0. This is robust
+    to outliers in a way that min-max scaling is not — a single extremely
+    stable or unstable word cannot compress the rest of the distribution.
     """
-    values = np.array(list(scores.values()))
-    min_val = values.min()
-    max_val = values.max()
-    if max_val == min_val:
-        return {k: 1.0 for k in scores}
-    return {k: (v - min_val) / (max_val - min_val) for k, v in scores.items()}
+    if not scores:
+        return scores
+
+    sorted_words = sorted(scores, key=lambda w: scores[w])
+    n = len(sorted_words)
+
+    if n == 1:
+        return {sorted_words[0]: 1.0}
+
+    return {word: rank / (n - 1) for rank, word in enumerate(sorted_words)}
 
 
 def compute_local_stability(
