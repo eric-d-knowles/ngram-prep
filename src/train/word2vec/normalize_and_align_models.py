@@ -29,13 +29,28 @@ def get_model_paths(model_dir):
     return sorted(model_paths)
 
 
+def _get_swadesh_words():
+    """
+    Return the NLTK Swadesh word list for English as a set of lowercase
+    single-token alphabetic strings.
+
+    Requires the NLTK Swadesh corpus to be downloaded. Run
+    scripts/setup_nlp_resources.sh to install all required corpora.
+    """
+    from nltk.corpus import swadesh
+    return {
+        w.lower() for w in swadesh.words('en')
+        if w.isalpha() and ' ' not in w
+    }
+
+
 def process_model(args):
     """
     Normalize, vocab-filter, and (for non-anchor years) align a model to
     the anchor. Output path is passed explicitly in the task tuple so that
     pass-1 and final-pass models are written to the correct directories.
     """
-    year, model_path, anchor_year, anchor_model_path, output_path, stability_weights = args
+    year, model_path, anchor_year, anchor_model_path, output_path, weights = args
 
     model = W2VModel(model_path)
     model = model.normalize()
@@ -52,7 +67,7 @@ def process_model(args):
         anchor.filter_vocab(anchor.extract_vocab())
 
         model.filter_vocab(anchor.filtered_vocab)
-        model.align_to(anchor, weights=stability_weights)
+        model.align_to(anchor, weights=weights)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     model.save(output_path)
@@ -69,7 +84,7 @@ def _run_alignment_pass(tasks, workers, desc):
     Args:
         tasks: List of process_model arg tuples with output_path as the
                fifth element: (year, model_path, anchor_year,
-               anchor_model_path, output_path, stability_weights).
+               anchor_model_path, output_path, weights).
         workers: Number of parallel workers.
         desc: tqdm description string for this pass.
 
@@ -97,7 +112,7 @@ def normalize_and_align_vectors(
         workers=None,
         corpus_path=None,
         genre_focus=None,
-        weighted_alignment=False,
+        alignment_method='swadesh',
         stability_method='local_stability',
         include_frequency=True,
         frequency_weight=0.3,
@@ -123,71 +138,96 @@ def normalize_and_align_vectors(
                  available, otherwise os.cpu_count().
         corpus_path: Path to corpus directory (e.g., '/scratch/edk202/NLP_corpora/COHA')
         genre_focus: List of genres for Davies corpora (e.g., ['fic'])
-        weighted_alignment: If True, use stability-weighted Procrustes. Performs two
-                            passes — unweighted first to remove rotation confound, then
-                            weighted using stability scores computed on aligned models.
-        stability_method: Method for computing stability weights ('local_stability',
-                         'global_stability', 'frequency_stability', 'combined').
-                         Only used if weighted_alignment=True.
-        include_frequency: If True, incorporate word frequency into weights.
-                          Only used if weighted_alignment=True.
+        alignment_method: Method for aligning models. One of:
+            - 'swadesh' (default): Single-pass Procrustes anchored to the
+              intersection of the NLTK Swadesh list with the shared vocabulary.
+              Externally grounded and simple to justify methodologically.
+            - 'stability_weighted': Two-pass Procrustes. First pass aligns with
+              uniform weights to remove rotation confound; stability weights are
+              then computed on the aligned models and used in the second pass.
+            - 'unweighted': Single-pass Procrustes over the full shared
+              vocabulary with uniform weights.
+        stability_method: Stability metric for 'stability_weighted' alignment.
+                         One of: 'local_stability', 'global_stability',
+                         'frequency_stability', 'combined'.
+        include_frequency: If True, incorporate word frequency into stability
+                          weights. Only used if alignment_method='stability_weighted'.
         frequency_weight: Weight for frequency component (0.0-1.0). Default 0.3.
-                         Only used if weighted_alignment=True and include_frequency=True.
+                         Only used if alignment_method='stability_weighted' and
+                         include_frequency=True.
         repo_release_id: Release date in YYYYMMDD format (e.g., "20200217")
         repo_corpus_id: Corpus identifier (e.g., "eng", "eng-fiction")
         db_path_stub: Base directory for data (e.g., "/scratch/edk202/NLP_corpora/Google_Books/")
 
     Example:
-        >>> # Google Books ngram mode (using stub parameters):
+        >>> # Swadesh-anchored alignment (default, recommended):
         >>> normalize_and_align_vectors(
         ...     ngram_size=5,
         ...     repo_release_id='20200217',
-        ...     repo_corpus_id='eng',
+        ...     repo_corpus_id='eng-us',
         ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
         ...     dir_suffix='final',
-        ...     anchor_year=2000,
+        ...     anchor_year=1968,
         ...     workers=50
         ... )
         >>>
-        >>> # Davies corpus mode (COHA, COCA, etc.):
-        >>> normalize_and_align_vectors(
-        ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
-        ...     dir_suffix='final',
-        ...     anchor_year=2000,
-        ...     genre_focus=['fic'],
-        ...     workers=50
-        ... )
-        >>>
-        >>> # Stability-weighted alignment with frequency (recommended):
+        >>> # Stability-weighted alignment:
         >>> normalize_and_align_vectors(
         ...     ngram_size=5,
         ...     repo_release_id='20200217',
-        ...     repo_corpus_id='eng',
+        ...     repo_corpus_id='eng-us',
         ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
         ...     dir_suffix='final',
-        ...     anchor_year=2000,
-        ...     weighted_alignment=True,
+        ...     anchor_year=1968,
+        ...     alignment_method='stability_weighted',
         ...     stability_method='local_stability',
         ...     include_frequency=True,
         ...     frequency_weight=0.3,
         ...     workers=50
         ... )
         >>>
+        >>> # Unweighted alignment:
+        >>> normalize_and_align_vectors(
+        ...     ngram_size=5,
+        ...     repo_release_id='20200217',
+        ...     repo_corpus_id='eng-us',
+        ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
+        ...     dir_suffix='final',
+        ...     anchor_year=1968,
+        ...     alignment_method='unweighted',
+        ...     workers=50
+        ... )
+        >>>
+        >>> # Davies corpus mode:
+        >>> normalize_and_align_vectors(
+        ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
+        ...     dir_suffix='final',
+        ...     anchor_year=1968,
+        ...     genre_focus=['fic'],
+        ...     workers=50
+        ... )
+        >>>
         >>> # Explicit path mode (backwards compatible):
         >>> normalize_and_align_vectors(
-        ...     proj_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng/5gram_files',
+        ...     proj_dir='/scratch/edk202/NLP_models/Google_Books/20200217/eng-us/5gram_files',
         ...     dir_suffix='final',
-        ...     anchor_year=2000,
+        ...     anchor_year=1968,
         ...     workers=50
         ... )
     """
+    if alignment_method not in ('swadesh', 'stability_weighted', 'unweighted'):
+        raise ValueError(
+            f"Unknown alignment_method: '{alignment_method}'. "
+            f"Choose from: 'swadesh', 'stability_weighted', 'unweighted'"
+        )
+
     # Default workers: respect SLURM allocation on HPC; fall back to CPU count
     if workers is None:
         slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
         workers = int(slurm_cpus) if slurm_cpus is not None else os.cpu_count()
 
     # --- Resolve proj_dir ---
-    resolved_proj_dir = proj_dir  # preserve original argument, work on a local copy
+    resolved_proj_dir = proj_dir
 
     if resolved_proj_dir is None:
         if db_path_stub is not None:
@@ -223,11 +263,10 @@ def normalize_and_align_vectors(
             raise ValueError(
                 "Either proj_dir, corpus_path, or db_path_stub must be provided.\n"
                 "For Google Books: db_path_stub='/path/to/Google_Books/', ngram_size=5, "
-                "repo_release_id='20200217', repo_corpus_id='eng'\n"
+                "repo_release_id='20200217', repo_corpus_id='eng-us'\n"
                 "For Davies corpora: corpus_path='/path/to/COHA', genre_focus=['fic']"
             )
 
-    # Validate required parameters
     if dir_suffix is None:
         raise ValueError("dir_suffix parameter is required")
     if anchor_year is None:
@@ -235,8 +274,6 @@ def normalize_and_align_vectors(
 
     start_time = datetime.now()
 
-    # Construct model directory. ngram_size is only used for path construction
-    # in explicit/Davies modes; in stub mode the path is fully resolved above.
     if ngram_size is not None and db_path_stub is None:
         model_dir = os.path.join(resolved_proj_dir, f'{ngram_size}gram_files/models_{dir_suffix}')
     else:
@@ -251,12 +288,10 @@ def normalize_and_align_vectors(
 
     output_dir = str(Path(model_dir) / "norm_and_align")
 
-    # Locate anchor path
     anchor_model_path = next((p for y, p in model_paths if y == anchor_year), None)
     if anchor_model_path is None:
         raise ValueError(f"Anchor model for year {anchor_year} not found.")
 
-    # Print header
     from .display import print_alignment_header
     print_alignment_header(
         start_time=start_time,
@@ -264,20 +299,52 @@ def normalize_and_align_vectors(
         output_dir=output_dir,
         anchor_year=anchor_year,
         num_models=len(model_paths),
-        weighted_alignment=weighted_alignment,
-        stability_method=stability_method if weighted_alignment else None,
-        include_frequency=include_frequency if weighted_alignment else None,
-        frequency_weight=frequency_weight if weighted_alignment else None,
+        alignment_method=alignment_method,
+        stability_method=stability_method if alignment_method == 'stability_weighted' else None,
+        include_frequency=include_frequency if alignment_method == 'stability_weighted' else None,
+        frequency_weight=frequency_weight if alignment_method == 'stability_weighted' else None,
         workers=workers
     )
 
-    stability_weights = None
+    weights = None
+    final_output_dir = Path(model_dir) / "norm_and_align"
 
-    if weighted_alignment:
-        # --- Pass 1: unweighted alignment ---
-        # Align all models to the anchor with uniform weights first, so that
-        # stability weights computed in pass 2 are not confounded by arbitrary
-        # rotation between raw embedding spaces.
+    # --- Swadesh alignment ---
+    if alignment_method == 'swadesh':
+        from .stability_weighting import load_models_for_stability_weighting
+
+        print("Swadesh Anchor Computation")
+        print("═" * LINE_WIDTH)
+
+        # Compute shared vocab in vivo from the actual trained models
+        _, shared_vocab = load_models_for_stability_weighting(
+            model_paths, verbose=True, exclude_special_tokens=True
+        )
+
+        swadesh_words = _get_swadesh_words()
+        swadesh_anchor_vocab = swadesh_words.intersection(shared_vocab)
+
+        print(f"  Swadesh list size:    {len(swadesh_words):,} words")
+        print(f"  Shared vocab size:    {len(shared_vocab):,} words")
+        print(f"  Anchor set size:      {len(swadesh_anchor_vocab):,} words")
+        print("")
+
+        # Words in anchor set get weight 1.0; all others get 0.0 so they
+        # are rotated but do not contribute to estimating R.
+        weights = {
+            word: 1.0 if word in swadesh_anchor_vocab else 0.0
+            for word in shared_vocab
+        }
+
+    # --- Stability-weighted alignment ---
+    elif alignment_method == 'stability_weighted':
+        from .stability_weighting import (
+            load_models_for_stability_weighting,
+            compute_stability_weights
+        )
+
+        # Pass 1: unweighted alignment to remove rotation confound before
+        # computing stability scores.
         pass1_suffix = f"{dir_suffix}_pass1_tmp"
         pass1_output_dir = Path(model_dir).parent / f"models_{pass1_suffix}" / "norm_and_align"
 
@@ -294,20 +361,14 @@ def normalize_and_align_vectors(
         )
         print("")
 
-        # --- Compute stability weights on pass-1 aligned models ---
-        # Stability computed here is free of rotation confound since all
-        # models now occupy the same vector space.
-        from .stability_weighting import (
-            load_models_for_stability_weighting,
-            compute_stability_weights
-        )
-
+        # Compute stability weights on pass-1 aligned models — free of
+        # rotation confound since all models now share the same vector space.
         print("Stability Weight Computation")
         print("═" * LINE_WIDTH)
         models_for_weighting, shared_vocab = load_models_for_stability_weighting(
             pass1_model_paths, verbose=True
         )
-        stability_weights = compute_stability_weights(
+        weights = compute_stability_weights(
             models=models_for_weighting,
             shared_vocab=shared_vocab,
             method=stability_method,
@@ -317,8 +378,7 @@ def normalize_and_align_vectors(
         )
         print("")
 
-        # Clean up temporary pass-1 models — they were only needed for
-        # stability estimation and should not persist.
+        # Clean up temporary pass-1 models.
         pass1_dir = Path(model_dir).parent / f"models_{pass1_suffix}"
         if pass1_dir.exists():
             shutil.rmtree(pass1_dir)
@@ -326,16 +386,16 @@ def normalize_and_align_vectors(
         print("Pass 2: Weighted Alignment")
         print("═" * LINE_WIDTH)
 
+    # --- Unweighted alignment ---
     else:
         print("Processing Models")
         print("═" * LINE_WIDTH)
 
-    # Final alignment pass — unweighted if weighted_alignment=False,
-    # weighted with pass-1-derived scores if weighted_alignment=True.
-    final_output_dir = Path(model_dir) / "norm_and_align"
+    # Final alignment pass — weights=None for unweighted, Swadesh dict for
+    # swadesh, stability dict for stability_weighted.
     tasks = [
         (y, p, anchor_year, anchor_model_path,
-         str(final_output_dir / Path(p).name), stability_weights)
+         str(final_output_dir / Path(p).name), weights)
         for y, p in model_paths
     ]
     with Pool(processes=workers) as pool:
