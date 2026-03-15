@@ -220,7 +220,8 @@ def compute_projection_over_years(
             "yearly_dimensions": yearly_dimensions,
         }
 
-    projections_df = pd.DataFrame.from_dict(projections_data, orient="index")
+    projections_df = pd.DataFrame(projections_data).T
+    projections_df.index = projections_df.index.astype(int)
     projections_df = projections_df.sort_index()
 
     # Optionally apply baseline correction
@@ -623,7 +624,7 @@ def compute_baseline_set(
         if corr_df.shape[0] < 2:
             return np.array([])
         mask_local = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
-        return corr_df.where(mask_local).stack().values
+        return corr_df.where(mask_local).stack(dropna=True).values
 
     # Compute correlation statistics among neutral words
     correlation_stats: Dict[str, object] = {

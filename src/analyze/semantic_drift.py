@@ -125,7 +125,8 @@ def track_local_semantic_change(
         print("❌ No valid drift scores computed. Exiting.")
         return {}
 
-    df_drift = pd.DataFrame.from_dict(drift_data, orient="index", columns=["Drift", "Error", "Shared"])
+    df_drift = pd.DataFrame(drift_data, index=["Drift", "Error", "Shared"]).T
+    df_drift.index = df_drift.index.astype(int)
     df_drift.index.name = "Year"
 
     adjusted = False
@@ -275,9 +276,10 @@ def track_global_semantic_change(
         print("❌ No valid distance scores computed. Exiting.")
         return pd.DataFrame()
 
-    df_change = pd.DataFrame.from_dict(change_data, orient="index", columns=["Distance", "Error", "Shared"])
+    df_change = pd.DataFrame(change_data, index=["Distance", "Error", "Shared"]).T
+    df_change.index = df_change.index.astype(int)
     df_change.index.name = "Year"
-
+    
     # Plot results
     if plot:
         # Exclude reference year from plot (it's always 0)
@@ -495,7 +497,8 @@ def track_directional_drift(
                 'Embedding': change_vectors[year]['embedding']
             }
 
-    df_drift = pd.DataFrame.from_dict(drift_data, orient="index")
+    df_drift = pd.DataFrame(drift_data).T
+    df_drift.index = df_drift.index.astype(int)
     df_drift.index.name = "Year"
 
     # Plot results
