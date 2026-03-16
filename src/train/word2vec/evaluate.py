@@ -18,7 +18,7 @@ from setproctitle import setproctitle
 from tqdm import tqdm
 
 from ngramprep.utilities.display import truncate_path_to_fit
-from .w2v_model import W2VModel
+from ngramprep.common.w2v_model import W2VModel
 
 __all__ = ["evaluate_models", "evaluate_word2vec_models"]
 
