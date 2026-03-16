@@ -345,6 +345,7 @@ def normalize_and_align_vectors(
     )
 
     weights = None
+    pass1_model_paths = None
     final_output_dir = Path(model_dir) / "norm_and_align"
 
     # --- Swadesh alignment ---
@@ -383,9 +384,8 @@ def normalize_and_align_vectors(
         )
 
         # Pass 1: unweighted alignment to remove rotation confound before
-        # computing stability scores.
-        pass1_suffix = f"{dir_suffix}_pass1_tmp"
-        pass1_output_dir = Path(model_dir).parent / f"models_{pass1_suffix}" / "norm_and_align"
+        # computing stability scores. Temp models written inside model_dir.
+        pass1_output_dir = Path(model_dir) / "pass1_tmp"
 
         pass1_tasks = [
             (y, p, anchor_year, str(pass1_output_dir / Path(p).name))
@@ -417,10 +417,14 @@ def normalize_and_align_vectors(
         )
         print("")
 
-        # Clean up temporary pass-1 models.
-        pass1_dir = Path(model_dir).parent / f"models_{pass1_suffix}"
-        if pass1_dir.exists():
-            shutil.rmtree(pass1_dir)
+        # Update anchor to pass-1 version so pass-2 aligns against the
+        # already-rotated anchor, not the raw original.
+        anchor_model_path = next(
+            (p for y, p in pass1_model_paths if y == anchor_year), None
+        )
+
+        # Cleanup deferred to after pass-2 completes — pass-2 reads from
+        # pass1_model_paths which points to these files on disk.
 
         print("Pass 2: Weighted Alignment")
         print("═" * LINE_WIDTH)
@@ -440,20 +444,16 @@ def normalize_and_align_vectors(
         (y, p, anchor_year, str(final_output_dir / Path(p).name))
         for y, p in source_paths
     ]
-    ctx = mp.get_context('spawn')
-    with ctx.Pool(
-            processes=workers,
-            initializer=_init_worker,
-            initargs=(anchor_model_path, weights)
-    ) as pool:
-        for _ in tqdm(
-                pool.imap_unordered(process_model, tasks),
-                total=len(tasks),
-                desc="Aligning models",
-                ncols=LINE_WIDTH,
-                unit=" models"
-        ):
-            pass
+    _run_alignment_pass(
+        tasks, workers, anchor_model_path,
+        weights=weights, desc="  Aligning models"
+    )
+
+    # Clean up pass-1 tmp models now that pass-2 is complete.
+    if alignment_method == 'stability_weighted':
+        pass1_dir = Path(model_dir) / "pass1_tmp"
+        if pass1_dir.exists():
+            shutil.rmtree(pass1_dir)
 
     end_time = datetime.now()
     runtime = end_time - start_time

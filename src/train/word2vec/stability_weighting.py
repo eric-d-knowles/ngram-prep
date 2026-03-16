@@ -5,8 +5,6 @@ Computes per-word stability scores across time periods to use as weights
 in weighted Procrustes alignment, so that semantically stable words
 contribute more to estimating the rotation matrix.
 """
-from tabnanny import verbose
-
 import numpy as np
 from typing import List, Dict, Set, Tuple
 from collections import defaultdict

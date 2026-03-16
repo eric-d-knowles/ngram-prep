@@ -5,7 +5,7 @@ from .model import SentencesIterable, train_word2vec, create_corpus_file
 from .worker import train_model, configure_logging
 from .config import ensure_iterable, construct_model_path, set_info
 from .display import print_training_header, print_completion_banner, LINE_WIDTH
-from .w2v_model import W2VModel
+from ngramprep.common.w2v_model import W2VModel
 from .evaluate import evaluate_models, evaluate_word2vec_models
 from .normalize_and_align_models import normalize_and_align_vectors
 from .visualize import plot_evaluation_results
