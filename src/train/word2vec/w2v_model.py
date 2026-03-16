@@ -425,6 +425,9 @@ class W2VModel:
         """
         Save the filtered and aligned model to the specified path.
 
+        Preserves word frequency counts (expandos) from the source model so that
+        downstream stability weighting can access count attributes on saved models.
+
         Args:
             output_path (str): Path to save the aligned .kv model.
 
@@ -434,9 +437,21 @@ class W2VModel:
         if not hasattr(self, "filtered_vectors") or not self.filtered_vectors:
             raise ValueError("No filtered vectors available to save.")
 
+        words = list(self.filtered_vectors.keys())
         aligned_model = KeyedVectors(vector_size=self.vector_size)
-        aligned_model.add_vectors(
-            list(self.filtered_vectors.keys()),
-            list(self.filtered_vectors.values())
-        )
+        aligned_model.add_vectors(words, list(self.filtered_vectors.values()))
+
+        # Preserve count attributes from source model. These are dropped by
+        # add_vectors since it only populates vectors and index_to_key.
+        # Without this, get_vecattr(word, 'count') raises KeyError on saved
+        # models, breaking frequency-based stability weighting downstream.
+        if hasattr(self.model, 'expandos') and 'count' in self.model.expandos:
+            for w in words:
+                if w in self.model:
+                    try:
+                        count = self.model.get_vecattr(w, 'count')
+                        aligned_model.set_vecattr(w, 'count', count)
+                    except KeyError:
+                        pass
+
         aligned_model.save(output_path)

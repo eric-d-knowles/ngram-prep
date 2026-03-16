@@ -435,9 +435,10 @@ def normalize_and_align_vectors(
     # weights are passed to workers once via the pool initializer. Uses a
     # spawn context to avoid fork-inherited lock deadlocks without affecting
     # the global multiprocessing start method.
+    source_paths = pass1_model_paths if alignment_method == 'stability_weighted' else model_paths
     tasks = [
         (y, p, anchor_year, str(final_output_dir / Path(p).name))
-        for y, p in model_paths
+        for y, p in source_paths
     ]
     ctx = mp.get_context('spawn')
     with ctx.Pool(

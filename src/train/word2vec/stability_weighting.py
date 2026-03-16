@@ -5,6 +5,8 @@ Computes per-word stability scores across time periods to use as weights
 in weighted Procrustes alignment, so that semantically stable words
 contribute more to estimating the rotation matrix.
 """
+from tabnanny import verbose
+
 import numpy as np
 from typing import List, Dict, Set, Tuple
 from collections import defaultdict
@@ -311,9 +313,29 @@ def compute_stability_weights(
         sorted_words = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
         print(f"  Weight range: {sorted_words[-1][1]:.4f} (lowest) to "
               f"{sorted_words[0][1]:.4f} (highest)")
-        print(f"\n  Top 10 highest-weighted words:")
+
+        if include_frequency:
+            sorted_by_freq = sorted(frequency_scores.items(), key=lambda x: x[1], reverse=True)
+            print(f"\n  Top 10 by frequency:")
+            print(f"    {'Word':<20} {'Frequency':>10} {'Stability':>10} {'Combined':>10}")
+            print(f"    {'─'*20} {'─'*10} {'─'*10} {'─'*10}")
+            for word, score in sorted_by_freq[:10]:
+                print(f"    {word:<20} {score:>10.4f} {stability_scores[word]:>10.4f} {final_scores[word]:>10.4f}")
+
+        sorted_by_stab = sorted(stability_scores.items(), key=lambda x: x[1], reverse=True)
+        print(f"\n  Top 10 by stability:")
+        print(f"    {'Word':<20} {'Stability':>10} {'Frequency':>10} {'Combined':>10}")
+        print(f"    {'─'*20} {'─'*10} {'─'*10} {'─'*10}")
+        for word, score in sorted_by_stab[:10]:
+            freq = frequency_scores[word] if include_frequency else float('nan')
+            print(f"    {word:<20} {score:>10.4f} {freq:>10.4f} {final_scores[word]:>10.4f}")
+
+        print(f"\n  Top 10 by combined weight:")
+        print(f"    {'Word':<20} {'Combined':>10} {'Stability':>10} {'Frequency':>10}")
+        print(f"    {'─'*20} {'─'*10} {'─'*10} {'─'*10}")
         for word, score in sorted_words[:10]:
-            print(f"    {word:20s} {score:.4f}")
+            freq = frequency_scores[word] if include_frequency else float('nan')
+            print(f"    {word:<20} {score:>10.4f} {stability_scores[word]:>10.4f} {freq:>10.4f}")
 
     return final_scores
 
