@@ -80,6 +80,14 @@ def _init_worker(anchor_model_path, weights):
     _alignment_weights = weights
 
 
+def _init_worker_normalize_only():
+    """
+    Pool initializer for unaligned mode: no anchor model needed.
+    Workers only normalize and filter vocab.
+    """
+    pass
+
+
 def process_model(args):
     """
     Normalize, vocab-filter, and (for non-anchor years) align a model to
@@ -99,6 +107,23 @@ def process_model(args):
     else:
         model.filter_vocab(_anchor_model.filtered_vocab)
         model.align_to(_anchor_model, weights=_alignment_weights)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    model.save(output_path)
+
+
+def process_model_unaligned(args):
+    """
+    Normalize and vocab-filter a model without any alignment.
+    Used for the 'unaligned' method to test whether rotation matters.
+    All models are filtered to the shared vocabulary of the anchor year
+    model, but no Procrustes rotation is applied.
+    """
+    year, model_path, anchor_vocab, output_path = args
+
+    model = W2VModel(model_path)
+    model = model.normalize()
+    model.filter_vocab(anchor_vocab)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     model.save(output_path)
@@ -185,6 +210,9 @@ def normalize_and_align_vectors(
               then computed on the aligned models and used in the second pass.
             - 'unweighted': Single-pass Procrustes over the full shared
               vocabulary with uniform weights.
+            - 'unaligned': Normalize and vocab-filter only. No Procrustes
+              rotation is applied. Useful as a robustness check to test
+              whether alignment affects downstream measures.
         stability_method: Stability metric for 'stability_weighted' alignment.
                          One of: 'local_stability', 'global_stability',
                          'frequency_stability', 'combined'.
@@ -236,6 +264,18 @@ def normalize_and_align_vectors(
         ...     workers=50
         ... )
         >>>
+        >>> # Unaligned (normalize only, no rotation):
+        >>> normalize_and_align_vectors(
+        ...     ngram_size=5,
+        ...     repo_release_id='20200217',
+        ...     repo_corpus_id='eng-us',
+        ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
+        ...     dir_suffix='final',
+        ...     anchor_year=1968,
+        ...     alignment_method='unaligned',
+        ...     workers=50
+        ... )
+        >>>
         >>> # Davies corpus mode:
         >>> normalize_and_align_vectors(
         ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
@@ -253,10 +293,10 @@ def normalize_and_align_vectors(
         ...     workers=50
         ... )
     """
-    if alignment_method not in ('swadesh', 'stability_weighted', 'unweighted'):
+    if alignment_method not in ('swadesh', 'stability_weighted', 'unweighted', 'unaligned'):
         raise ValueError(
             f"Unknown alignment_method: '{alignment_method}'. "
-            f"Choose from: 'swadesh', 'stability_weighted', 'unweighted'"
+            f"Choose from: 'swadesh', 'stability_weighted', 'unweighted', 'unaligned'"
         )
 
     # Default workers: respect SLURM allocation on HPC; fall back to CPU count
@@ -347,6 +387,47 @@ def normalize_and_align_vectors(
     weights = None
     pass1_model_paths = None
     final_output_dir = Path(model_dir) / "norm_and_align"
+
+    # --- Unaligned: normalize and vocab-filter only, no rotation ---
+    if alignment_method == 'unaligned':
+        print("Normalization Only (No Alignment)")
+        print("═" * LINE_WIDTH)
+
+        # Load anchor vocab to use as the shared reference vocabulary.
+        anchor_model = W2VModel(anchor_model_path)
+        anchor_model.normalize()
+        anchor_vocab = anchor_model.extract_vocab()
+        print(f"  Anchor vocab size: {len(anchor_vocab):,} words")
+        print("")
+
+        print("Processing Models")
+        print("═" * LINE_WIDTH)
+
+        tasks = [
+            (y, p, anchor_vocab, str(final_output_dir / Path(p).name))
+            for y, p in model_paths
+        ]
+        ctx = mp.get_context('spawn')
+        with ctx.Pool(processes=workers) as pool:
+            for _ in tqdm(
+                    pool.imap_unordered(process_model_unaligned, tasks),
+                    total=len(tasks),
+                    desc="  Normalizing models",
+                    ncols=LINE_WIDTH,
+                    unit=" models"
+            ):
+                pass
+
+        end_time = datetime.now()
+        runtime = end_time - start_time
+
+        from .display import print_alignment_completion
+        print_alignment_completion(
+            output_dir=output_dir,
+            num_models=len(model_paths),
+            runtime=runtime
+        )
+        return
 
     # --- Swadesh alignment ---
     if alignment_method == 'swadesh':
