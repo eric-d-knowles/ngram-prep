@@ -7,27 +7,18 @@ __all__ = ["load_stopwords"]
 
 def load_stopwords(language: str) -> Tuple[Set[str], str]:
     """
-    Load stopwords for a language and return both the set and language name.
-    
-    This ensures a single source of truth for the stopword language,
-    avoiding the need to specify the language twice.
-    
+    Load stopwords for a language using spaCy and return both the set and language code.
+
     Args:
-        language: Language code for stop-words package. Supported languages:
-                 "arabic" (ar), "bulgarian" (bg), "catalan" (ca), "czech" (cz),
-                 "danish" (da), "german" (de), "english" (en), "spanish" (es),
-                 "finnish" (fi), "french" (fr), "hindi" (hi), "hungarian" (hu),
-                 "indonesian" (id), "italian" (it), "norwegian" (nb), "dutch" (nl),
-                 "polish" (pl), "portuguese" (pt), "romanian" (ro), "russian" (ru),
-                 "slovak" (sk), "swedish" (sv), "turkish" (tr), "ukrainian" (uk),
-                 "vietnamese" (vi)
-    
+        language: Language code for spaCy (e.g., "en", "ru", "de", etc.)
+
     Returns:
-        Tuple of (stopword_set, language_name)
-        
+        Tuple of (stopword_set, language_code)
+
     Raises:
-        ValueError: If the language is not supported
-        
+        ImportError: If spaCy is not installed
+        ValueError: If the language is not supported by spaCy
+
     Example:
         >>> stop_set, stop_lang = load_stopwords("russian")
         >>> filter_config = FilterConfig(
@@ -37,21 +28,20 @@ def load_stopwords(language: str) -> Tuple[Set[str], str]:
         ... )
     """
     try:
-        from stop_words import get_stop_words, LANGUAGE_MAPPING
+        import spacy
     except ImportError:
         raise ImportError(
-            "stop-words package is required for stopword filtering. "
-            "Install it with: pip install stop-words"
+            "spaCy is required for stopword filtering. "
+            "Install it with: pip install spacy"
         )
-    
+
     try:
-        stopword_set = set(get_stop_words(language))
+        nlp = spacy.blank(language)
+        stopword_set = set(nlp.Defaults.stop_words)
     except Exception as e:
-        # Get list of supported languages
-        supported = sorted(LANGUAGE_MAPPING.keys())
         raise ValueError(
             f"Unsupported stopword language: '{language}'. "
-            f"Supported languages: {', '.join(supported)}"
+            f"spaCy may not support this language."
         ) from e
-    
+
     return stopword_set, language
