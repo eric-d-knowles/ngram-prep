@@ -14,7 +14,7 @@ from ..config import PipelineConfig
 from ..encoding import decode_packed24_records, encode_year_ngram_key, encode_year_stats
 from .progress import Counters, increment_counter
 from .write_buffer import WriteBuffer
-from ngramprep.common_db.api import open_db, range_scan
+from ngramprep.common_db.api import open_db, range_scan, scan_all
 from ngramprep.tracking import WorkTracker, WorkUnit, SimpleOutputManager
 
 __all__ = ["WorkerConfig", "worker_process", "worker_process_sst"]
@@ -292,10 +292,12 @@ def _process_work_unit_to_sst(
         counters: Optional[Counters] = None,
 ) -> None:
     """
-    Process a work unit by writing pivoted data directly to an SST file.
+    Process a work unit by writing pivoted data to an SST file.
 
-    This function is similar to _process_work_unit but uses SstFileWriter to create
-    SST files that can be directly ingested, bypassing memtable writes entirely.
+    Uses a two-phase approach to avoid unbounded memory usage:
+      Phase 1: Stream pivoted records into a temporary RocksDB shard,
+               which sorts keys on disk via its LSM tree.
+      Phase 2: Iterate the sorted shard to feed SstFileWriter in order.
 
     Args:
         work_unit: The work unit to process
@@ -307,143 +309,151 @@ def _process_work_unit_to_sst(
         work_tracker: Optional work tracker for checkpointing progress
     """
     import rocks_shim as rs
+    import shutil
 
-    # Create output SST file for this work unit
     output_path = output_dir / f"{work_unit.unit_id}.sst"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Open SST writer
-    writer = rs.SstFileWriter()
-    writer.open(str(output_path))
+    temp_shard_path = output_dir / f"{work_unit.unit_id}_sort.db"
 
     try:
-        # Process key range and write to SST
+        # Phase 1: Pivot source records into a temp RocksDB (disk-based sort)
+        buffer = WriteBuffer()
+
         with open_db(
                 src_db_path,
                 mode="r",
                 profile=pipeline_config.reader_profile
         ) as src_db:
-            _process_key_range_to_sst(
-                work_unit,
-                src_db,
-                writer,
-                pipeline_config,
-                local_counters,
-                work_tracker,
-                counters
-            )
+            with open_db(
+                    temp_shard_path,
+                    mode="rw",
+                    profile=pipeline_config.writer_profile,
+                    create_if_missing=True
+            ) as tmp_db:
+                _pivot_key_range_to_db(
+                    work_unit, src_db, tmp_db, buffer,
+                    pipeline_config, local_counters, counters,
+                )
+                # Final flush
+                num_written = buffer.flush_and_count(
+                    tmp_db, pipeline_config.writer_disable_wal
+                )
+                if local_counters and counters:
+                    local_counters['written'] += num_written
+                    increment_counter(counters.items_written, num_written)
 
-        # Finalize SST file
-        writer.finish()
+        # Phase 2: Stream sorted temp shard into SST file
+        writer = rs.SstFileWriter()
+        writer.open(str(output_path))
+        try:
+            with open_db(
+                    temp_shard_path,
+                    mode="r",
+                    profile=pipeline_config.reader_profile
+            ) as tmp_db:
+                for key, value in scan_all(tmp_db):
+                    writer.put(key, value)
+            writer.finish()
+        except Exception:
+            try:
+                output_path.unlink()
+            except Exception:
+                pass
+            raise
 
         # Mark unit as completed
         if work_tracker:
             work_tracker.complete_work_unit(work_unit.unit_id, max_retries=20)
 
-    except Exception:
-        # Clean up partial SST file on failure
-        try:
-            output_path.unlink()
-        except Exception:
-            pass
-        raise
+    finally:
+        # Always clean up temp shard
+        if temp_shard_path.exists():
+            shutil.rmtree(temp_shard_path, ignore_errors=True)
 
 
-def _process_key_range_to_sst(
+def _pivot_key_range_to_db(
         work_unit: WorkUnit,
         src_db,
-        writer,
+        dst_db,
+        buffer: WriteBuffer,
         pipeline_config: PipelineConfig,
         local_counters: Optional[dict] = None,
-        work_tracker: Optional[WorkTracker] = None,
         counters: Optional[Counters] = None,
 ) -> None:
     """
-    Process key range and write directly to SST file using SstFileWriter.
+    Pivot a key range from source DB into a destination DB via WriteBuffer.
+
+    Streams pivoted records through a bounded buffer, flushing on a time
+    interval or when the buffer exceeds 64 MB.
 
     Args:
         work_unit: Work unit defining key range
         src_db: Source database handle
-        writer: SstFileWriter instance
+        dst_db: Destination database handle (temp shard)
+        buffer: WriteBuffer for batching writes
         pipeline_config: Pipeline configuration
-        local_counters: Optional counters for tracking
-        work_tracker: Optional work tracker for checkpointing
+        local_counters: Optional local counters for tracking
+        counters: Optional shared counters for progress tracking
     """
     import time
 
     start_key = work_unit.start_key if work_unit.start_key is not None else b""
     end_key = work_unit.end_key
 
-    # Track counts
-    since_last_update = {'scanned': 0, 'decoded': 0, 'written': 0}
-    last_update_time = time.time()
-    update_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
+    since_flush = {'scanned': 0, 'decoded': 0}
+    last_flush_time = time.time()
+    flush_interval_s = getattr(pipeline_config, 'flush_interval_s', 5.0)
 
-    # Pre-compute year prefixes
     year_prefixes = _precompute_year_prefixes(min_year=1400, max_year=2021)
 
-    # Collect all pivoted key-value pairs in memory before writing
-    # (SstFileWriter requires keys to be added in sorted order)
-    pivoted_data = []
-
     for ngram_key, packed_value in range_scan(src_db, start_key, end_key):
-        since_last_update['scanned'] += 1
+        since_flush['scanned'] += 1
 
         try:
-            # Decode all year records for this n-gram
             year_records = decode_packed24_records(packed_value)
-            since_last_update['decoded'] += len(year_records)
+            since_flush['decoded'] += len(year_records)
 
-            # Create pivoted key-value pairs
             for year, occurrences, documents in year_records:
-                # Use pre-computed prefix (or cache outliers dynamically)
                 if year not in year_prefixes:
                     year_prefixes[year] = encode_year_ngram_key(year, b"")
                 target_key = year_prefixes[year] + ngram_key
                 target_value = encode_year_stats(occurrences, documents)
-                pivoted_data.append((target_key, target_value))
+                buffer.add(target_key, target_value)
 
-            # Periodically update shared counters for progress reporting
-            if update_interval_s > 0:
+            # Flush on size cap or time interval
+            should_flush = buffer.current_bytes >= 64 * 1024 * 1024
+            if not should_flush and flush_interval_s > 0:
                 current_time = time.time()
-                if current_time - last_update_time >= update_interval_s:
-                    if local_counters:
-                        local_counters['scanned'] += since_last_update['scanned']
-                        local_counters['decoded'] += since_last_update['decoded']
+                if current_time - last_flush_time >= flush_interval_s:
+                    should_flush = True
 
-                        # Update shared counters for live progress
-                        if counters:
-                            increment_counter(counters.items_scanned, since_last_update['scanned'])
-                            increment_counter(counters.items_decoded, since_last_update['decoded'])
-
-                        since_last_update = {'scanned': 0, 'decoded': 0, 'written': 0}
-
-                    last_update_time = current_time
+            if should_flush:
+                num_written = buffer.flush_and_count(
+                    dst_db, pipeline_config.writer_disable_wal
+                )
+                if local_counters:
+                    local_counters['written'] += num_written
+                    local_counters['scanned'] += since_flush['scanned']
+                    local_counters['decoded'] += since_flush['decoded']
+                    if counters:
+                        increment_counter(counters.items_scanned, since_flush['scanned'])
+                        increment_counter(counters.items_decoded, since_flush['decoded'])
+                        increment_counter(counters.items_written, num_written)
+                    since_flush = {'scanned': 0, 'decoded': 0}
+                last_flush_time = time.time()
 
         except Exception as e:
             if pipeline_config.validate:
                 raise
-            # Otherwise skip this record and continue
 
-    # Sort all pivoted data by key (required for SST writer)
-    pivoted_data.sort(key=lambda x: x[0])
-
-    # Write all sorted data to SST file
-    for key, value in pivoted_data:
-        writer.put(key, value)
-        since_last_update['written'] += 1
-
-    # Commit final counts
+    # Commit remaining counts
     if local_counters:
-        local_counters['scanned'] += since_last_update['scanned']
-        local_counters['decoded'] += since_last_update['decoded']
-        local_counters['written'] += since_last_update['written']
-
-        # Update shared counters with final batch
+        local_counters['scanned'] += since_flush['scanned']
+        local_counters['decoded'] += since_flush['decoded']
         if counters:
-            increment_counter(counters.items_scanned, since_last_update['scanned'])
-            increment_counter(counters.items_decoded, since_last_update['decoded'])
-            increment_counter(counters.items_written, since_last_update['written'])
+            increment_counter(counters.items_scanned, since_flush['scanned'])
+            increment_counter(counters.items_decoded, since_flush['decoded'])
 
 
 def _process_work_unit(

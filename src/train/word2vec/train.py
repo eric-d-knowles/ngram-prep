@@ -6,6 +6,7 @@ from .display import truncate_path_to_fit, LINE_WIDTH
 import os
 import re
 import shutil
+import textwrap
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
@@ -97,7 +98,7 @@ def _scan_existing_models(model_dir):
     if not kv_files:
         return valid_models, invalid_models
 
-    for filename in tqdm(kv_files, desc="Scanning existing models", unit=" files"):
+    for filename in tqdm(kv_files, desc="Scanning existing models", unit=" files", ncols=LINE_WIDTH):
         params = _parse_model_filename(filename)
         if params is None:
             continue  # Skip files that don't match expected pattern
@@ -153,6 +154,7 @@ def train_models(
         unk_mode='reject',
         cache_corpus=False,
         use_corpus_file=True,
+        reuse_corpus_files=False,
         temp_dir=None,
         debug_sample=0,
         debug_interval=0,
@@ -198,6 +200,10 @@ def train_models(
                                parameter for training. Enables better multi-core scaling (32+ workers)
                                by bypassing Python's GIL. If False, use iterator-based approach
                                (optimal for 8-12 workers). Default: True.
+        reuse_corpus_files (bool): If True and use_corpus_file=True, preserve corpus files in
+                                  temp_dir across runs and reuse them instead of recreating.
+                                  Useful for resuming training without regenerating corpus files.
+                                  Default: False.
         temp_dir (str): Optional directory for temporary corpus files. Useful for HPC scratch space
                        (e.g., '/scratch', '$TMPDIR', or os.environ.get('TMPDIR')). If None, uses
                        system default temp directory. Default: None.
@@ -294,12 +300,20 @@ def train_models(
             f"Invalid mode: '{mode}'. Must be 'resume', 'restart', or 'new'."
         )
 
-    # Handle temp_dir setup: create if missing, clear if exists
+    # Handle temp_dir setup
     if temp_dir:
         temp_dir = os.path.abspath(os.path.expanduser(temp_dir))
-        if os.path.exists(temp_dir):
-            # Clear existing temp directory
-            shutil.rmtree(temp_dir, ignore_errors=False)
+        if not reuse_corpus_files and os.path.exists(temp_dir):
+            # Clear contents unless reuse is enabled
+            for entry in os.listdir(temp_dir):
+                entry_path = os.path.join(temp_dir, entry)
+                try:
+                    if os.path.isdir(entry_path):
+                        shutil.rmtree(entry_path, ignore_errors=False)
+                    else:
+                        os.unlink(entry_path)
+                except OSError:
+                    pass  # Skip NFS lock files (.nfs*) and other busy resources
         os.makedirs(temp_dir, exist_ok=True)
 
     # Format grid parameters with step information
@@ -351,7 +365,6 @@ def train_models(
 
     # Scan for existing models in resume mode (after banner)
     if mode == 'resume':
-        print("Scanning for existing models...")
         existing_valid, invalid_models = _scan_existing_models(model_dir)
         print(f"  Valid models found:    {len(existing_valid)}")
         print(f"  Invalid/partial:       {len(invalid_models)}")
@@ -422,39 +435,56 @@ def train_models(
         weight_by_val = task[4]
         tasks_by_year_weight[(year, weight_by_val)].append(task)
 
-    # Create all corpus files in parallel if using corpus_file mode
+    # Create corpus files if using corpus_file mode, reusing cached files
     corpus_file_map = {}  # Maps (year, weight_by) -> corpus_file_path
     if use_corpus_file and tasks_by_year_weight:
-        print("Creating corpus files in parallel...", flush=True)
-        max_corpus_workers = min(len(tasks_by_year_weight), 48)
-        with ProcessPoolExecutor(max_workers=max_corpus_workers) as executor:
-            corpus_futures = {
-                executor.submit(
-                    create_corpus_file,
-                    db_path=db_path,
-                    year=year,
-                    weight_by=weight_by_val,
-                    unk_mode=unk_mode,
-                    temp_dir=temp_dir
-                ): (year, weight_by_val)
-                for (year, weight_by_val) in tasks_by_year_weight.keys()
-            }
-            created_years = []
-            failed_years = []
-            for future in as_completed(corpus_futures):
-                year, weight_by_val = corpus_futures[future]
-                try:
-                    corpus_file_path = future.result()
-                    corpus_file_map[(year, weight_by_val)] = corpus_file_path
-                    created_years.append(year)
-                except Exception as e:
-                    failed_years.append(year)
-                    print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
-                    raise
-            if created_years:
-                print(f"Corpus files created for years: {sorted(set(created_years))}")
-            if failed_years:
-                print(f"Corpus file creation failed for years: {sorted(set(failed_years))}")
+        # Scan for cached corpus files in temp_dir
+        needed = set(tasks_by_year_weight.keys())
+        if reuse_corpus_files and temp_dir and os.path.exists(temp_dir):
+            corpus_pattern = re.compile(r'^w2v_corpus_y(\d+)_wb(\w+)_.+\.txt$')
+            for entry in os.listdir(temp_dir):
+                m = corpus_pattern.match(entry)
+                if m:
+                    key = (int(m.group(1)), m.group(2))
+                    if key in needed and key not in corpus_file_map:
+                        corpus_file_map[key] = os.path.join(temp_dir, entry)
+
+        still_needed = needed - corpus_file_map.keys()
+        if corpus_file_map:
+            print(f"Reusing {len(corpus_file_map)} cached corpus files", flush=True)
+        if still_needed:
+            print(f"Creating {len(still_needed)} corpus files in parallel...", flush=True)
+            max_corpus_workers = min(len(still_needed), 48)
+            with ProcessPoolExecutor(max_workers=max_corpus_workers) as executor:
+                corpus_futures = {
+                    executor.submit(
+                        create_corpus_file,
+                        db_path=db_path,
+                        year=year,
+                        weight_by=weight_by_val,
+                        unk_mode=unk_mode,
+                        temp_dir=temp_dir
+                    ): (year, weight_by_val)
+                    for (year, weight_by_val) in still_needed
+                }
+                created_years = []
+                failed_years = []
+                for future in as_completed(corpus_futures):
+                    year, weight_by_val = corpus_futures[future]
+                    try:
+                        corpus_file_path = future.result()
+                        corpus_file_map[(year, weight_by_val)] = corpus_file_path
+                        created_years.append(year)
+                    except Exception as e:
+                        failed_years.append(year)
+                        print(f"Failed to create corpus file for year {year}, weight_by={weight_by_val}: {e}")
+                        raise
+                if created_years:
+                    msg = f"Corpus files created for years: {sorted(set(created_years))}"
+                    print(textwrap.fill(msg, width=LINE_WIDTH, subsequent_indent='  '))
+                if failed_years:
+                    msg = f"Corpus file creation failed for years: {sorted(set(failed_years))}"
+                    print(textwrap.fill(msg, width=LINE_WIDTH, subsequent_indent='  '))
         print("")  # Blank line after corpus file creation
 
     # Update all tasks to include their corpus_file_path
@@ -488,8 +518,8 @@ def train_models(
                         tqdm.write(f"\nTask failed with error: {e}")
                     pbar.update(1)
         finally:
-            # Clean up all corpus files
-            if use_corpus_file:
+            # Clean up corpus files unless reuse is enabled
+            if use_corpus_file and not reuse_corpus_files:
                 for (year, weight_by_val), corpus_file_path in corpus_file_map.items():
                     if corpus_file_path and os.path.exists(corpus_file_path):
                         try:
@@ -497,12 +527,12 @@ def train_models(
                         except Exception:
                             pass  # Silently ignore cleanup errors
 
-            # Clean up temp directory after all processing is complete
-            if temp_dir and os.path.exists(temp_dir):
-                try:
-                    shutil.rmtree(temp_dir, ignore_errors=False)
-                except Exception:
-                    pass  # Silently ignore cleanup errors
+                # Clean up temp directory after all processing is complete
+                if temp_dir and os.path.exists(temp_dir):
+                    try:
+                        shutil.rmtree(temp_dir, ignore_errors=True)
+                    except Exception:
+                        pass  # Silently ignore cleanup errors
 
     # Print completion banner
     print_completion_banner(model_dir, models_trained)
@@ -565,6 +595,7 @@ def build_word2vec_models(
     unk_mode='reject',
     cache_corpus=False,
     use_corpus_file=True,
+    reuse_corpus_files=False,
     temp_dir=None,
     debug_sample=0,
     debug_interval=0
@@ -595,6 +626,7 @@ def build_word2vec_models(
         unk_mode (str): How to handle <UNK> tokens ('reject', 'strip', or 'retain')
         cache_corpus (bool): Load entire corpus into memory
         use_corpus_file (bool): Use temporary corpus files for better scaling
+        reuse_corpus_files (bool): Preserve and reuse corpus files in temp_dir across runs
         temp_dir (str): Directory for temporary files
         debug_sample (int): Print first N sentences for debugging
         debug_interval (int): Print samples every N seconds
@@ -668,6 +700,7 @@ def build_word2vec_models(
         unk_mode=unk_mode,
         cache_corpus=cache_corpus,
         use_corpus_file=use_corpus_file,
+        reuse_corpus_files=reuse_corpus_files,
         temp_dir=temp_dir,
         debug_sample=debug_sample,
         debug_interval=debug_interval

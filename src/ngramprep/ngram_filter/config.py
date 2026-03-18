@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Set, Dict, Any, Union
+from typing import AbstractSet, Optional, Set, Dict, Any, Union
 
 
 # Filtering options used by filter processor
@@ -31,7 +31,7 @@ class FilterConfig:
     whitelist: Optional[Set[bytes]] = None
 
     # Always-include tokens configuration (tokens to preserve regardless of whitelist)
-    always_include: Optional[Set[bytes]] = None  # Set of tokens to always include (e.g., b"working-class", b"nuclear")
+    always_include: Optional[AbstractSet[Union[str, bytes]]] = None  # Set of tokens to always include (e.g., "working-class", "nuclear")
 
     # Year binning configuration
     bin_size: int = 1  # Aggregate years into bins (1 = annual data, 5 = 5-year bins, etc.)
