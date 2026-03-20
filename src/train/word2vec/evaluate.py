@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 from datetime import datetime
 from multiprocessing import Pool
 
@@ -285,6 +286,13 @@ def _evaluate_one_file(params):
         file_handler.close()
 
 
+def _init_worker():
+    """Restrict each worker to one BLAS/OpenMP thread to avoid over-subscription."""
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
+
 def _evaluate_models_in_directory(
     model_dir,
     eval_file,
@@ -336,6 +344,17 @@ def _evaluate_models_in_directory(
     print(f"Found {len(files_to_evaluate)} models to evaluate")
     print("")
 
+    # Pre-cache model files into OS page cache to reduce I/O blocking
+    model_paths = [os.path.join(model_dir, f) for f in files_to_evaluate]
+    try:
+        subprocess.run(
+            ['cat'] + model_paths,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            check=False
+        )
+    except OSError:
+        pass  # Non-critical; evaluation proceeds without pre-caching
+
     # Build list of parameter tuples for parallel processing
     param_list = [
         (f, model_dir, similarity_dataset, analogy_dataset, log_dir,
@@ -343,31 +362,36 @@ def _evaluate_models_in_directory(
         for f in files_to_evaluate
     ]
 
-    results = []
+    # Write results incrementally so interrupted runs don't lose progress
+    num_saved = 0
+    write_header = (save_mode == 'overwrite') or not os.path.isfile(eval_file)
+    csv_mode = 'w' if save_mode == 'overwrite' else 'a'
+
     with Pool(processes=workers) as pool:
         # imap_unordered yields results as they come in
         for result in tqdm(
             pool.imap_unordered(_evaluate_one_file, param_list),
             total=len(param_list),
             desc="Evaluating models",
-            unit=" models"
+            unit=" models",
+            ncols=LINE_WIDTH
         ):
             if result is not None:
-                results.append(result)
+                df_row = pd.DataFrame([result])
+                df_row.to_csv(
+                    eval_file, mode=csv_mode, index=False,
+                    header=write_header
+                )
+                # After first write, always append without header
+                write_header = False
+                csv_mode = 'a'
+                num_saved += 1
 
-    # Save results to CSV
-    if results:
-        df = pd.DataFrame(results)
-        if save_mode == 'overwrite':
-            df.to_csv(eval_file, mode='w', index=False)
-        else:
-            file_exists = os.path.isfile(eval_file)
-            df.to_csv(eval_file, mode='a', index=False, header=not file_exists)
-
+    if num_saved > 0:
         print("")
         print("Evaluation Complete")
         print("═" * LINE_WIDTH)
-        print(f"Models evaluated:     {len(results)}")
+        print(f"Models evaluated:     {num_saved}")
         print(f"Results saved to:     {truncate_path_to_fit(eval_file, 'Results saved to:     ', LINE_WIDTH)}")
         print("━" * LINE_WIDTH)
         print("")

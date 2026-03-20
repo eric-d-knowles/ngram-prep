@@ -14,11 +14,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Union
 import re
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.ndimage import gaussian_filter1d
-from scipy.stats import linregress
 
 from ngramprep.common.w2v_model import W2VModel
 
@@ -33,18 +30,9 @@ def compute_projection_over_years(
     method: str = "meandiff",
     reference_year: Optional[int] = None,
     ensure_sign_positive: Optional[Union[bool, List[str]]] = True,
-    plot: bool = True,
-    smooth: bool = False,
-    sigma: float = 2,
-    plot_marker_size: float = 3.0,
-    plot_line_width: float = 0.8,
-    show_legend: Optional[bool] = None,
-    legend_max_items: int = 12,
-    plot_regression: bool = False,
     verbose: bool = True,
     baseline_source: Optional[Union[pd.Series, Sequence[str]]] = None,
     baseline_agg: str = "median",
-    plot_corrected_if_baseline: bool = True,
     **method_kwargs,
 ) -> Dict[str, object]:
     """
@@ -60,16 +48,6 @@ def compute_projection_over_years(
         method: 'pca' or 'meandiff'.
         reference_year: Year to fit the dimension on (defaults to earliest available in requested range).
         ensure_sign_positive: Passed to PCA variant for sign orientation. Ignored for mean-diff.
-        plot: Whether to produce a trajectory plot.
-        smooth: Apply Gaussian smoothing to trajectories for plotting only.
-        sigma: Standard deviation for Gaussian smoothing (same pattern as WEAT series).
-        plot_marker_size: Marker size for trajectory points in the plot.
-        plot_line_width: Line width for trajectory lines in the plot.
-        show_legend: Whether to render a legend. If None, legend is shown only
-            when estimated legend entries are <= legend_max_items.
-        legend_max_items: Max estimated legend entries before auto-hiding the
-            legend when show_legend is None.
-        plot_regression: If True, overlay linear regression lines on the plot for each word's trajectory.
         verbose: Print progress information.
         baseline_source: Optional baseline input used for correction. Accepted forms:
             - pd.Series indexed by year: interpreted as a pre-computed yearly baseline.
@@ -78,8 +56,6 @@ def compute_projection_over_years(
               baseline_agg.
         baseline_agg: Aggregation method for word-list baseline_source ('mean' or
             'median'). Ignored when baseline_source is a pd.Series. Default: 'median'.
-        plot_corrected_if_baseline: If True and baseline_source is provided, plot
-            baseline-corrected trajectories; otherwise plot raw projections.
         **method_kwargs: Extra kwargs forwarded to dimension computation methods.
 
     Returns:
@@ -311,94 +287,6 @@ def compute_projection_over_years(
             elif verbose:
                 print("⚠️ Baseline values are NaN for all years; baseline correction not applied.")
 
-    if plot:
-        plt.figure(figsize=(10, 5))
-        available_words = [word for word in test_words if word in projections_df.columns]
-        estimated_legend_items = len(available_words) * (2 if plot_regression else 1)
-        should_show_legend = show_legend if show_legend is not None else estimated_legend_items <= legend_max_items
-
-        for word in test_words:
-            if word not in projections_df.columns:
-                continue
-            # Choose series: corrected (if requested and available) or raw
-            if baseline_applied and plot_corrected_if_baseline and projections_corrected_df is not None:
-                series = projections_corrected_df[word]
-            else:
-                series = projections_df[word]
-            if smooth:
-                values = series.values
-                if np.all(np.isnan(values)):
-                    smoothed = values
-                else:
-                    filled = np.nan_to_num(values, nan=np.nanmean(values))
-                    smoothed = gaussian_filter1d(filled, sigma=sigma)
-                series_to_plot = pd.Series(smoothed, index=series.index)
-            else:
-                series_to_plot = series
-
-            label = word if not (baseline_applied and plot_corrected_if_baseline) else f"{word} (baseline-corrected)"
-            plt.plot(
-                series_to_plot.index,
-                series_to_plot.values,
-                marker="o",
-                linestyle="-",
-                markersize=plot_marker_size,
-                linewidth=plot_line_width,
-                label=label if should_show_legend else None,
-            )
-
-        plt.xlabel("Year", fontsize=12)
-        ylabel = "Projection (cosine)"
-        title_suffix = ""
-        if baseline_applied and plot_corrected_if_baseline:
-            ylabel = "Baseline-corrected projection (cosine)"
-            title_suffix = " (baseline-corrected)"
-        plt.ylabel(ylabel, fontsize=12)
-        plt.title(f"Word projections on {method} dimension{title_suffix}", fontsize=14, fontweight="bold")
-        
-        # Add regression lines if requested
-        if plot_regression:
-            for word in test_words:
-                if word not in projections_df.columns:
-                    continue
-                # Choose series: corrected (if requested and available) or raw
-                if baseline_applied and plot_corrected_if_baseline and projections_corrected_df is not None:
-                    series = projections_corrected_df[word]
-                else:
-                    series = projections_df[word]
-                
-                # Drop NaN values for regression
-                valid_mask = ~series.isna()
-                years_valid = series.index[valid_mask].values
-                values_valid = series.values[valid_mask]
-                
-                if len(years_valid) >= 2:
-                    # Fit linear regression
-                    slope, intercept, r_value, p_value, std_err = linregress(years_valid, values_valid)
-                    # Plot regression line with p-value in label
-                    years_range = np.array([years_valid.min(), years_valid.max()])
-                    line_values = slope * years_range + intercept
-                    sig_marker = "*" if p_value < 0.05 else ""
-                    plt.plot(
-                        years_range,
-                        line_values,
-                        linestyle='--',
-                        alpha=0.7,
-                        linewidth=max(0.6, plot_line_width),
-                        label=f"{word} regression (p={p_value:.4f}){sig_marker}" if should_show_legend else None,
-                    )
-
-        if should_show_legend:
-            plt.legend()
-        elif verbose and estimated_legend_items > legend_max_items:
-            print(
-                f"ℹ️ Legend hidden automatically ({estimated_legend_items} entries > "
-                f"legend_max_items={legend_max_items}). Set show_legend=True to force display."
-            )
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-
     return {
         "dimension": None,  # Year-specific: no single reference dimension
         "reference_year": reference_year,
@@ -559,8 +447,6 @@ def compute_baseline_set(
         year_step=year_step,
         method=method,
         ensure_sign_positive=ensure_sign_positive,
-        smooth=False,
-        plot=plot,
         verbose=False,
     )
     
