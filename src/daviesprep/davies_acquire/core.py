@@ -453,9 +453,11 @@ def ingest_davies_corpus(
     print(f"Database path:            {db_path}")
     print()
     if missing_ids_total:
-        print("Documents skipped (metadata missing):")
-        for mid in sorted(missing_ids_total):
-            print(f"  {mid}")
+        import textwrap
+        label = "Documents skipped (metadata missing): "
+        id_list = ", ".join(str(mid) for mid in sorted(missing_ids_total))
+        print(textwrap.fill(label + id_list, width=100,
+                            subsequent_indent=" " * len(label)))
         print()
     if genre_stats:
         print("Genre breakdown:")

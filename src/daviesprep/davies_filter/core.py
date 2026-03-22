@@ -246,35 +246,8 @@ def _run_filtering_workers(
 
 
 def filter_davies_corpus(
-    db_path_stub: str | Path,
-    genre_focus: Optional[List[str]] = None,
-    filter_config: Optional[FilterConfig] = None,
-    # Filter configuration parameters (used if filter_config not provided)
-    # These use sentinel value to distinguish "not provided" from explicit False/True
-    stop_set: Optional[Set[str]] = None,
-    lemma_gen: Any = None,
-    lowercase: object = None,
-    alpha_only: object = None,
-    filter_short: object = None,
-    filter_stops: object = None,
-    apply_lemmatization: object = None,
-    min_context_tokens: object = None,
-    min_len: object = None,
-    whitelist: Optional[Set[bytes]] = None,
-    always_include: Optional[Set[str]] = None,
-    # Processing parameters
-    workers: Optional[int] = None,
-    batch_size: int = 50_000,
-    compact_after: bool = False,
-    # Whitelist creation and application parameters
-    create_whitelist: bool = False,
-    whitelist_size: int = 10_000,
-    whitelist_year_range: Optional[Tuple[int, int]] = None,
-    whitelist_spell_check: bool = True,
-    whitelist_workers: Optional[int] = None,
-    whitelist_batch_size: int = 50_000,
-    apply_whitelist: bool = False,
-    verbose: bool = False,
+    filter_config: FilterConfig,
+    pipeline_config: PipelineConfig,
 ) -> None:
     """
     Filter Davies corpus database with parallel processing.
@@ -282,52 +255,23 @@ def filter_davies_corpus(
     Reads sentences from source database (year-only format), applies filters in parallel,
     writes to filtered database.
 
-    Directory structure:
-        db_path_stub/
-            {corpus_name}              <- Source DB (if genre_focus=None)
-            {corpus_name}_fic          <- Source DB (if genre_focus=["fic"])
-            {corpus_name}_filtered     <- Output DB (created by this function)
-            {corpus_name}_fic_filtered <- Output DB (if genre_focus=["fic"])
-            {corpus_name}_whitelist.txt     <- Whitelist file
-            {corpus_name}_fic_whitelist.txt <- Whitelist file (if genre_focus=["fic"])
+    Directory structure (auto-derived from ``pipeline_config.db_path_stub``)::
 
-    NOTE: The genre_focus parameter should match what was used during ingestion with
-    ingest_davies_corpus(). It's used to locate the correct source database.
+        db_path_stub/
+            {corpus_name}              <- Source DB (genre_focus=None)
+            {corpus_name}_fic          <- Source DB (genre_focus=["fic"])
+            {corpus_name}_filtered     <- Output DB
+            {corpus_name}_fic_filtered <- Output DB (genre_focus=["fic"])
+            {corpus_name}_whitelist.txt     <- Whitelist file (if generated)
 
     Args:
-        db_path_stub: Path to corpus directory (e.g., "/path/to/COHA").
-        genre_focus: Optional list of genres (e.g., ["fic"]). Should match the genre_focus
-                    used during ingestion. If None, looks for plain corpus database (e.g., "COHA").
-                    If specified, looks for genre-suffixed database (e.g., "COHA_fic").
-        filter_config: Filtering configuration (uses defaults if not provided)
-        stop_set: Set of stopwords to filter (used if filter_config not provided)
-        lemma_gen: Lemmatizer instance (used if filter_config not provided)
-        lowercase: Apply lowercasing (used if filter_config not provided)
-        alpha_only: Filter non-alphabetic tokens (used if filter_config not provided)
-        filter_short: Filter short tokens (used if filter_config not provided)
-        filter_stops: Filter stopwords (used if filter_config not provided)
-        apply_lemmatization: Apply lemmatization (used if filter_config not provided)
-        min_context_tokens: Minimum non-UNK tokens required to retain a sentence (used if filter_config not provided)
-        min_len: Minimum token length (used if filter_config not provided)
-        whitelist: Set of allowed tokens (bytes); tokens not in whitelist become <UNK>
-        always_include: Set of tokens (strings) to always preserve in whitelist mode,
-                       regardless of whether they're in the whitelist (e.g., {"working-class", "nuclear"})
-        workers: Number of parallel workers (default: cpu_count - 1)
-        batch_size: Number of sentences per batch for workers
-        compact_after: If True, perform full compaction after filtering
-        create_whitelist: If True, build whitelist from filtered database
-        whitelist_path: Path to save whitelist file (required if create_whitelist=True)
-        whitelist_size: Number of top tokens to include in whitelist
-        whitelist_year_range: Optional (start_year, end_year) range for whitelist creation
-        whitelist_spell_check: If True, filter out misspelled words from whitelist
-        whitelist_workers: Number of parallel workers for whitelist building (default: same as workers)
-        whitelist_batch_size: Batch size for whitelist building (default: 50,000)
-        apply_whitelist: If True, apply whitelist after creation (requires create_whitelist=True)
+        filter_config: Filtering configuration (lowercase, lemmatize, stopwords, etc.)
+        pipeline_config: Pipeline orchestration configuration (paths, workers, whitelist options)
 
     Workflow:
         1. Phase 1: Apply initial filters (lowercase, lemmatize, alpha-only, stops, short words)
-        2. Phase 2 (if create_whitelist=True): Build whitelist from filtered database
-        3. Phase 3 (if apply_whitelist=True): Replace non-whitelist tokens with <UNK>
+        2. Phase 2 (if output_whitelist_top_n set): Build whitelist from filtered database
+        3. Phase 3 (if output_whitelist_apply): Replace non-whitelist tokens with <UNK>
     """
     # Set main process title if available
     if _setproctitle is not None:
@@ -338,9 +282,22 @@ def filter_davies_corpus(
 
     start_time = datetime.now()
 
-    # Validate whitelist parameters
-    if apply_whitelist and not create_whitelist:
-        raise ValueError("apply_whitelist=True requires create_whitelist=True")
+    # Unpack pipeline config
+    db_path_stub = pipeline_config.db_path_stub
+    genre_focus = pipeline_config.genre_focus
+    workers = pipeline_config.num_workers
+    batch_size = pipeline_config.batch_size
+    compact_after = pipeline_config.compact_after
+    create_whitelist = pipeline_config.output_whitelist_top_n is not None
+    apply_whitelist = pipeline_config.output_whitelist_apply and create_whitelist
+    whitelist_size = pipeline_config.output_whitelist_top_n or 10_000
+    whitelist_year_range = pipeline_config.output_whitelist_year_range
+    whitelist_spell_check = pipeline_config.output_whitelist_spell_check
+    whitelist_workers = pipeline_config.output_whitelist_workers
+    whitelist_batch_size = pipeline_config.output_whitelist_batch_size
+
+    if db_path_stub is None:
+        raise ValueError("pipeline_config.db_path_stub is required")
 
     # Parse db_path_stub and auto-detect source database
     db_path_stub_obj = Path(db_path_stub)
@@ -371,7 +328,11 @@ def filter_davies_corpus(
 
     # Whitelist path is auto-derived if create_whitelist=True
     if create_whitelist:
-        whitelist_path = db_path_stub_obj / f"{src_db_name}_whitelist.txt"
+        wl_path = pipeline_config.output_whitelist_path
+        if wl_path is None or wl_path == "default":
+            whitelist_path = db_path_stub_obj / f"{src_db_name}_whitelist.txt"
+        else:
+            whitelist_path = Path(wl_path)
     else:
         whitelist_path = None
 
@@ -392,40 +353,15 @@ def filter_davies_corpus(
         cpu_count = os.cpu_count() or 4
         workers = max(1, cpu_count - 1)
 
-    # Convert always_include to bytes if provided
+    # Normalize always_include from pipeline config to bytes
     always_include_bytes = None
-    if always_include is not None:
-        always_include_bytes = {token.encode('utf-8') for token in always_include}
-
-    # Construct FilterConfig if not provided
-    if filter_config is None:
-        # Start with defaults, then override with any explicitly provided parameters
-        kwargs = {}
-        if stop_set is not None:
-            kwargs['stop_set'] = stop_set
-        if lemma_gen is not None:
-            kwargs['lemma_gen'] = lemma_gen
-        if lowercase is not None:
-            kwargs['lowercase'] = lowercase
-        if alpha_only is not None:
-            kwargs['alpha_only'] = alpha_only
-        if filter_short is not None:
-            kwargs['filter_short'] = filter_short
-        if filter_stops is not None:
-            kwargs['filter_stops'] = filter_stops
-        if apply_lemmatization is not None:
-            kwargs['apply_lemmatization'] = apply_lemmatization
-        if min_context_tokens is not None:
-            kwargs['min_context_tokens'] = min_context_tokens
-        if min_len is not None:
-            kwargs['min_len'] = min_len
-        if whitelist is not None:
-            kwargs['whitelist'] = whitelist
-        if always_include_bytes is not None:
-            kwargs['always_include'] = always_include_bytes
-
-        # Always create FilterConfig with provided kwargs - dataclass defaults handle the rest
-        filter_config = FilterConfig(**kwargs)
+    if pipeline_config.always_include is not None:
+        always_include_bytes = set()
+        for token in pipeline_config.always_include:
+            if isinstance(token, bytes):
+                always_include_bytes.add(token)
+            else:
+                always_include_bytes.add(token.encode('utf-8'))
 
     # Print header
     print(format_banner(f"{corpus_name} CORPUS FILTERING", style="━"))
@@ -500,8 +436,8 @@ def filter_davies_corpus(
         filter_config_dict['whitelist'] = filter_config.whitelist
 
     # Include always_include if it's set
-    if filter_config.always_include is not None:
-        filter_config_dict['always_include'] = filter_config.always_include
+    if always_include_bytes is not None:
+        filter_config_dict['always_include'] = always_include_bytes
 
     # Open destination database and run filtering workers
     with open_db(dst_db_path, mode="w", profile="write:packed24", create_if_missing=True) as dst_db:
@@ -556,11 +492,7 @@ def filter_davies_corpus(
     if apply_whitelist and create_whitelist:
         print()
         print(format_banner("Applying Whitelist"))
-        if verbose:
-            print("Loading whitelist into memory...")
         whitelist_set = load_whitelist(whitelist_path)
-        if verbose:
-            print(f"Loaded {len(whitelist_set):,} tokens from whitelist")
         print()
         print(f"Replacing non-whitelist tokens with <UNK>...")
         print()

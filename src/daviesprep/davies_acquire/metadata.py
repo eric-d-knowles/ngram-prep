@@ -6,6 +6,7 @@ to provide authoritative year and genre information indexed by textID.
 """
 
 import logging
+import warnings
 import zipfile
 from pathlib import Path
 from typing import Dict, Tuple, Optional
@@ -101,7 +102,9 @@ class DaviesMetadataLoader:
         excel_file = excel_files[0]
         
         with zf.open(excel_file) as f:
-            wb = openpyxl.load_workbook(f)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Unknown extension", category=UserWarning, module="openpyxl")
+                wb = openpyxl.load_workbook(f)
             ws = wb.active
             
             # Expected columns: textID, # words, genre, year, title, author, ...
