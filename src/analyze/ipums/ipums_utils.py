@@ -50,18 +50,43 @@ LABEL_STOPWORDS = {
 }
 
 GENERIC_ROLE_WORDS = {
-    "accountant", "advisor", "aide", "analyst", "appraiser", "architect", "assembler", "assistant", "attendant",
-    "auditor", "bailiff", "baker", "barber", "bartender", "brickmason", "blockmason", "carpenter", "cashier",
-    "chef", "chemist", "clergy", "clerk", "collector", "concierge", "conductor", "cook", "counselor", "courier",
-    "developer", "dishwasher", "doctor", "drafter", "driver", "editor", "educator", "electrician", "engineer",
-    "estimator", "examiner", "finisher", "firefighter", "fitter", "guard", "hairdresser", "handler", "helper",
-    "hygienist", "inspector", "installer", "instructor", "investigator", "jailer", "janitor", "laborer", "lawyer",
-    "librarian", "machinist", "manager", "mason", "mechanic", "messenger", "modeler", "mover", "nurse",
-    "nutritionist", "officer", "operator", "paramedic", "paralegal", "pathologist", "pharmacist", "phlebotomist",
-    "pilot", "pipelayer", "pipefitter", "planner", "plumber", "porter", "practitioner", "president", "programmer",
-    "psychologist", "receptionist", "repairer", "roofer", "salesperson", "scientist", "secretary", "specialist",
-    "steamfitter", "stonemason", "supervisor", "surgeon", "taper", "teacher", "technician", "teller", "therapist",
-    "veterinarian", "waiter", "waitress", "worker", "writer",
+    "accountant", "actuary", "actor", "adjuster", "administrator", "advisor", "agent", "aide", "analyst",
+    "announcer", "appraiser", "architect", "archivist", "assembler", "assessor", "assistant", "astronomer",
+    "athlete", "attendant", "audiologist", "auditor",
+    "bailiff", "baker", "barber", "bartender", "batchmaker", "biologist", "blockmason", "boilermaker",
+    "brickmason", "broker", "builder", "butcher", "buyer",
+    "cabinetmaker", "caretaker", "carpenter", "carrier", "cartographer", "cashier", "chef", "chemist",
+    "chiropractor", "choreographer", "clergy", "cleaner", "clerk", "collector", "concierge", "conductor",
+    "cook", "correspondent", "counselor", "courier", "curator",
+    "dancer", "demonstrator", "dentist", "designer", "detective", "developer", "director", "dishwasher",
+    "dispatcher", "diver", "doctor", "drafter", "dressmaker", "driller", "driver",
+    "economist", "editor", "educator", "electrician", "engraver", "engineer", "erector", "estimator",
+    "examiner", "executive",
+    "fabricator", "finisher", "firefighter", "fitter", "fundraiser",
+    "geoscientist", "glazier", "grader", "guard", "guide",
+    "hairdresser", "handler", "helper", "host", "hostess", "hygienist",
+    "inspector", "installer", "instructor", "interviewer", "investigator",
+    "jailer", "janitor", "judge",
+    "keyer",
+    "laborer", "lawyer", "legislator", "librarian", "lifeguard", "logistician",
+    "machinist", "maid", "maker", "manager", "mason", "mathematician", "mechanic", "messenger",
+    "millwright", "modeler", "molder", "mover", "musician",
+    "nurse", "nutritionist",
+    "officer", "operator", "optician", "optometrist",
+    "packer", "packager", "painter", "paramedic", "paralegal", "pathologist", "pharmacist", "phlebotomist",
+    "photographer", "physicist", "physiologist", "pilot", "pipelayer", "pipefitter", "planner", "plumber",
+    "podiatrist", "porter", "postmaster", "practitioner", "preparer", "presser", "president", "producer",
+    "programmer", "projectionist", "promoter", "proofreader", "processor", "psychologist",
+    "receptionist", "repairer", "reporter", "representative", "rigger", "roofer", "roustabout",
+    "salesperson", "sampler", "scientist", "screener", "secretary", "server", "setter", "shaper", "singer",
+    "sorter", "specialist", "statistician", "steamfitter", "stonemason", "superintendent", "supervisor",
+    "surveyor", "surgeon",
+    "tailor", "taper", "teacher", "technician", "technologist", "telemarketer", "teller", "tender",
+    "therapist", "trainer", "transcriptionist", "typist",
+    "underwriter", "upholsterer",
+    "vendor", "veterinarian",
+    "waiter", "waitress", "warden", "weigher", "woodworker", "worker", "writer",
+    "yardmaster",
 }
 
 
@@ -72,7 +97,8 @@ def _is_generic_role_token(token):
     if token in GENERIC_ROLE_WORDS:
         return True
     for role in GENERIC_ROLE_WORDS:
-        if len(role) >= 4 and token.endswith(role) and len(token) > len(role):
+        prefix_len = len(token) - len(role)
+        if len(role) >= 4 and prefix_len >= 5 and token.endswith(role):
             return True
     return False
 
@@ -82,6 +108,10 @@ def _normalize_label_token(token):
     token = token.lower().strip()
     if token.endswith("men") and len(token) > 5:
         token = token[:-3] + "man"
+    if token.endswith("ies") and len(token) > 4:
+        candidate = token[:-3] + "y"
+        if candidate in GENERIC_ROLE_WORDS:
+            return candidate
     if token.endswith("s") and len(token) > 3:
         singular = token[:-1]
         if singular in GENERIC_ROLE_WORDS or _is_generic_role_token(singular):
@@ -134,8 +164,6 @@ def _tokenize_occupation(occupation, max_tokens=5):
     role_tokens_global = [t for t in all_tokens if _is_generic_role_token(t)]
 
     ordered = segment_heads + role_tokens_global
-    if not ordered:
-        ordered = all_tokens
 
     deduped = []
     seen = set()
