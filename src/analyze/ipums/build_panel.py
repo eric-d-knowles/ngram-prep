@@ -7,7 +7,8 @@ def build_panel(
     targets,
     calculate_women_percentage,
     use_baseline_corrected_panel=True,
-    bin_size=1
+    bin_size=1,
+    granularity="unigram",
 ):
     """
     Build long-format panel: (profession, year, women_pct, projection)
@@ -32,7 +33,7 @@ def build_panel(
         csv_path = ok_years.loc[yr, 'output_csv']
         for profession in targets:
             try:
-                wpct = calculate_women_percentage(csv_path, profession)
+                wpct = calculate_women_percentage(csv_path, profession, granularity=granularity)
             except (ZeroDivisionError, ValueError, KeyError):
                 continue
             women_rows.append({

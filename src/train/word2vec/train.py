@@ -150,6 +150,7 @@ def train_models(
         approach=('skip-gram',),
         epochs=(5,),
         max_parallel_models=os.cpu_count(),
+        max_corpus_workers=8,
         workers_per_model=1,
         unk_mode='reject',
         cache_corpus=False,
@@ -185,6 +186,8 @@ def train_models(
         approach (tuple): Training approaches to try ('CBOW' or 'skip-gram').
         epochs (tuple): Epoch counts to try.
         max_parallel_models (int): Maximum number of models to train in parallel.
+        max_corpus_workers (int): Maximum number of parallel workers for corpus file creation.
+                                 Default: 8. Reduce if OOM errors occur during corpus creation.
         workers_per_model (int): Number of worker threads for each Word2Vec model.
                                 When use_corpus_file=True, can scale to 32+ workers on HPC.
                                 When use_corpus_file=False, optimal range is 8-12 workers.
@@ -454,8 +457,8 @@ def train_models(
             print(f"Reusing {len(corpus_file_map)} cached corpus files", flush=True)
         if still_needed:
             print(f"Creating {len(still_needed)} corpus files in parallel...", flush=True)
-            max_corpus_workers = min(len(still_needed), 48)
-            with ProcessPoolExecutor(max_workers=max_corpus_workers) as executor:
+            n_corpus_workers = min(len(still_needed), max_corpus_workers)
+            with ProcessPoolExecutor(max_workers=n_corpus_workers) as executor:
                 corpus_futures = {
                     executor.submit(
                         create_corpus_file,
@@ -591,6 +594,7 @@ def build_word2vec_models(
     approach=('skip-gram',),
     epochs=(5,),
     max_parallel_models=None,
+    max_corpus_workers=8,
     workers_per_model=1,
     unk_mode='reject',
     cache_corpus=False,
@@ -622,6 +626,7 @@ def build_word2vec_models(
         approach (tuple): Training approaches ('CBOW' or 'skip-gram')
         epochs (tuple): Epoch counts to try
         max_parallel_models (int): Maximum parallel models (default: cpu_count())
+        max_corpus_workers (int): Maximum parallel workers for corpus file creation (default: 8)
         workers_per_model (int): Worker threads per model
         unk_mode (str): How to handle <UNK> tokens ('reject', 'strip', or 'retain')
         cache_corpus (bool): Load entire corpus into memory
@@ -696,6 +701,7 @@ def build_word2vec_models(
         approach=approach,
         epochs=epochs,
         max_parallel_models=max_parallel_models,
+        max_corpus_workers=max_corpus_workers,
         workers_per_model=workers_per_model,
         unk_mode=unk_mode,
         cache_corpus=cache_corpus,
@@ -712,12 +718,17 @@ def build_word2vec_models(
 
 
 def transfer_models(
-    ngram_size,
-    repo_release_id,
-    repo_corpus_id,
-    db_path_stub,
     source_suffix,
     dest_suffix,
+    # Google Ngrams pipeline parameters
+    ngram_size=None,
+    repo_release_id=None,
+    repo_corpus_id=None,
+    db_path_stub=None,
+    # Davies pipeline parameters
+    corpus_path=None,
+    genre_focus=None,
+    # Common parameters
     filter_params=None,
     overwrite=False,
     validate=True,
@@ -730,13 +741,25 @@ def transfer_models(
     to copy selected models (e.g., those with optimal hyperparameters) to a different
     directory for final use.
 
+    Supports two calling conventions (mutually exclusive):
+
+    **Google Ngrams pipeline** — supply all four ngram params:
+        ngram_size, repo_release_id, repo_corpus_id, db_path_stub
+
+    **Davies pipeline** — supply corpus_path (and optionally genre_focus):
+        corpus_path, genre_focus
+
     Args:
-        ngram_size (int): Size of n-grams (e.g., 5).
-        repo_release_id (str): Release identifier (e.g., '20200217').
-        repo_corpus_id (str): Corpus identifier (e.g., 'eng').
-        db_path_stub (str): Base path to corpus database directory.
         source_suffix (str): Source dir_suffix (e.g., 'test').
         dest_suffix (str): Destination dir_suffix (e.g., 'final').
+        ngram_size (int, optional): Size of n-grams (e.g., 5). Ngrams pipeline only.
+        repo_release_id (str, optional): Release identifier (e.g., '20200217'). Ngrams pipeline only.
+        repo_corpus_id (str, optional): Corpus identifier (e.g., 'eng'). Ngrams pipeline only.
+        db_path_stub (str, optional): Base path to corpus database directory. Ngrams pipeline only.
+        corpus_path (str, optional): Full path to Davies corpus directory (e.g.,
+            '/scratch/edk202/NLP_corpora/COHA'). Davies pipeline only.
+        genre_focus (list, optional): List of genres for Davies corpora (e.g., ['fic']).
+            Davies pipeline only. If None, no genre subdirectory is used.
         filter_params (dict, optional): Dictionary of hyperparameter filters.
             Keys can be: 'year', 'weight_by', 'vector_size', 'window',
             'min_count', 'sg', 'epochs'. Values can be single values or tuples/lists
@@ -759,31 +782,59 @@ def transfer_models(
             - 'dest_dir': Destination directory path
 
     Raises:
-        ValueError: If source directory doesn't exist or contains no models.
+        ValueError: If source directory doesn't exist or contains no models, or if
+            neither pipeline's required parameters are supplied.
         FileExistsError: If destination exists and overwrite=False.
 
-    Example:
-        >>> # Transfer all models with vector_size=300 and epochs=10 from 'test' to 'final'
+    Example (Ngrams pipeline):
         >>> result = transfer_models(
+        ...     source_suffix='test',
+        ...     dest_suffix='final',
         ...     ngram_size=5,
         ...     repo_release_id='20200217',
         ...     repo_corpus_id='eng',
         ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
-        ...     source_suffix='test',
-        ...     dest_suffix='final',
         ...     filter_params={'vector_size': 300, 'epochs': 10},
         ...     overwrite=True
         ... )
-        >>> print(f"Transferred {result['transferred']} models")
+
+    Example (Davies pipeline):
+        >>> result = transfer_models(
+        ...     source_suffix='test',
+        ...     dest_suffix='final',
+        ...     corpus_path='/scratch/edk202/NLP_corpora/COHA',
+        ...     filter_params={'vector_size': 100, 'epochs': 10},
+        ...     overwrite=True
+        ... )
     """
     from .config import construct_model_path
     from .display import truncate_path_to_fit
 
     # Construct source and destination paths
-    corpus_path = os.path.join(
-        db_path_stub, repo_release_id, repo_corpus_id, f"{ngram_size}gram_files"
-    )
-    model_base = construct_model_path(corpus_path)
+    ngram_params = (ngram_size, repo_release_id, repo_corpus_id, db_path_stub)
+    if corpus_path is not None:
+        # Davies pipeline: build model path from corpus_path + optional genre subdir
+        corpus_path = corpus_path.rstrip('/')
+        corpus_name = os.path.basename(corpus_path)
+        if genre_focus is not None:
+            genre_suffix = "+".join(sorted(genre_focus))
+            genre_subdir = f"{corpus_name}_{genre_suffix}"
+        else:
+            genre_subdir = corpus_name
+        model_base = os.path.join(construct_model_path(corpus_path), genre_subdir)
+    elif all(p is not None for p in ngram_params):
+        # Ngrams pipeline: build model path from release/corpus/ngram hierarchy
+        _corpus_path = os.path.join(
+            db_path_stub, repo_release_id, repo_corpus_id, f"{ngram_size}gram_files"
+        )
+        model_base = construct_model_path(_corpus_path)
+    else:
+        raise ValueError(
+            "Supply either corpus_path (Davies pipeline) or all of "
+            "ngram_size, repo_release_id, repo_corpus_id, and db_path_stub "
+            "(Ngrams pipeline)."
+        )
+
     source_dir = os.path.join(model_base, f"models_{source_suffix}")
     dest_dir = os.path.join(model_base, f"models_{dest_suffix}")
 

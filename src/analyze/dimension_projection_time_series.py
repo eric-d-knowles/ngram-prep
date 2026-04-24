@@ -158,12 +158,16 @@ def compute_projection_over_years(
             dimension = dimension_result["dimension"]
             yearly_dimensions[year] = dimension
             
-            # Project words onto THIS year's dimension
+            # Project words onto THIS year's dimension.
+            # Space-separated bigrams (e.g. "marketing manager") are stored in
+            # W2V models as hyphen-joined tokens ("marketing-manager"), so
+            # fall back to the hyphenated form when the raw label isn't found.
             row = {}
             for word in test_words:
-                if word in model.vocab:
+                lookup = word if word in model.vocab else word.replace(" ", "-")
+                if lookup in model.vocab:
                     try:
-                        row[word] = model.project_onto_dimension(word, dimension)
+                        row[word] = model.project_onto_dimension(lookup, dimension)
                     except ValueError:
                         row[word] = np.nan
                 else:
