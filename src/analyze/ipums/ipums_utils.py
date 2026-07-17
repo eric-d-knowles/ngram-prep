@@ -966,8 +966,6 @@ def fetch_and_aggregate_ipums_professions_csv(
                         }])
                     except Exception as e:
                         raise ValueError(f"Failed to read existing file {expected_csv}: {e}")
-                if verbose:
-                    print(f"overwrite=False: No existing file found at {expected_csv}, proceeding with download...")
         else:
             download_path.mkdir(parents=True, exist_ok=True)
             expected_csv = Path(output_csv) if Path(output_csv).is_absolute() else download_path / Path(output_csv).name
@@ -1548,18 +1546,22 @@ def add_prestige_to_panel(
 
 # ── CSV-level helpers ─────────────────────────────────────────────────────────
 
-def calculate_women_percentage(csv_path, label):
+def calculate_women_counts(csv_path, label, granularity=None):
     """
-    Compute the percentage of female workers for a given label in an IPUMS CSV.
-    Sums total employed for all matching rows, computes weighted mean women%.
+    Weighted employment counts for a given label in an IPUMS profession CSV.
+
+    Sums TotalEmployed over all rows matching the label in label1-label5 and
+    recovers the weighted count of women as sum(Women/100 * TotalEmployed).
 
     Args:
         csv_path: Path to IPUMS profession CSV (BLS-compatible format)
         label: Occupation label (e.g., 'engineer')
+        granularity: Ignored; accepted for API compatibility with build_panel.
 
     Returns:
-        women_pct: Weighted mean percentage of female workers for the label
-                   as a proportion (0–1)
+        (women_employed, total_employed): weighted counts (floats). Note these
+        are survey-weighted population counts (ASECWT sums), not raw CPS
+        sample sizes.
     """
     df = pd.read_csv(csv_path)
     label_cols = [f'label{i}' for i in range(1, 6)]
@@ -1572,5 +1574,29 @@ def calculate_women_percentage(csv_path, label):
     if total_employed == 0:
         raise ZeroDivisionError(f"Total employed is zero for label '{label}' in {csv_path}")
 
-    women_weighted = (matched['Women'] * matched['TotalEmployed']).sum() / total_employed
-    return women_weighted / 100.0  # Convert percent to proportion
+    women_employed = (matched['Women'] / 100.0 * matched['TotalEmployed']).sum()
+    return float(women_employed), float(total_employed)
+
+
+def calculate_women_proportion(csv_path, label, granularity=None):
+    """
+    Compute the proportion (0-1) of female workers for a given label in an
+    IPUMS profession CSV. Thin wrapper over calculate_women_counts
+    (ratio of weighted counts).
+
+    Args:
+        csv_path: Path to IPUMS profession CSV (BLS-compatible format)
+        label: Occupation label (e.g., 'engineer')
+        granularity: Ignored; accepted for API compatibility with build_panel.
+
+    Returns:
+        women_prop: Weighted proportion of female workers for the label (0-1)
+    """
+    women_employed, total_employed = calculate_women_counts(
+        csv_path, label, granularity=granularity)
+    return women_employed / total_employed
+
+
+# Deprecated alias — delete once `grep -rn calculate_women_percentage`
+# confirms no remaining callers.
+calculate_women_percentage = calculate_women_proportion
