@@ -20,6 +20,7 @@ import pandas as pd
 from ngramprep.common.w2v_model import W2VModel
 
 
+
 def compute_projection_over_years(
     model_dir: Union[str, Path],
     token_contrasts: Sequence[tuple],
@@ -33,11 +34,12 @@ def compute_projection_over_years(
     verbose: bool = True,
     baseline_source: Optional[Union[pd.Series, Sequence[str]]] = None,
     baseline_agg: str = "median",
+    synonyms: Optional[Dict[str, List[str]]] = None,  # SYNONYMS: edit 1 — must precede **method_kwargs
     **method_kwargs,
 ) -> Dict[str, object]:
     """
     Project words onto a semantic dimension across yearly models.
-
+ 
     Args:
         model_dir: Directory containing yearly word2vec models (*.kv).
         token_contrasts: List of (token1, token2) pairs defining the dimension.
@@ -56,8 +58,14 @@ def compute_projection_over_years(
               baseline_agg.
         baseline_agg: Aggregation method for word-list baseline_source ('mean' or
             'median'). Ignored when baseline_source is a pd.Series. Default: 'median'.
+        synonyms: Optional mapping of canonical label -> list of synonym tokens whose
+            projections are averaged each year to produce the canonical column.
+            Example: ``{'surgeon': ['surgeon', 'physician', 'doctor']}``.
+            Synonym tokens not equal to the canonical key are projected internally
+            but removed from the output DataFrame; the canonical column receives
+            the per-year mean (ignoring NaN) of all synonym projections.
         **method_kwargs: Extra kwargs forwarded to dimension computation methods.
-
+ 
     Returns:
         dict with keys:
             'dimension' (None): Set to None since year-specific dimensions are used.
@@ -69,14 +77,14 @@ def compute_projection_over_years(
             'missing_years' (list): Years with no matching model files.
             'error_years' (dict): Years that raised errors during processing.
     """
-
+ 
     model_dir = Path(model_dir)
-
+ 
     # Discover available yearly models
     model_files = sorted(model_dir.glob("*.kv"))
     if not model_files:
         raise FileNotFoundError(f"No .kv model files found in {model_dir}")
-
+ 
     available_years = []
     year_to_path = {}
     for f in model_files:
@@ -98,20 +106,20 @@ def compute_projection_over_years(
                 continue
         available_years.append(year)
         year_to_path[year] = f
-
+ 
     available_years = sorted(set(available_years))
     if not available_years:
         raise ValueError("No valid year-parsable model filenames found.")
-
+ 
     requested_years = list(range(start_year, end_year + 1, year_step))
     years_to_analyze = sorted([y for y in requested_years if y in year_to_path])
     missing_years = [y for y in requested_years if y not in year_to_path]
-
+ 
     if not years_to_analyze:
         raise ValueError(
             f"No requested years found in models. Requested {requested_years}, available {available_years}"
         )
-
+ 
     # Choose reference year
     if reference_year is None:
         reference_year = years_to_analyze[0]
@@ -119,27 +127,36 @@ def compute_projection_over_years(
         raise ValueError(
             f"Reference year {reference_year} not available in requested range. Available: {years_to_analyze}"
         )
-
+ 
     if verbose:
         print(f"📈 Dimension projections: {len(years_to_analyze)} years [{min(years_to_analyze)}-{max(years_to_analyze)}]")
         print(f"   Method: {method}")
         print(f"   Contrast pairs: {len(token_contrasts)}")
         print(f"   Computing year-specific dimensions for each year...")
-
+ 
+    # SYNONYMS: edit 2 — collect all tokens to project: test_words plus any
+    # extra synonym tokens not already in test_words
+    _synonym_extras: set = set()
+    if synonyms:
+        for tokens in synonyms.values():
+            _synonym_extras.update(tokens)
+    _synonym_extras -= set(test_words)  # only the ones not already in test_words
+    _all_words = list(test_words) + sorted(_synonym_extras)
+ 
     projections_data: Dict[int, Dict[str, float]] = {}
     error_years: Dict[int, str] = {}
     yearly_dimensions: Dict[int, np.ndarray] = {}
-
+ 
     # For each year, compute its own dimension and project words onto it
     for year in years_to_analyze:
         model_path = year_to_path.get(year)
-
+ 
         if verbose:
             print(f"   {year}...", end=" ")
-
+ 
         try:
             model = W2VModel(str(model_path))
-            
+ 
             # Compute dimension for THIS year
             if method.lower() == "pca":
                 dimension_result = model.compute_pca_dimension(
@@ -154,16 +171,16 @@ def compute_projection_over_years(
                 )
             else:
                 raise ValueError("method must be 'pca' or 'meandiff'")
-            
+ 
             dimension = dimension_result["dimension"]
             yearly_dimensions[year] = dimension
-            
+ 
             # Project words onto THIS year's dimension.
             # Space-separated bigrams (e.g. "marketing manager") are stored in
             # W2V models as hyphen-joined tokens ("marketing-manager"), so
             # fall back to the hyphenated form when the raw label isn't found.
             row = {}
-            for word in test_words:
+            for word in _all_words:  # SYNONYMS: edit 3 — was test_words
                 lookup = word if word in model.vocab else word.replace(" ", "-")
                 if lookup in model.vocab:
                     try:
@@ -175,19 +192,19 @@ def compute_projection_over_years(
             projections_data[year] = row
             if verbose:
                 valid = sum(1 for v in row.values() if not pd.isna(v))
-                print(f"✓ {valid}/{len(test_words)} words")
+                print(f"✓ {valid}/{len(_all_words)} words")  # SYNONYMS: edit 3 — was len(test_words)
         except Exception as exc:  # noqa: BLE001
             error_years[year] = str(exc)
             if verbose:
                 print(f"⚠️ error: {exc}")
-
+ 
     if missing_years and verbose:
         print(f"⚠️ No models found for years: {missing_years}")
     if error_years and verbose:
         print("❌ Errors occurred:")
         for y, msg in error_years.items():
             print(f"   {y}: {msg}")
-
+ 
     if not projections_data:
         return {
             "dimension": None,
@@ -199,16 +216,30 @@ def compute_projection_over_years(
             "error_years": error_years,
             "yearly_dimensions": yearly_dimensions,
         }
-
+ 
     projections_df = pd.DataFrame(projections_data).T
     projections_df.index = projections_df.index.astype(int)
     projections_df = projections_df.sort_index()
-
+ 
+    # SYNONYMS: edit 4 — average synonym groups and drop non-canonical
+    # tokens from the output
+    if synonyms:
+        _to_drop = set()
+        for canonical, tokens in synonyms.items():
+            cols = [t for t in tokens if t in projections_df.columns]
+            if cols:
+                projections_df[canonical] = projections_df[cols].mean(axis=1)
+                _to_drop.update(t for t in cols if t != canonical)
+        projections_df = projections_df.drop(columns=sorted(_to_drop), errors='ignore')
+        # Restore original column order (test_words, preserving any canonicals)
+        ordered = [w for w in test_words if w in projections_df.columns]
+        projections_df = projections_df[ordered]
+ 
     # Optionally apply baseline correction
     projections_corrected_df: Optional[pd.DataFrame] = None
     baseline_applied = False
     aligned_baseline = pd.Series(dtype=float)
-    
+ 
     # Option 1: Use pre-computed yearly baseline series
     if isinstance(baseline_source, pd.Series):
         if not projections_df.empty:
@@ -217,34 +248,34 @@ def compute_projection_over_years(
             aligned_baseline = aligned_baseline.fillna(0.0)  # leave raw values where baseline is unavailable
             projections_corrected_df = projections_df.sub(aligned_baseline, axis=0)
             baseline_applied = True
-
+ 
     # Option 2: Compute baseline from baseline word list
     elif baseline_source is not None:
         if baseline_agg not in ["mean", "median"]:
             raise ValueError("baseline_agg must be 'mean' or 'median'.")
-
+ 
         if isinstance(baseline_source, (str, bytes)):
             raise ValueError("baseline_source must be a pd.Series or a sequence of words, not a string.")
-
+ 
         try:
             baseline_words_unique = list(dict.fromkeys(baseline_source))
         except TypeError as exc:
             raise ValueError("baseline_source must be a pd.Series or an iterable of words.") from exc
-
+ 
         if not baseline_words_unique:
             raise ValueError("baseline_source word list is empty.")
-
+ 
         word_found_any = {word: False for word in baseline_words_unique}
         baseline_by_year: Dict[int, float] = {}
-
+ 
         for year in projections_df.index:
             model_path = year_to_path.get(year)
             dimension = yearly_dimensions.get(year)
-
+ 
             if model_path is None or dimension is None:
                 baseline_by_year[year] = np.nan
                 continue
-
+ 
             try:
                 year_model = W2VModel(str(model_path))
                 year_values = []
@@ -256,7 +287,7 @@ def compute_projection_over_years(
                             word_found_any[word] = True
                         except ValueError:
                             continue
-
+ 
                 if year_values:
                     if baseline_agg == "median":
                         baseline_by_year[year] = float(np.median(year_values))
@@ -268,9 +299,9 @@ def compute_projection_over_years(
                 baseline_by_year[year] = np.nan
                 if verbose:
                     print(f"⚠️ Could not compute baseline for year {year}: {exc}")
-
+ 
         available_baseline_words = [word for word, found in word_found_any.items() if found]
-
+ 
         if not available_baseline_words:
             if verbose:
                 print(f"⚠️ None of the {len(baseline_words_unique)} baseline words were available across yearly models.")
@@ -278,19 +309,19 @@ def compute_projection_over_years(
             if verbose and len(available_baseline_words) < len(baseline_words_unique):
                 missing = set(baseline_words_unique) - set(available_baseline_words)
                 print(f"⚠️ {len(missing)} baseline words not found in any year: {sorted(missing)[:5]}{'...' if len(missing) > 5 else ''}")
-
+ 
             aligned_baseline = pd.Series(baseline_by_year, dtype=float).reindex(projections_df.index)
-
+ 
             if aligned_baseline.notna().any():
                 aligned_baseline = aligned_baseline.fillna(0.0)
                 projections_corrected_df = projections_df.sub(aligned_baseline, axis=0)
                 baseline_applied = True
-
+ 
                 if verbose:
                     print(f"✓ Baseline computed from {len(available_baseline_words)} words using {baseline_agg}")
             elif verbose:
                 print("⚠️ Baseline values are NaN for all years; baseline correction not applied.")
-
+ 
     return {
         "dimension": None,  # Year-specific: no single reference dimension
         "reference_year": reference_year,
