@@ -7,6 +7,7 @@ import time
 from itertools import repeat
 from math import log, floor
 
+import numpy as np
 from gensim.models import Word2Vec
 from setproctitle import setproctitle
 
@@ -67,7 +68,8 @@ class SentencesIterable:
     """
 
     def __init__(self, db_path, year, weight_by="freq", log_base=5, unk_mode='reject',
-                 debug_sample=0, debug_interval=0, cache_in_memory=False):
+                 debug_sample=0, debug_interval=0, cache_in_memory=False,
+                 resample_seed=None):
         """
         Initialize the iterable.
 
@@ -84,6 +86,25 @@ class SentencesIterable:
             debug_interval (int): If > 0, print one sample every N seconds (overrides debug_sample)
             cache_in_memory (bool): If True, load entire corpus into memory on first iteration.
                                    Subsequent epochs reuse cached data. Default: False (stream mode).
+            resample_seed (int): If set, bootstrap-resample the CANONICAL,
+                                already-weighted corpus by Poisson-resampling each
+                                n-gram's final repetition weight (the count it would
+                                appear with in the deterministic, fully-materialized
+                                corpus for this weight_by scheme) via
+                                ``np.random.default_rng(resample_seed)``. This
+                                approximates drawing-with-replacement from the
+                                canonical corpus itself (the standard "Poisson
+                                bootstrap" trick), rather than perturbing the raw
+                                pre-weighting occurrence/document counts -- resampling
+                                pre-weighting would mostly be absorbed by the log-scale
+                                weight floor and understate corpus-composition noise.
+                                Not floored to >= 1: an n-gram legitimately dropping out
+                                of a replicate is an intended bootstrap outcome. Because
+                                the draw must stay fixed for the lifetime of one
+                                materialized corpus, an instance constructed with
+                                resample_seed set may only be iterated ONCE; a second
+                                `__iter__()` call raises RuntimeError rather than
+                                silently drawing fresh noise. Default: None (no resampling).
         """
         self.db_path = db_path
         self.year = year
@@ -95,6 +116,11 @@ class SentencesIterable:
         self.cache_in_memory = cache_in_memory
         self.ngram_filter = create_unk_filter(unk_mode)
         self._cached_sentences = None  # Will hold cached corpus if cache_in_memory=True
+        self.resample_seed = resample_seed
+        self._resample_rng = (
+            np.random.default_rng(resample_seed) if resample_seed is not None else None
+        )
+        self._resample_iter_count = 0  # Guards against a silent double-draw (see above)
 
     def __iter__(self):
         """
@@ -105,6 +131,18 @@ class SentencesIterable:
         if self.cache_in_memory and self._cached_sentences is not None:
             yield from self._cached_sentences
             return
+
+        if self._resample_rng is not None:
+            self._resample_iter_count += 1
+            if self._resample_iter_count > 1:
+                raise RuntimeError(
+                    "SentencesIterable with resample_seed set was iterated more "
+                    "than once. This would silently draw a fresh, non-reproducible "
+                    "Poisson resample on every pass instead of reusing one frozen "
+                    "corpus replicate. Materialize it to a corpus file once via "
+                    "create_corpus_file(resample_seed=...) rather than passing it "
+                    "directly to Word2Vec(sentences=...)."
+                )
 
         # Otherwise, stream from database (and optionally build cache)
         ngram_stream = stream_year_ngrams(
@@ -143,27 +181,34 @@ class SentencesIterable:
                         print(f"[STRIP] {original_tokens} -> {ngram_tokens}")
                     debug_count += 1
 
-            # Apply weighting strategy
+            # Determine this n-gram's CANONICAL weight: how many times it
+            # appears in the deterministic, fully-materialized corpus for this
+            # (year, weight_by). This corpus has whatever frequencies it has --
+            # there is no randomness in constructing it.
             if self.weight_by == "freq":
                 weight = calculate_weight(occurrences, base=self.log_base)
-                if self.cache_in_memory:
-                    # Cache the weighted sentences
-                    for _ in range(weight):
-                        cache_list.append(ngram_tokens)
-                else:
-                    yield from repeat(ngram_tokens, weight)
             elif self.weight_by == "doc_freq":
                 weight = calculate_weight(documents, base=self.log_base)
-                if self.cache_in_memory:
-                    for _ in range(weight):
-                        cache_list.append(ngram_tokens)
-                else:
-                    yield from repeat(ngram_tokens, weight)
             else:
-                if self.cache_in_memory:
+                weight = 1  # "none": every distinct n-gram appears once
+
+            # A noise replicate bootstrap-resamples THAT canonical corpus, not
+            # the raw pre-weighting counts. Drawing N sentences with
+            # replacement from a corpus where this n-gram appears `weight`
+            # times gives a resampled count ~ Binomial(N, weight/N), which --
+            # since any single n-gram type is a tiny fraction of a large
+            # corpus -- is well approximated by Poisson(weight) (the standard
+            # "Poisson bootstrap" trick). Deliberately not floored to >= 1: an
+            # n-gram dropping out of a given replicate (resampled to 0) is a
+            # real, intended bootstrap outcome, not an error.
+            if self._resample_rng is not None:
+                weight = int(self._resample_rng.poisson(weight))
+
+            if self.cache_in_memory:
+                for _ in range(weight):
                     cache_list.append(ngram_tokens)
-                else:
-                    yield ngram_tokens
+            else:
+                yield from repeat(ngram_tokens, weight)
 
         # If caching, store the cache and yield from it
         if self.cache_in_memory:
@@ -172,7 +217,8 @@ class SentencesIterable:
 
 
 def create_corpus_file(db_path, year, weight_by, unk_mode='reject',
-                       temp_dir=None, log_base=5):
+                       temp_dir=None, log_base=5, resample_seed=None,
+                       file_prefix=None):
     """
     Create a corpus file from RocksDB for a specific year.
 
@@ -186,6 +232,15 @@ def create_corpus_file(db_path, year, weight_by, unk_mode='reject',
         unk_mode (str): How to handle <UNK> tokens ('reject', 'strip', or 'retain').
         temp_dir (str): Directory for corpus file (e.g., '/scratch'). If None, uses system default.
         log_base (int): Base for logarithmic weighting.
+        resample_seed (int): If set, bootstrap-resample the canonical weighted
+                            corpus by Poisson-resampling each n-gram's final
+                            repetition weight, producing one frozen corpus-noise
+                            replicate. See `SentencesIterable` for details.
+                            Default: None.
+        file_prefix (str): Override the temp-file prefix (used by noise-ensemble
+                          training to keep replicate corpus files distinguishable
+                          from ordinary shared corpus files). If None, uses the
+                          existing `w2v_corpus_y{year}_wb{weight_by}_` pattern.
 
     Returns:
         str: Path to created corpus file.
@@ -203,13 +258,15 @@ def create_corpus_file(db_path, year, weight_by, unk_mode='reject',
         unk_mode=unk_mode,
         cache_in_memory=False,
         debug_sample=0,
-        debug_interval=0
+        debug_interval=0,
+        resample_seed=resample_seed
     )
 
     # Create persistent temp file (caller responsible for cleanup)
+    prefix = file_prefix if file_prefix is not None else f'w2v_corpus_y{year}_wb{weight_by}_'
     temp_fd, temp_file_path = tempfile.mkstemp(
         suffix='.txt',
-        prefix=f'w2v_corpus_y{year}_wb{weight_by}_',
+        prefix=prefix,
         dir=temp_dir,
         text=True
     )

@@ -10,6 +10,8 @@ from .evaluate import evaluate_models, evaluate_word2vec_models
 from .normalize_and_align_models import normalize_and_align_vectors
 from .visualize import plot_evaluation_results
 from .regression_analysis import run_regression_analysis, plot_regression_results, get_model_summary
+from .noise import NoiseConfig
+from .noise_finalize import finalize_noise_ensemble
 
 __all__ = [
     # Main entry points
@@ -20,6 +22,9 @@ __all__ = [
     "evaluate_word2vec_models",
     "normalize_and_align_vectors",
     "plot_evaluation_results",
+    # Noise-ensemble finalization
+    "finalize_noise_ensemble",
+    "NoiseConfig",
     # Regression analysis
     "run_regression_analysis",
     "plot_regression_results",

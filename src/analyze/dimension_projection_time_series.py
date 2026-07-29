@@ -8,6 +8,17 @@ Analogous to WEAT-over-years, this utility:
 
 NOTE: Each year uses its own fitted dimension (not a reference year dimension),
 allowing the dimension itself to drift over time as the model and language evolve.
+
+FEMVAR: this module also emits per-year, per-canonical estimation-variance
+proxies (fem_var) alongside the projections, computed from the yearly
+models' own token counts at the projection-averaging site — so the
+components counted are by construction the components averaged, including
+per-year availability. Under the wbnone training scheme the .kv counts are
+TYPE counts = actual training exposures, exactly the quantity the
+1/n estimation-variance bound concerns; the models' training used gensim's
+default sample=1e-3, under which every roster lexeme sits below the
+subsampling threshold, so subsample_t=None is exact (certified July 2026).
+Edit sites are marked ``FEMVAR: edit N`` in the style of the SYNONYMS edits.
 """
 
 from pathlib import Path
@@ -16,9 +27,89 @@ import re
 
 import numpy as np
 import pandas as pd
+from scipy.stats import linregress          # used by compute_baseline_set
+import matplotlib.pyplot as plt             # used by compute_baseline_set (plot_baseline)
 
 from ngramprep.common.w2v_model import W2VModel
 
+
+# FEMVAR: edit 1 — count/total accessors with layered fallbacks over
+# W2VModel's possible internals. Counts unavailable -> NaN (detected
+# and warned about after the loop, never silently zero).
+def _token_count(model, token) -> float:
+    """Vocabulary count for token from the model's KeyedVectors, or NaN."""
+    candidates = [model] + [getattr(model, attr, None)
+                            for attr in ("kv", "wv", "model", "keyed_vectors")]
+    for obj in candidates:
+        if obj is None:
+            continue
+        get_vecattr = getattr(obj, "get_vecattr", None)
+        if get_vecattr is not None:
+            try:
+                return float(get_vecattr(token, "count"))
+            except Exception:  # noqa: BLE001
+                continue
+    return np.nan
+
+
+def _year_total_tokens(model) -> float:
+    """Sum of vocabulary counts (proxy for corpus tokens; used only for
+    the subsampling adjustment's relative-frequency term)."""
+    candidates = [getattr(model, attr, None)
+                  for attr in ("kv", "wv", "model", "keyed_vectors")] + [model]
+    for obj in candidates:
+        if obj is None:
+            continue
+        expandos = getattr(obj, "expandos", None)
+        if isinstance(expandos, dict) and "count" in expandos:
+            try:
+                return float(np.sum(expandos["count"]))
+            except Exception:  # noqa: BLE001
+                pass
+        index_to_key = getattr(obj, "index_to_key", None)
+        get_vecattr = getattr(obj, "get_vecattr", None)
+        if index_to_key is not None and get_vecattr is not None:
+            try:
+                return float(sum(get_vecattr(w, "count") for w in index_to_key))
+            except Exception:  # noqa: BLE001
+                continue
+    return np.nan
+
+
+# FEMVAR: edit 2 — the variance arithmetic, factored pure for testability.
+def _compute_fem_var_frame(
+    projections_full: pd.DataFrame,
+    counts_full: pd.DataFrame,
+    synonyms: Optional[Dict[str, List[str]]],
+    output_columns: Sequence[str],
+) -> pd.DataFrame:
+    """Per-year estimation-variance proxy for each output (canonical) column.
+
+    fem_var(unit, year) ∝ (1/k²)·Σ_i 1/n_eff(component_i, year), where the
+    sum runs over exactly the components whose projection is non-NaN that
+    year (the same set the synonym mean averaged — availability is read
+    off the pre-drop projection frame, so estimator and variance cannot
+    drift apart). Strictness rule: if any component USED in the mean has
+    a missing count, fem_var is NaN for that unit-year (never a silent
+    partial sum).
+    """
+    inv = 1.0 / counts_full
+    out = {}
+    syn = synonyms or {}
+    for col in output_columns:
+        comp = [t for t in syn.get(col, [col]) if t in projections_full.columns]
+        if not comp:
+            out[col] = pd.Series(np.nan, index=projections_full.index)
+            continue
+        avail = projections_full[comp].notna()
+        k = avail.sum(axis=1)
+        masked = inv[comp].where(avail)
+        n_counted = masked.notna().sum(axis=1)
+        ssum = masked.sum(axis=1)
+        fv = ssum / (k.astype(float) ** 2)
+        fv[(k == 0) | (n_counted != k)] = np.nan
+        out[col] = fv
+    return pd.DataFrame(out, index=projections_full.index)[list(output_columns)]
 
 
 def compute_projection_over_years(
@@ -35,6 +126,8 @@ def compute_projection_over_years(
     baseline_source: Optional[Union[pd.Series, Sequence[str]]] = None,
     baseline_agg: str = "median",
     synonyms: Optional[Dict[str, List[str]]] = None,  # SYNONYMS: edit 1 — must precede **method_kwargs
+    emit_fem_var: bool = True,        # FEMVAR: edit 3 — must precede **method_kwargs
+    subsample_t: Optional[float] = None,  # FEMVAR: edit 3 — training `sample`; NOT recoverable from .kv
     **method_kwargs,
 ) -> Dict[str, object]:
     """
@@ -64,6 +157,17 @@ def compute_projection_over_years(
             Synonym tokens not equal to the canonical key are projected internally
             but removed from the output DataFrame; the canonical column receives
             the per-year mean (ignoring NaN) of all synonym projections.
+        emit_fem_var: If True (default), also return per-year estimation-variance
+            proxies computed from each yearly model's own token counts:
+            fem_var ∝ (1/k²)·Σ 1/n_eff over exactly the components averaged
+            into each output column that year. Adds negligible cost.
+        subsample_t: Word2Vec subsampling threshold from the TRAINING config
+            (the ``sample`` parameter; KeyedVectors .kv files do not store it).
+            When given, counts are converted to effective post-subsampling
+            exposures n_eff = count · min(1, (sqrt(f/t)+1)·t/f) with f the
+            within-model relative frequency. None (default) uses raw counts;
+            the between-unit ordering — the quantity the TIpred carries —
+            is robust to this choice.
         **method_kwargs: Extra kwargs forwarded to dimension computation methods.
  
     Returns:
@@ -72,6 +176,11 @@ def compute_projection_over_years(
             'reference_year' (int): Original reference_year parameter (for backwards compatibility).
             'method' (str): 'pca' or 'meandiff'.
             'projections' (pd.DataFrame): Index=years, columns=test_words. Projections onto each year's own dimension.
+            'fem_var' (pd.DataFrame): Same shape/columns as 'projections' —
+                per-year estimation-variance proxies (empty when
+                emit_fem_var=False or counts unavailable in the models).
+            'token_counts' (pd.DataFrame): Raw per-year counts for ALL projected
+                tokens (pre-synonym resolution; audit artifact).
             'component_loadings' (dict): Empty dict (loadings vary per year).
             'yearly_dimensions' (dict): Year -> dimension vector mapping for all years analyzed.
             'missing_years' (list): Years with no matching model files.
@@ -144,6 +253,7 @@ def compute_projection_over_years(
     _all_words = list(test_words) + sorted(_synonym_extras)
  
     projections_data: Dict[int, Dict[str, float]] = {}
+    counts_data: Dict[int, Dict[str, float]] = {}   # FEMVAR: edit 4
     error_years: Dict[int, str] = {}
     yearly_dimensions: Dict[int, np.ndarray] = {}
  
@@ -175,11 +285,16 @@ def compute_projection_over_years(
             dimension = dimension_result["dimension"]
             yearly_dimensions[year] = dimension
  
+            # FEMVAR: edit 5 — per-model total (only needed for subsampling)
+            _year_total = (_year_total_tokens(model)
+                           if (emit_fem_var and subsample_t) else np.nan)
+ 
             # Project words onto THIS year's dimension.
             # Space-separated bigrams (e.g. "marketing manager") are stored in
             # W2V models as hyphen-joined tokens ("marketing-manager"), so
             # fall back to the hyphenated form when the raw label isn't found.
             row = {}
+            count_row = {}   # FEMVAR: edit 5
             for word in _all_words:  # SYNONYMS: edit 3 — was test_words
                 lookup = word if word in model.vocab else word.replace(" ", "-")
                 if lookup in model.vocab:
@@ -187,9 +302,24 @@ def compute_projection_over_years(
                         row[word] = model.project_onto_dimension(lookup, dimension)
                     except ValueError:
                         row[word] = np.nan
+                    # FEMVAR: edit 5 — same lookup token as the projection,
+                    # with the subsampling adjustment when configured
+                    if emit_fem_var:
+                        c = _token_count(model, lookup)
+                        if (subsample_t and np.isfinite(c) and c > 0
+                                and np.isfinite(_year_total) and _year_total > 0):
+                            f = c / _year_total
+                            p_keep = min(1.0, (np.sqrt(f / subsample_t) + 1.0)
+                                         * (subsample_t / f))
+                            c = c * p_keep
+                        count_row[word] = c if (np.isfinite(c) and c >= 1.0) else np.nan
+                    else:
+                        count_row[word] = np.nan
                 else:
                     row[word] = np.nan
+                    count_row[word] = np.nan   # FEMVAR: edit 5
             projections_data[year] = row
+            counts_data[year] = count_row      # FEMVAR: edit 5
             if verbose:
                 valid = sum(1 for v in row.values() if not pd.isna(v))
                 print(f"✓ {valid}/{len(_all_words)} words")  # SYNONYMS: edit 3 — was len(test_words)
@@ -211,6 +341,8 @@ def compute_projection_over_years(
             "reference_year": reference_year,
             "method": method,
             "projections": pd.DataFrame(),
+            "fem_var": pd.DataFrame(),        # FEMVAR: edit 7
+            "token_counts": pd.DataFrame(),   # FEMVAR: edit 7
             "component_loadings": {},
             "missing_years": missing_years,
             "error_years": error_years,
@@ -220,6 +352,26 @@ def compute_projection_over_years(
     projections_df = pd.DataFrame(projections_data).T
     projections_df.index = projections_df.index.astype(int)
     projections_df = projections_df.sort_index()
+ 
+    # FEMVAR: edit 6 — counts frame parallel to the PRE-DROP projections,
+    # then the variance arithmetic on the same availability mask the
+    # synonym mean uses. Computed BEFORE the synonym drop so component
+    # NaN patterns are still visible.
+    counts_df = pd.DataFrame(counts_data).T
+    counts_df.index = counts_df.index.astype(int)
+    counts_df = counts_df.sort_index().reindex(columns=projections_df.columns)
+    fem_var_df = pd.DataFrame()
+    if emit_fem_var:
+        if counts_df.notna().values.any():
+            _final_cols = ([w for w in test_words]
+                           if synonyms else list(projections_df.columns))
+            fem_var_df = _compute_fem_var_frame(
+                projections_df, counts_df, synonyms, _final_cols)
+        else:
+            print("⚠️ FEMVAR: token counts unavailable in these .kv models "
+                  "(get_vecattr 'count' returned nothing) — fem_var will be "
+                  "EMPTY. Verify the models were saved with vocabulary "
+                  "counts before relying on the Fem-side injection.")
  
     # SYNONYMS: edit 4 — average synonym groups and drop non-canonical
     # tokens from the output
@@ -234,6 +386,12 @@ def compute_projection_over_years(
         # Restore original column order (test_words, preserving any canonicals)
         ordered = [w for w in test_words if w in projections_df.columns]
         projections_df = projections_df[ordered]
+ 
+    # FEMVAR: edit 6b — align fem_var to the final output exactly: same
+    # columns, and NaN wherever the released projection is NaN.
+    if emit_fem_var and not fem_var_df.empty:
+        fem_var_df = fem_var_df.reindex(columns=projections_df.columns)
+        fem_var_df = fem_var_df.where(projections_df.notna())
  
     # Optionally apply baseline correction
     projections_corrected_df: Optional[pd.DataFrame] = None
@@ -327,6 +485,8 @@ def compute_projection_over_years(
         "reference_year": reference_year,
         "method": method,
         "projections": projections_df,
+        "fem_var": fem_var_df,          # FEMVAR: edit 7
+        "token_counts": counts_df,      # FEMVAR: edit 7 — pre-synonym audit frame
         "projections_corrected": projections_corrected_df if projections_corrected_df is not None else pd.DataFrame(),
         "baseline_aligned": aligned_baseline if baseline_applied else pd.Series(dtype=float),
         "baseline_applied": baseline_applied,

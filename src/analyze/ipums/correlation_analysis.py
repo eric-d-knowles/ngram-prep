@@ -94,14 +94,14 @@ def run_correlation_analysis(panel_df, year_of_interest=None, use_means=False):
     ----------
     panel_df : DataFrame
         Long-format panel with columns ``profession``, ``year``,
-        ``projection``, and ``women_pct``.
+        ``projection``, and ``women_prop``.
     year_of_interest : int or None
         If given (and ``use_means=False``), restrict to a single year.
     use_means : bool
         If True, correlate the over-time mean of each variable per profession.
     """
     if use_means:
-        data = panel_df.groupby('profession')[['projection', 'women_pct']].mean().dropna()
+        data = panel_df.groupby('profession')[['projection', 'women_prop']].mean().dropna()
         year_label = "all years"
         projection_type = "Mean"
         print(f"Using over-time means for {len(data)} professions")
@@ -114,14 +114,14 @@ def run_correlation_analysis(panel_df, year_of_interest=None, use_means=False):
             raise ValueError(
                 f"No data for year {year_of_interest}. Available: {available}"
             )
-        data = subset.set_index('profession')[['projection', 'women_pct']].dropna()
+        data = subset.set_index('profession')[['projection', 'women_prop']].dropna()
         year_label = str(year_of_interest)
         projection_type = "Raw"
         print(f"Using year {year_of_interest} for {len(data)} professions")
 
     valid_profs = list(data.index)
     proj_vals = data['projection'].values
-    demo_vals = data['women_pct'].values
+    demo_vals = data['women_prop'].values
 
     # Compute correlation
     if len(valid_profs) >= 3:
