@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt             # used by compute_baseline_set (plot
 
 from ngramprep.common.w2v_model import W2VModel
 
+from .replicate_projection import project_one_model, discover_models, require_one_per_year
+
 
 # FEMVAR: edit 1 — count/total accessors with layered fallbacks over
 # W2VModel's possible internals. Counts unavailable -> NaN (detected
@@ -188,35 +190,13 @@ def compute_projection_over_years(
     """
  
     model_dir = Path(model_dir)
- 
-    # Discover available yearly models
-    model_files = sorted(model_dir.glob("*.kv"))
-    if not model_files:
-        raise FileNotFoundError(f"No .kv model files found in {model_dir}")
- 
-    available_years = []
-    year_to_path = {}
-    for f in model_files:
-        year = None
-        stem_parts = f.stem.split("_")
-        for part in stem_parts:
-            if part.startswith("y") and len(part) > 1:
-                try:
-                    year = int(part[1:])
-                    break
-                except ValueError:
-                    pass
-        if year is None:
-            try:
-                year = int(stem_parts[-1])
-            except ValueError:
-                if verbose:
-                    print(f"⚠️ Skipping file with non-standard name: {f.name}")
-                continue
-        available_years.append(year)
-        year_to_path[year] = f
- 
-    available_years = sorted(set(available_years))
+
+    # Discover available yearly models. require_one_per_year fails loudly if
+    # this directory turns out to hold a replicate ensemble instead of one
+    # model per year (use compute_projection_over_replicates for that case).
+    _catalog = discover_models(model_dir, verbose=verbose)
+    year_to_path = require_one_per_year(_catalog)
+    available_years = sorted(year_to_path)
     if not available_years:
         raise ValueError("No valid year-parsable model filenames found.")
  
@@ -266,58 +246,35 @@ def compute_projection_over_years(
  
         try:
             model = W2VModel(str(model_path))
- 
-            # Compute dimension for THIS year
-            if method.lower() == "pca":
-                dimension_result = model.compute_pca_dimension(
-                    token_contrasts=token_contrasts,
-                    ensure_sign_positive=ensure_sign_positive,
-                    **method_kwargs,
-                )
-            elif method.lower() == "meandiff":
-                dimension_result = model.compute_meandiff_dimension(
-                    token_contrasts=token_contrasts,
-                    **method_kwargs,
-                )
-            else:
-                raise ValueError("method must be 'pca' or 'meandiff'")
- 
-            dimension = dimension_result["dimension"]
+
+            row, dimension, _lookups = project_one_model(
+                model, _all_words, token_contrasts, method=method,
+                ensure_sign_positive=ensure_sign_positive, **method_kwargs,
+            )
             yearly_dimensions[year] = dimension
- 
+
             # FEMVAR: edit 5 — per-model total (only needed for subsampling)
             _year_total = (_year_total_tokens(model)
                            if (emit_fem_var and subsample_t) else np.nan)
- 
-            # Project words onto THIS year's dimension.
-            # Space-separated bigrams (e.g. "marketing manager") are stored in
-            # W2V models as hyphen-joined tokens ("marketing-manager"), so
-            # fall back to the hyphenated form when the raw label isn't found.
-            row = {}
-            count_row = {}   # FEMVAR: edit 5
+
+            # FEMVAR: edit 5 — counts read via the SAME lookup token
+            # project_one_model resolved for the projection (hyphen-fallback
+            # included), so counts and projections can't refer to different
+            # vocabulary entries.
+            count_row = {}
             for word in _all_words:  # SYNONYMS: edit 3 — was test_words
-                lookup = word if word in model.vocab else word.replace(" ", "-")
-                if lookup in model.vocab:
-                    try:
-                        row[word] = model.project_onto_dimension(lookup, dimension)
-                    except ValueError:
-                        row[word] = np.nan
-                    # FEMVAR: edit 5 — same lookup token as the projection,
-                    # with the subsampling adjustment when configured
-                    if emit_fem_var:
-                        c = _token_count(model, lookup)
-                        if (subsample_t and np.isfinite(c) and c > 0
-                                and np.isfinite(_year_total) and _year_total > 0):
-                            f = c / _year_total
-                            p_keep = min(1.0, (np.sqrt(f / subsample_t) + 1.0)
-                                         * (subsample_t / f))
-                            c = c * p_keep
-                        count_row[word] = c if (np.isfinite(c) and c >= 1.0) else np.nan
-                    else:
-                        count_row[word] = np.nan
+                lookup = _lookups.get(word)
+                if emit_fem_var and lookup is not None:
+                    c = _token_count(model, lookup)
+                    if (subsample_t and np.isfinite(c) and c > 0
+                            and np.isfinite(_year_total) and _year_total > 0):
+                        f = c / _year_total
+                        p_keep = min(1.0, (np.sqrt(f / subsample_t) + 1.0)
+                                     * (subsample_t / f))
+                        c = c * p_keep
+                    count_row[word] = c if (np.isfinite(c) and c >= 1.0) else np.nan
                 else:
-                    row[word] = np.nan
-                    count_row[word] = np.nan   # FEMVAR: edit 5
+                    count_row[word] = np.nan
             projections_data[year] = row
             counts_data[year] = count_row      # FEMVAR: edit 5
             if verbose:

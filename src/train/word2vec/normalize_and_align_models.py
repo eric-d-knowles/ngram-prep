@@ -171,6 +171,7 @@ def normalize_and_align_vectors(
         proj_dir=None,
         dir_suffix=None,
         anchor_year=None,
+        noise_ensemble=False,
         ngram_size=None,
         workers=None,
         corpus_path=None,
@@ -194,8 +195,20 @@ def normalize_and_align_vectors(
 
     Args:
         proj_dir: Project directory path (will be auto-derived if corpus_path or db_path_stub provided)
-        dir_suffix: Directory suffix (e.g., 'final', 'test')
+        dir_suffix: Directory suffix (e.g., 'final', 'test', or a noise-ensemble
+                    finalize output dir like 'noise_final')
         anchor_year: Year to use as anchor for alignment
+        noise_ensemble: If True, treat the resolved model_dir as containing
+            finalized noise-ensemble deliverables (see finalize_noise_ensemble)
+            rather than ordinary trained models. Verified up front via the
+            anchor model's `lexichron_metadata` schema -- raises ValueError
+            if it doesn't match, e.g. dir_suffix pointing at the wrong
+            directory. Output still goes to model_dir/norm_and_align,
+            mirroring the ordinary layout, and every per-token noise vecattr
+            (noise, noise_seed, noise_corpus, norm_sd, n_reps, presence) is
+            carried through onto the aligned models unchanged -- alignment
+            only rotates vectors, it never recomputes these scalars.
+            Default: False.
         ngram_size: N-gram size (e.g., 5 for 5grams). Required for ngram mode.
         workers: Number of parallel workers. Defaults to SLURM_CPUS_PER_TASK if
                  available, otherwise os.cpu_count().
@@ -273,6 +286,19 @@ def normalize_and_align_vectors(
         ...     dir_suffix='final',
         ...     anchor_year=1968,
         ...     alignment_method='unaligned',
+        ...     workers=50
+        ... )
+        >>>
+        >>> # Noise-ensemble mode (aligns finalized ensemble means across
+        >>> # years; preserves noise/noise_seed/noise_corpus/norm_sd per token):
+        >>> normalize_and_align_vectors(
+        ...     ngram_size=5,
+        ...     repo_release_id='20200217',
+        ...     repo_corpus_id='eng-us',
+        ...     db_path_stub='/scratch/edk202/NLP_corpora/Google_Books/',
+        ...     dir_suffix='noise_final',
+        ...     anchor_year=1968,
+        ...     noise_ensemble=True,
         ...     workers=50
         ... )
         >>>
@@ -370,6 +396,20 @@ def normalize_and_align_vectors(
     if anchor_model_path is None:
         raise ValueError(f"Anchor model for year {anchor_year} not found.")
 
+    if noise_ensemble:
+        from gensim.models import KeyedVectors as _KeyedVectors
+        anchor_kv = _KeyedVectors.load(anchor_model_path, mmap='r')
+        anchor_schema = getattr(anchor_kv, 'lexichron_metadata', {}).get('schema')
+        if anchor_schema != 'lexichron.word2vec.noise.v1':
+            raise ValueError(
+                f"noise_ensemble=True but the anchor model at {anchor_model_path} "
+                f"does not look like a finalized noise-ensemble deliverable "
+                f"(lexichron_metadata schema: {anchor_schema!r}, expected "
+                f"'lexichron.word2vec.noise.v1'). Check that dir_suffix points "
+                f"at the finalize_noise_ensemble output dir, or pass "
+                f"noise_ensemble=False for ordinary models."
+            )
+
     from .display import print_alignment_header
     print_alignment_header(
         start_time=start_time,
@@ -381,7 +421,8 @@ def normalize_and_align_vectors(
         stability_method=stability_method if alignment_method == 'stability_weighted' else None,
         include_frequency=include_frequency if alignment_method == 'stability_weighted' else None,
         frequency_weight=frequency_weight if alignment_method == 'stability_weighted' else None,
-        workers=workers
+        workers=workers,
+        noise_ensemble=noise_ensemble
     )
 
     weights = None

@@ -20,6 +20,7 @@ text file, since Word2Vec's corpus_file path reads that file exactly once
 per replica regardless of `epochs`.
 """
 
+import fcntl
 import json
 import os
 import re
@@ -63,6 +64,41 @@ def _replica_is_valid(path):
         return True
     except Exception:
         return False
+
+
+def _update_ensemble_index(noise_root, resampling, n_corpus_replicates, n_seed_repeats,
+                            noise_seed, error_space, new_cells):
+    """Merge `new_cells` into `ensemble_index.json` instead of overwriting it,
+    so concurrent per-year calls (e.g. one Slurm array task per year, all
+    sharing the same noise_root) accumulate cells rather than each clobbering
+    the others' entries. Lock-protected since writers run as separate
+    concurrent processes; write is atomic (temp file + os.replace)."""
+    index_path = os.path.join(noise_root, "ensemble_index.json")
+    with open(index_path + ".lock", "w") as lock_f:
+        fcntl.flock(lock_f, fcntl.LOCK_EX)
+        try:
+            cells = set()
+            if os.path.exists(index_path):
+                try:
+                    with open(index_path) as f:
+                        cells.update(json.load(f).get("cells", []))
+                except (json.JSONDecodeError, OSError):
+                    pass
+            cells.update(new_cells)
+
+            tmp_path = index_path + ".tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(dict(
+                    resampling=resampling,
+                    n_corpus_replicates=n_corpus_replicates,
+                    n_seed_repeats=n_seed_repeats,
+                    noise_seed=noise_seed,
+                    error_space=error_space,
+                    cells=sorted(cells),
+                ), f, indent=2)
+            os.replace(tmp_path, index_path)
+        finally:
+            fcntl.flock(lock_f, fcntl.LOCK_UN)
 
 
 def _train_one_replica(
@@ -292,15 +328,10 @@ def train_noise_ensemble(
                     except Exception:
                         pass
 
-    with open(os.path.join(noise_root, "ensemble_index.json"), "w") as f:
-        json.dump(dict(
-            resampling=noise_config.resampling,
-            n_corpus_replicates=B,
-            n_seed_repeats=S,
-            noise_seed=noise_config.seed,
-            error_space=noise_config.error_space,
-            cells=cell_names,
-        ), f, indent=2)
+    _update_ensemble_index(
+        noise_root, noise_config.resampling, B, S, noise_config.seed,
+        noise_config.error_space, cell_names,
+    )
 
     print(
         f"Noise ensemble replicas written to: {noise_root}\n"

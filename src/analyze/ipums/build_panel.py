@@ -306,8 +306,11 @@ def build_panel(
     if not has_fem_var:
         fem_var_df = None
         print("build_panel: projection dict has no usable 'fem_var' frame — "
-              "panel will omit the fem_var column (Fem-side injection "
-              "requires the FEMVAR-patched compute_projection_over_years).")
+              "panel will omit the fem_var column here. Fem-side noise can "
+              "still be added downstream via augment_panel_with_noise("
+              "replica_cube=... for noise-ensemble replicas, or counts_df="
+              "...+groups=... for token counts), or upstream by passing a "
+              "FEMVAR-patched compute_projection_over_years result instead.")
 
     units, roster = _resolve_collapse(targets, collapse)
 

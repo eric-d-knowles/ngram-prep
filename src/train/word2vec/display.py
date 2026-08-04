@@ -96,7 +96,8 @@ def print_alignment_header(
         stability_method=None,
         include_frequency=None,
         frequency_weight=None,
-        workers=None
+        workers=None,
+        noise_ensemble=False
 ):
     """
     Print alignment configuration header.
@@ -115,10 +116,16 @@ def print_alignment_header(
             stability weights.
         frequency_weight (float, optional): Weight for frequency component.
         workers (int, optional): Number of parallel workers.
+        noise_ensemble (bool): If True, note that source models are finalized
+            noise-ensemble means rather than ordinary trained models.
     """
     model_dir_str = truncate_path_to_fit(model_dir, "Model directory:      ", LINE_WIDTH)
     output_dir_str = truncate_path_to_fit(output_dir, "Output directory:     ", LINE_WIDTH)
 
+    source_str = (
+        "Noise-ensemble means (per-token noise stats preserved)"
+        if noise_ensemble else "Ordinary trained models"
+    )
     lines = [
         "",
         "WORD2VEC MODEL NORMALIZATION & ALIGNMENT",
@@ -129,6 +136,7 @@ def print_alignment_header(
         "═" * LINE_WIDTH,
         f"Model directory:      {model_dir_str}",
         f"Output directory:     {output_dir_str}",
+        f"Source:               {source_str}",
         f"Anchor year:          {anchor_year}",
         f"Total models:         {num_models}",
     ]

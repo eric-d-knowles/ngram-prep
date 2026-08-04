@@ -1108,8 +1108,14 @@ class W2VModel:
         """
         Save the filtered and aligned model to the specified path.
 
-        Preserves word frequency counts (expandos) from the source model so that
-        downstream stability weighting can access count attributes on saved models.
+        Preserves ALL per-token vecattrs (expandos) from the source model --
+        e.g. 'count' for ordinary models, or 'noise'/'noise_seed'/
+        'noise_corpus'/'norm_sd'/'n_reps'/'presence' for finalized
+        noise-ensemble models -- plus any model-level `lexichron_metadata`.
+        These are dropped by add_vectors, which only populates vectors and
+        index_to_key. Rotation/normalization only ever change the vectors
+        themselves, so every per-token attribute still describes the same
+        word and survives unchanged.
 
         Args:
             output_path (str): Path to save the aligned .kv model.
@@ -1124,17 +1130,17 @@ class W2VModel:
         aligned_model = KeyedVectors(vector_size=self.vector_size)
         aligned_model.add_vectors(words, list(self.filtered_vectors.values()))
 
-        # Preserve count attributes from source model. These are dropped by
-        # add_vectors since it only populates vectors and index_to_key.
-        # Without this, get_vecattr(word, 'count') raises KeyError on saved
-        # models, breaking frequency-based stability weighting downstream.
-        if hasattr(self.model, 'expandos') and 'count' in self.model.expandos:
-            for w in words:
-                if w in self.model:
-                    try:
-                        count = self.model.get_vecattr(w, 'count')
-                        aligned_model.set_vecattr(w, 'count', count)
-                    except KeyError:
-                        pass
+        if hasattr(self.model, 'expandos'):
+            for attr in self.model.expandos:
+                for w in words:
+                    if w in self.model:
+                        try:
+                            value = self.model.get_vecattr(w, attr)
+                            aligned_model.set_vecattr(w, attr, value)
+                        except KeyError:
+                            pass
+
+        if hasattr(self.model, 'lexichron_metadata'):
+            aligned_model.lexichron_metadata = self.model.lexichron_metadata
 
         aligned_model.save(output_path)
