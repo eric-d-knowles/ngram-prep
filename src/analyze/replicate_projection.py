@@ -447,15 +447,49 @@ def collapse_cube(cube: pd.DataFrame, mode: str = "residual") -> Dict[str, pd.Da
         if R < 2 or C < 2:
             sds[year] = pd.Series(np.nan, index=vals.columns)
             continue
-        # Additive two-way residual df is (R-1)(C-1); split evenly per column.
-        df_col = (R - 1) * (C - 1) / C
+
+        # Degrees of freedom PER COLUMN, from the counts actually present.
+        # The additive two-way fit on N observations with R row effects and
+        # C_eff non-empty column effects leaves N - R - C_eff + 1 residual df
+        # in total; allocate that to each column in proportion to its share of
+        # the observations:
+        #     df_j = n_j * (N - R - C_eff + 1) / N
+        # Balanced (n_j = R, N = R*C) reduces to the textbook (R-1)(C-1)/C.
+        # Using each column's actual n_j is what keeps a partially-observed
+        # column from being divided by a full-panel df and so reported as far
+        # more precise than it is.
+        n_j = np.isfinite(arr).sum(axis=0).astype(float)
+        N = float(n_j.sum())
+        C_eff = float((n_j > 0).sum())
+        df_total = N - R - C_eff + 1.0
+        df_col = (n_j * df_total / N) if (N > 0 and df_total > 0) else np.zeros(C)
+
         ss = np.nansum(resid ** 2, axis=0)
-        sds[year] = pd.Series(np.sqrt(ss / df_col), index=vals.columns)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            sd_vals = np.sqrt(ss / df_col)
+        # An absent or too-thin column has no SD. Without this, np.nansum of
+        # an all-NaN column returns 0.0 and the occupation reads as measured
+        # with perfect precision -- the most dangerous possible failure for a
+        # quantity that becomes an observation-error variance.
+        sd_vals = np.where((n_j >= 2) & (df_col > 0), sd_vals, np.nan)
+        sds[year] = pd.Series(sd_vals, index=vals.columns)
+
+    n_rep = pd.DataFrame(counts).T.sort_index()
+    if len(n_rep):
+        lo, hi = int(n_rep.to_numpy().min()), int(n_rep.to_numpy().max())
+        if lo < hi:
+            warnings.warn(
+                f"collapse_cube: ragged replicate counts across cells "
+                f"(min {lo}, max {hi}). SDs are computed from each cell's own "
+                f"count, but thin cells are noisier estimates and the "
+                f"seed/corpus split assumes a balanced design.",
+                stacklevel=2,
+            )
 
     return {
         "mean": pd.DataFrame(means).T.sort_index(),
         "sd": pd.DataFrame(sds).T.sort_index(),
-        "n_replicates": pd.DataFrame(counts).T.sort_index(),
+        "n_replicates": n_rep,
         "mode": mode,
     }
 
@@ -574,7 +608,7 @@ def variance_components(cube: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------
-# 5. Injection columns
+# 5. Injection columns and the gate check
 # --------------------------------------------------------------------------
 
 def injection_columns(
@@ -625,15 +659,120 @@ def injection_columns(
     }
 
 
-def manifest_share(var_obs: pd.DataFrame, manifest_cov: float = 0.1175) -> pd.Series:
-    """The gate check: measured noise variance as a share of MANIFESTcov.
+def detrend_panel(
+    projections: pd.DataFrame,
+    *,
+    order: int = 3,
+    year_demean: bool = True,
+) -> pd.DataFrame:
+    """Apply the CT-SEM panel's detrending to a years x occupation frame.
 
-    A few percent means the instrument sees a thin floor under a much thicker
-    corpus-composition layer, and the injection would behave like the fem_var
-    TIpred did. A substantial fraction means it is a real instrument. Run this
-    on the 2018 pilot BEFORE committing to 52 years of ensembles.
+    Mirrors the wrapper's ``year_demean+<poly>`` preprocessing: subtract each
+    year's cross-occupation mean (mean-preserving), then remove a
+    per-occupation polynomial in calendar year (also mean-preserving). Both
+    steps are what the fitted model sees, so a variance computed from the
+    result is on the same footing as noise measured across replicates.
     """
-    return (var_obs.mean(axis=0, skipna=True) / manifest_cov).sort_values()
+    df = projections.astype("float64")
+    if year_demean:
+        ybar = df.mean(axis=1)
+        df = df.sub(ybar, axis=0).add(float(np.nanmean(ybar.to_numpy())))
+
+    if order and order > 0:
+        out = {}
+        for col in df.columns:
+            s = df[col]
+            v = s.dropna()
+            if len(v) < order + 2:
+                out[col] = s
+                continue
+            coef = np.polyfit(v.index.to_numpy(dtype=float),
+                              v.to_numpy(), order)
+            fitted = np.polyval(coef, s.index.to_numpy(dtype=float))
+            out[col] = s - fitted + float(v.mean())
+        df = pd.DataFrame(out, index=df.index)[list(df.columns)]
+    return df
+
+
+def noise_share(
+    var_obs: pd.DataFrame,
+    projections: pd.DataFrame,
+    *,
+    year: Optional[int] = None,
+    order: int = 3,
+    year_demean: bool = True,
+    dof_correct: bool = True,
+) -> pd.DataFrame:
+    """THE GATE: measured noise variance as a share of deviation variance.
+
+    Both sides are in RAW PROJECTION UNITS, which is what makes the comparison
+    meaningful. The CT-SEM rescales its inputs, so a fitted MANIFESTVAR is NOT
+    comparable to a variance measured across replicates -- an earlier version
+    of this function divided by a hard-coded MANIFESTcov and returned numbers
+    two orders of magnitude too small. Do not reinstate that comparison.
+
+    ``var_obs``      year x occupation replicate variance, e.g.
+                     ``collapse_cube(cube)["sd"] ** 2``.
+    ``projections``  year x occupation PRODUCTION series, UNDETRENDED -- the
+                     same object the panel is built from. Detrending is
+                     applied here so both sides match.
+
+    Reading ``share``: near 1 means the replicate ensemble accounts for
+    essentially all of the deviation-scale variance -- the detrended series is
+    measurement noise nearly all the way down, and the instrument sees it.
+    Near 0.01 means the instrument sees only a thin floor beneath a much
+    thicker corpus-composition layer, and an injection built on it would
+    behave like the count-based proxy did.
+
+    ``share`` somewhat above 1 is expected, not alarming. With
+    ``dof_correct``, the degrees of freedom spent on detrending are accounted
+    for (approximately: order+1 polynomial terms per occupation, plus
+    n_years/n_occupations for the year-demeaning). What remains is dominated
+    by the perturbation regime -- Poisson replicates train on corpora missing
+    ~37% of their types, so their spread overstates the error of a
+    full-corpus fit. Measure that inflation against an unperturbed seed-only
+    ensemble before quoting agreement with any model-internal number.
+
+    ``lag1`` is an independent route to the same question: a detrended series
+    that is nearly all white noise has lag-1 autocorrelation near zero,
+    implying a noise fraction near 1 - lag1. It uses no replicate information,
+    so agreement between ``share`` and ``1 - lag1`` is real corroboration.
+
+    Returns a frame indexed by occupation with columns
+    [noise_var, total_var, share, lag1], sorted by share.
+    """
+    noise = (var_obs.loc[year] if year is not None
+             else var_obs.mean(axis=0, skipna=True))
+    det = detrend_panel(projections, order=order, year_demean=year_demean)
+
+    common = noise.index.intersection(det.columns)
+    if len(common) == 0:
+        raise ValueError(
+            "no occupations in common between var_obs and projections -- "
+            "check both use the same (post-synonym canonical) column labels"
+        )
+    if len(common) < len(noise.index) or len(common) < len(det.columns):
+        warnings.warn(
+            f"noise_share: using {len(common)} occupation(s) common to both "
+            f"inputs (var_obs has {len(noise.index)}, projections "
+            f"{len(det.columns)})"
+        )
+
+    det = det[common]
+    total = det.var(axis=0, ddof=1)
+    if dof_correct:
+        n = int(det.notna().sum(axis=0).median())
+        spent = (order + 1 if order else 0) + (n / len(common) if year_demean else 0.0)
+        if n - spent > 1:
+            total = total * (n - 1) / (n - spent)
+
+    out = pd.DataFrame({
+        "noise_var": noise[common].astype(float),
+        "total_var": total.astype(float),
+        "lag1": det.apply(lambda s: s.autocorr(1)).astype(float),
+    })
+    out["share"] = out["noise_var"] / out["total_var"]
+    return out[["noise_var", "total_var", "share", "lag1"]].sort_values("share")
 
 
 # --------------------------------------------------------------------------
